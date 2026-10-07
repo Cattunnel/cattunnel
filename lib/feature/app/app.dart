@@ -45,14 +45,21 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([AppLocalePreferences.current, AppearancePreferences.themeMode]),
+    listenable: Listenable.merge([
+      AppLocalePreferences.current,
+      AppearancePreferences.themeMode,
+      AppearancePreferences.style,
+    ]),
     builder: (context, _) => _buildApp(context, AppLocalePreferences.current.value.value ?? Localization.defaultLocale),
   );
 
+  // «Y2K» is dark only: its own theme for both slots, dark mode forced.
+  bool get _y2k => AppearancePreferences.style.value == AppStyle.y2k;
+
   Widget _buildApp(BuildContext context, Locale locale) => MaterialApp(
-    theme: context.dependencyFactory.lightThemeData,
-    darkTheme: context.dependencyFactory.darkThemeData,
-    themeMode: AppearancePreferences.themeMode.value,
+    theme: _y2k ? context.dependencyFactory.y2kThemeData : context.dependencyFactory.lightThemeData,
+    darkTheme: _y2k ? context.dependencyFactory.y2kThemeData : context.dependencyFactory.darkThemeData,
+    themeMode: _y2k ? ThemeMode.dark : AppearancePreferences.themeMode.value,
     navigatorObservers: [
       LoggingNavigatorObserver(
         navigatorName: 'root',

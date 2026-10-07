@@ -61,6 +61,9 @@ Third-party code and assets included in this repository:
 - assets/fonts/roboto/: Roboto 2.137, Copyright 2011 Google Inc., Apache
   License 2.0; assets/fonts/IconFont.ttf and packages/adg_share,
   packages/tray_manager come from the upstream repository (Apache-2.0).
+- assets/fonts/y2k/: Unbounded (Copyright 2022 The Unbounded Project Authors)
+  and Exo 2 (Copyright 2013 The Exo 2 Project Authors), SIL Open Font
+  License 1.1 (assets/licenses/font_unbounded.txt, font_exo2.txt).
 - packages/window_manager: from leanflutter/window_manager, Copyright (c) 2022
   LiJianying, MIT License (packages/window_manager/LICENSE), as carried by the
   upstream repository.

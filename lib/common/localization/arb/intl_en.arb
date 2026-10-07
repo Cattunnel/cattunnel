@@ -654,6 +654,8 @@
   "appearanceStyleMinimalDescription": "The classic look: a list of servers with power buttons.",
   "appearanceStyleCozy": "Cozy",
   "appearanceStyleCozyDescription": "A big connect button with Marsik, the session timer and a server card.",
+  "appearanceStyleY2k": "Y2K",
+  "appearanceStyleY2kDescription": "Early-2000s look: deep navy, electric blue, chrome and shards. Always dark.",
   "appearanceTheme": "Theme",
   "appearanceThemeSystem": "Same as the phone",
   "appearanceThemeLight": "Light",

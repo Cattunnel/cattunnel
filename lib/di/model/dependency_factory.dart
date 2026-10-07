@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/common/assets/font_families.dart';
 import 'package:trusttunnel/common/theme/app_theme.dart';
 import 'package:trusttunnel/common/theme/theme_palette.dart';
 import 'package:trusttunnel/common/utils/certificate_encoders.dart';
@@ -65,6 +66,9 @@ abstract class DependencyFactory {
   ThemeData get lightThemeData;
 
   ThemeData get darkThemeData;
+
+  /// The «Y2K» style's theme (always dark).
+  ThemeData get y2kThemeData;
 
   VpnPlugin get vpnPlugin;
 
@@ -139,6 +143,8 @@ class DependencyFactoryImpl implements DependencyFactory {
 
   ThemeData? _darkThemeData;
 
+  ThemeData? _y2kThemeData;
+
   VpnPlugin? _vpnPlugin;
 
   DeepLinkManager? _deepLinkManager;
@@ -196,6 +202,9 @@ class DependencyFactoryImpl implements DependencyFactory {
 
   @override
   ThemeData get darkThemeData => _darkThemeData ??= AppTheme(ThemePalette.dark).data;
+
+  @override
+  ThemeData get y2kThemeData => _y2kThemeData ??= AppTheme(ThemePalette.y2k, font: FontFamilies.exo2).data;
 
   @override
   VpnPlugin get vpnPlugin => _vpnPlugin ??= VpnPluginImpl();
@@ -311,17 +320,15 @@ class DependencyFactoryImpl implements DependencyFactory {
       _subscriptionDataSource ??= SubscriptionDataSourceImpl(database: database);
 
   @override
-  SubscriptionSyncService get subscriptionSyncService =>
-      _subscriptionSyncService ??= SubscriptionSyncService(
-        subscriptionDataSource: subscriptionDataSource,
-        serverDataSource: serverDataSource,
-      );
+  SubscriptionSyncService get subscriptionSyncService => _subscriptionSyncService ??= SubscriptionSyncService(
+    subscriptionDataSource: subscriptionDataSource,
+    serverDataSource: serverDataSource,
+  );
 
   @override
-  MtuSettingsDataSource get mtuSettingsDataSource =>
-      _mtuSettingsDataSource ??= MtuSettingsDataSourceImpl(
-        preferences: sharedPreferences,
-      );
+  MtuSettingsDataSource get mtuSettingsDataSource => _mtuSettingsDataSource ??= MtuSettingsDataSourceImpl(
+    preferences: sharedPreferences,
+  );
 
   @override
   ServerSortPreferenceDataSource get serverSortPreferenceDataSource =>
