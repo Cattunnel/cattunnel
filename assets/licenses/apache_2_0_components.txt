@@ -1,0 +1,151 @@
+The components below are licensed under the Apache License, Version 2.0.
+The full license text is shown under the "CatTunnel" entry of this page
+and at https://www.apache.org/licenses/LICENSE-2.0
+
+Native VPN engine (libtrusttunnel_android.so):
+- TrustTunnelClient 1.1.5-rc.6 - Copyright AdGuard Software Ltd - https://github.com/TrustTunnel/TrustTunnelClient
+- DnsLibs 2.10.1 - Copyright AdGuard Software Ltd - https://github.com/AdguardTeam/DnsLibs
+- NativeLibsCommon 8.1.49 - Copyright AdGuard Software Ltd - https://github.com/AdguardTeam/NativeLibsCommon
+
+Android libraries:
+- androidx.activity:activity-ktx:1.9.0
+- androidx.activity:activity:1.9.0
+- androidx.annotation:annotation-experimental:1.4.1
+- androidx.annotation:annotation-jvm:1.9.1
+- androidx.annotation:annotation:1.9.1
+- androidx.appcompat:appcompat-resources:1.7.1
+- androidx.appcompat:appcompat:1.7.1
+- androidx.arch.core:core-common:2.2.0
+- androidx.arch.core:core-runtime:2.2.0
+- androidx.biometric:biometric:1.1.0
+- androidx.browser:browser:1.9.0
+- androidx.camera:camera-camera2:1.3.4
+- androidx.camera:camera-core:1.3.4
+- androidx.camera:camera-lifecycle:1.3.4
+- androidx.cardview:cardview:1.0.0
+- androidx.collection:collection-jvm:1.4.2
+- androidx.collection:collection-ktx:1.4.2
+- androidx.collection:collection:1.4.2
+- androidx.concurrent:concurrent-futures:1.1.0
+- androidx.constraintlayout:constraintlayout-solver:2.0.1
+- androidx.constraintlayout:constraintlayout:2.0.1
+- androidx.coordinatorlayout:coordinatorlayout:1.1.0
+- androidx.core:core-ktx:1.18.0
+- androidx.core:core-viewtree:1.0.0
+- androidx.core:core:1.18.0
+- androidx.cursoradapter:cursoradapter:1.0.0
+- androidx.customview:customview:1.1.0
+- androidx.datastore:datastore-android:1.1.7
+- androidx.datastore:datastore-core-android:1.1.7
+- androidx.datastore:datastore-core-okio-jvm:1.1.7
+- androidx.datastore:datastore-core-okio:1.1.7
+- androidx.datastore:datastore-core:1.1.7
+- androidx.datastore:datastore-preferences-android:1.1.7
+- androidx.datastore:datastore-preferences-core-android:1.1.7
+- androidx.datastore:datastore-preferences-core:1.1.7
+- androidx.datastore:datastore-preferences-proto:1.1.7
+- androidx.datastore:datastore-preferences:1.1.7
+- androidx.datastore:datastore:1.1.7
+- androidx.documentfile:documentfile:1.0.0
+- androidx.drawerlayout:drawerlayout:1.1.1
+- androidx.dynamicanimation:dynamicanimation:1.0.0
+- androidx.emoji2:emoji2-views-helper:1.3.0
+- androidx.emoji2:emoji2:1.3.0
+- androidx.exifinterface:exifinterface:1.3.2
+- androidx.fragment:fragment-ktx:1.8.9
+- androidx.fragment:fragment:1.8.9
+- androidx.interpolator:interpolator:1.0.0
+- androidx.legacy:legacy-support-core-utils:1.0.0
+- androidx.lifecycle:lifecycle-common-java8:2.8.7
+- androidx.lifecycle:lifecycle-common-jvm:2.8.7
+- androidx.lifecycle:lifecycle-common:2.8.7
+- androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.7
+- androidx.lifecycle:lifecycle-livedata-core:2.8.7
+- androidx.lifecycle:lifecycle-livedata:2.8.7
+- androidx.lifecycle:lifecycle-process:2.8.7
+- androidx.lifecycle:lifecycle-runtime-android:2.8.7
+- androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.7
+- androidx.lifecycle:lifecycle-runtime-ktx:2.8.7
+- androidx.lifecycle:lifecycle-runtime:2.8.7
+- androidx.lifecycle:lifecycle-viewmodel-android:2.8.7
+- androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7
+- androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.7
+- androidx.lifecycle:lifecycle-viewmodel:2.8.7
+- androidx.loader:loader:1.0.0
+- androidx.localbroadcastmanager:localbroadcastmanager:1.0.0
+- androidx.media:media:1.1.0
+- androidx.preference:preference:1.2.1
+- androidx.print:print:1.0.0
+- androidx.profileinstaller:profileinstaller:1.3.1
+- androidx.recyclerview:recyclerview:1.1.0
+- androidx.resourceinspection:resourceinspection-annotation:1.0.1
+- androidx.savedstate:savedstate-ktx:1.2.1
+- androidx.savedstate:savedstate:1.2.1
+- androidx.slidingpanelayout:slidingpanelayout:1.2.0
+- androidx.startup:startup-runtime:1.1.1
+- androidx.tracing:tracing:1.2.0
+- androidx.transition:transition:1.5.0
+- androidx.vectordrawable:vectordrawable-animated:1.1.0
+- androidx.vectordrawable:vectordrawable:1.1.0
+- androidx.versionedparcelable:versionedparcelable:1.1.1
+- androidx.viewpager2:viewpager2:1.0.0
+- androidx.viewpager:viewpager:1.0.0
+- androidx.window.extensions.core:core:1.0.0
+- androidx.window:window-java:1.2.0
+- androidx.window:window:1.2.0
+- com.adguard.trusttunnel:trusttunnel-client-android:1.1.5-rc.6
+- com.getkeepsafe.relinker:relinker:1.4.5
+- com.github.tony19:logback-android:2.0.0
+- com.google.android.datatransport:transport-api:2.2.1
+- com.google.android.datatransport:transport-backend-cct:2.3.3
+- com.google.android.datatransport:transport-runtime:2.2.6
+- com.google.android.material:material:1.12.0
+- com.google.auto.value:auto-value-annotations:1.6.3
+- com.google.code.gson:gson:2.12.0
+- com.google.errorprone:error_prone_annotations:2.36.0
+- com.google.firebase:firebase-annotations:16.0.0
+- com.google.firebase:firebase-components:16.1.0
+- com.google.firebase:firebase-encoders-json:17.1.0
+- com.google.firebase:firebase-encoders:16.1.0
+- com.google.guava:listenablefuture:1.0
+- com.squareup.okio:okio-jvm:3.4.0
+- com.squareup.okio:okio:3.4.0
+- commons-io:commons-io:2.20.0
+- io.reactivex.rxjava3:rxandroid:3.0.0
+- io.reactivex.rxjava3:rxjava:3.0.0
+- javax.inject:javax.inject:1
+- org.apache.tika:tika-core:3.2.3
+- org.jetbrains.kotlin:kotlin-android-extensions-runtime:1.9.22
+- org.jetbrains.kotlin:kotlin-bom:1.8.22
+- org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.22
+- org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22
+- org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22
+- org.jetbrains.kotlin:kotlin-stdlib:2.2.10
+- org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0
+- org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.9.0
+- org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0
+- org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0
+- org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.6.2
+- org.jetbrains.kotlinx:kotlinx-datetime:0.6.2
+- org.jetbrains.kotlinx:kotlinx-serialization-bom:1.8.1
+- org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.8.1
+- org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1
+- org.jetbrains:annotations:23.0.0
+- org.jspecify:jspecify:1.0.0
+
+NOTICE files of these components:
+
+commons-io:commons-io:2.20.0 (META-INF/NOTICE.txt)
+Apache Commons IO
+Copyright 2002-2025 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (https://www.apache.org/).
+
+org.apache.tika:tika-core:3.2.3 (META-INF/NOTICE)
+Apache Tika core
+Copyright 2007-2025 The Apache Software Foundation
+
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).

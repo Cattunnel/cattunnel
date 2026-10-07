@@ -1,0 +1,11 @@
+# The age test vectors (packages/dage/testkit, upstream C2SP/age testkit) and the
+# dage unit tests contain throwaway AGE-SECRET-KEY values by design - not secrets.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "age test vectors"
+paths = [
+  '''packages/dage/testkit/''',
+  '''packages/dage/test/''',
+]

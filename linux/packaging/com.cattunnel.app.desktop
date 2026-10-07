@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=CatTunnel
+GenericName=VPN
+Comment=TrustTunnel VPN client
+Comment[ru]=VPN-клиент TrustTunnel
+Exec=cattunnel %u
+Icon=com.cattunnel.app
+Terminal=false
+Categories=Network;
+Keywords=VPN;TrustTunnel;
+# tt:// links (servers shared as links / QR) open in CatTunnel.
+MimeType=x-scheme-handler/tt;
+StartupWMClass=cattunnel

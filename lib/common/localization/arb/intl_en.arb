@@ -1,0 +1,768 @@
+{
+  "@@locale": "en",
+  "appTitle": "CatTunnel",
+  "servers": "Servers",
+  "routing": "Routing",
+  "settings": "Settings",
+  "addServer": "Add server",
+  "add": "Add",
+  "editServer": "Edit server",
+  "serverName": "Server name",
+  "username": "Username",
+  "enterUsername": "Enter username",
+  "password": "Password",
+  "enterPassword": "Enter password",
+  "protocol": "Protocol",
+  "routingProfile": "Routing profile",
+  "enterDnsServerLabel": "DNS server addresses, one per line",
+  "enterDnsServerHint": "IP address, tls://, https://, quic://, h3://, or sdns://",
+  "enterDnsServerHelper": "If not specified, 46.243.231.30 (AdGuard DNS Non-filtering) is used",
+  "enterIpAddressLabel": "Address",
+  "enterIpAddressHint": "IPv4/IPv6 or domain",
+  "enterIpAddressHelper": "if port is not specified, 443 is used",
+  "enterDomainLabel": "Domain name from server certificate",
+  "enterDomainHint": "Domain or IP address",
+  "defaultProfile": "Default profile",
+  "serversEmptyTitle": "Create your first server",
+  "serversEmptyDescription": "Create a server for secure and anonymous data transfer",
+  "create": "Create",
+  "save": "Save",
+  "unknownError": "Unknown Error",
+  "nameAlreadyExistError": "This name is already used",
+  "ipAddressWrongFieldError": "Use the format x.x.x.x or x:x:x:x:x:x:x:x",
+  "domainWrongFieldError": "Use a domain name or IP address",
+  "dnsServersWrongFieldError": "Use IP addresses, tls://, https://, quic://, h3:// or sdns://",
+  "urlWrongFieldError": "Please check the URL: it looks incorrect",
+  "pleaseFillField": "Please fill out this field",
+  "editProfileName": "Edit name",
+  "deleteProfile": "Delete profile",
+  "deleteProfileDialogTitle": "Delete profile?",
+  "addProfile": "Add profile",
+  "enterRulesHint": "Routing rules can be of the following types:\n- Domains of any level\n- IP address\n- IP address with port\n- IP address with a mask",
+  "changeDefaultRoutingMode": "Change default routing",
+  "deleteAllRules": "Delete all rules",
+  "deleteAllRulesDialogTitle": "Delete all rules?",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "deleteAllRulesDialogDescription": "All rules from {profileName} will be deleted",
+  "@deleteAllRulesDialogDescription": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteProfileDescription": "{profileName} will be deleted",
+  "@deleteProfileDescription": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "changeDefaultRoutingModeDialogDescription": "All traffic will be routed by default according to this rule",
+  "discardChanges": "Discard changes",
+  "discardChangesDialogTitle": "Discard changes?",
+  "discardChangesDialogDescription": "Are you sure you want to discard all changes?",
+  "about": "About",
+  "aboutAttribution": "CatTunnel is a client built on the open-source TrustTunnel engine by AdGuard, licensed under Apache 2.0.",
+  "viewLicenses": "View open-source licenses",
+  "virusTotalBadge": "Scanned with VirusTotal — detections: {count}",
+  "virusTotalBadgeCaveat": "\"/S-Signed\" in the version means the build was signed and released after the VirusTotal check. The report covers the same build without the version suffix and this link: a link can't point at the file it's inside of.",
+  "logs": "Logs",
+  "connectionLog": "Connection log",
+  "excludedRoutes": "Excluded routes",
+  "typeSomething": "Type something",
+  "deleteServer": "Delete server",
+  "deleteServerDialogTitle": "Delete server?",
+  "deleteServerDescription": "Server <b>{serverName}</b> will be deleted",
+  "@deleteServerDescription": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      }
+    }
+  },
+  "serverDeletedSnackbar": "Server <b>{serverName}</b> deleted",
+  "@serverDeletedSnackbar": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      }
+    }
+  },
+  "profileDeletedSnackbar": "Profile <b>{profileName}</b> deleted",
+  "@profileDeletedSnackbar": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "changesSavedSnackbar": "Changes saved",
+  "serverUpdatedSnackbar": "Server <b>{serverName}</b> updated",
+  "@serverUpdatedSnackbar": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      }
+    }
+  },
+  "serverPortUpdatedSnackbar": "Server <b>{serverName}</b> updated: port {oldPort} → {newPort}",
+  "@serverPortUpdatedSnackbar": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      },
+      "oldPort": {
+        "type": "String"
+      },
+      "newPort": {
+        "type": "String"
+      }
+    }
+  },
+  "serverAddressUpdatedSnackbar": "Server <b>{serverName}</b> updated: {oldAddress} → {newAddress}",
+  "@serverAddressUpdatedSnackbar": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      },
+      "oldAddress": {
+        "type": "String"
+      },
+      "newAddress": {
+        "type": "String"
+      }
+    }
+  },
+  "serverCreatedSnackbar": "Server <b>{serverName}</b> created",
+  "@serverCreatedSnackbar": {
+    "placeholders": {
+      "serverName": {
+        "type": "String"
+      }
+    }
+  },
+  "profileCreatedSnackbar": "Profile <b>{profileName}</b> created",
+  "@profileCreatedSnackbar": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "allRulesDeleted": "All rules deleted",
+  "quic": "QUIC",
+  "http2": "HTTP/2",
+  "bypass": "Bypass",
+  "vpn": "Vpn",
+  "profileNameLabel": "Profile name",
+  "customSniLabel": "Custom SNI",
+  "customSniHint": "example.com",
+  "customSniWrongFieldError": "Use the format example.com",
+  "clientRandomLabel": "Client Random, hex sequence",
+  "clientRandomHint": "abcdef, 0a0b0c/0f0f0f",
+  "clientRandomHelper": "Max length — 64 characters",
+  "pemLabel": "Self-signed certificate, PEM file",
+  "importHint": "Import",
+  "ipv6Label": "Allow IPv6 connections via the server",
+  "antiDpiLabel": "Anti-DPI",
+  "antiDpiDescription": "The first TLS packet is sent in pieces so a filter can't read the server name. HTTP/2 only",
+  "antiDpiModeLabel": "Technique",
+  "tlsProfileLabel": "TLS fingerprint",
+  "tlsProfileAuto": "Like the default browser (recommended)",
+  "tlsProfileChrome": "Like Chrome",
+  "tlsProfileFirefox": "Like Firefox",
+  "tlsProfileOkhttp": "Like an Android app",
+  "tlsProfileSafari": "Like Safari (for iPhone and Mac)",
+  "tlsProfileAutoBrowser": "Now: {profile}, like your browser",
+  "@tlsProfileAutoBrowser": {"placeholders": {"profile": {"type": "String"}}},
+  "tlsProfileAutoRandom": "Now: {profile}, no browser found, picked at random",
+  "@tlsProfileAutoRandom": {"placeholders": {"profile": {"type": "String"}}},
+  "tlsProfileRedetect": "Detect again",
+  "antiDpiModeBasic": "Basic: packet in pieces",
+  "antiDpiModeAuto": "Auto: 1 → 2 → 3, remember what worked",
+  "antiDpiMode1": "1: OOB byte and the start with TTL 1",
+  "antiDpiMode2": "2: the start with TTL 1",
+  "antiDpiMode3": "3: a cut inside the server name",
+  "antiDpiModeOff": "Off",
+  "antiDpiModeCustom": "Custom string (ByeDPI-style)",
+  "antiDpiDesyncLabel": "Bypass string",
+  "antiDpiDesyncHint": "-o1+s -d3+s",
+  "antiDpiDesyncHelper": "Space-separated parts: -s, -o or -d and a position. See \"?\" on the section",
+  "antiDpiDesyncExamples": "Examples:",
+  "antiDpiDesyncErrorUnknown": "\"{token}\": only -s, -o and -d are allowed",
+  "@antiDpiDesyncErrorUnknown": {"placeholders": {"token": {"type": "String"}}},
+  "antiDpiDesyncErrorRecordSplit": "\"{token}\": the server does not accept -r",
+  "@antiDpiDesyncErrorRecordSplit": {"placeholders": {"token": {"type": "String"}}},
+  "antiDpiDesyncErrorPosition": "\"{token}\": needs a position from -1500 to 1500, optionally followed by +s or +h",
+  "@antiDpiDesyncErrorPosition": {"placeholders": {"token": {"type": "String"}}},
+  "antiDpiDesyncErrorTooMany": "At most 8 parts",
+  "antiDpiDesyncErrorOobWithoutTtl": "-o needs a -d part after it, or the server stalls",
+  "antiDpiDesyncWrongFieldError": "The bypass string has an error",
+  "antiDpiDesyncRequired": "Enter a string or pick another method",
+  "serverSectionBypass": "Censorship bypass",
+  "serverSectionRouting": "Routing and DNS",
+  "serverSectionKey": "Key data",
+  "serverSectionExpert": "For experts",
+  "serverSectionTravel": "Trips abroad",
+  "serverSectionTravelOn": "Russian exit on",
+  "serverSectionHelp": "What is this?",
+  "serverSectionHasError": "Has an error",
+  "helpAntiDpiTitle": "Anti-DPI",
+  "helpAntiDpiBody": "The provider's filter reads the server name in the first packet of a TLS connection. Anti-DPI sends that packet so the filter can't parse it while the server receives it as usual. HTTP/2 only.",
+  "helpAntiDpiModesTitle": "Methods",
+  "helpAntiDpiModesBody": "Basic - the packet goes out in two pieces with a pause.\n1, 2, 3 - ByeDPI techniques: an \"urgent\" (OOB) byte the server drops, and a piece with TTL 1 that is lost at the first router and then resent by the system. The filter sees the packet incomplete or out of order.\nAuto - tries 1, 2, 3 in turn and remembers what worked on this network.",
+  "helpAntiDpiCustomTitle": "Custom string",
+  "helpAntiDpiCustomBody": "Space-separated parts, in order:\n-s N - a plain split after byte N;\n-o N - a split with an \"urgent\" byte;\n-d N - the piece up to byte N goes out with TTL 1.\nN counts from the packet start, from its end if negative, from the server name with +s (or +h).\nExamples: \"-o1+s -d3+s\" is method 3, \"-d7\" is method 2, \"-s1 -d3+s\".\nNot allowed: -r (the server rejects such a packet) and -o without a -d after it (the server stalls). ByeDPI syntax, but only these three techniques.",
+  "helpTlsProfileTitle": "TLS fingerprint",
+  "helpTlsProfileBody": "Which app the connection looks like during the handshake. Best is your default browser: the filter then sees one fingerprint from your address. Don't change it needlessly: a change during a block can extend the address \"freeze\".",
+  "helpRuExitTitle": "Russian exit",
+  "helpRoutingTitle": "Routing",
+  "helpRoutingBody": "The routing profile decides which sites go through the VPN and which go directly.",
+  "helpDnsTitle": "DNS and IPv6",
+  "helpDnsBody": "DNS servers - where DNS queries go inside the tunnel; empty means the default server. IPv6 - whether IPv6 traffic goes through the server.",
+  "helpKeyTitle": "Key data",
+  "helpKeyBody": "This comes from the key link or subscription: server address and port, the domain from its certificate, login and password. Usually left alone: if a key stops working, add the link again. A custom certificate is only for a server with a self-signed one.",
+  "helpExpertTitle": "For experts",
+  "h2PaddingLabel": "Size masking (HTTP/2)",
+  "h2PaddingDescription": "The first packets of a connection get random padding. HTTP/2 only",
+  "blockQuicLabel": "Turn off QUIC",
+  "blockQuicDescription": "UDP to port 443 is refused: browsers and apps fall back to TCP inside the tunnel",
+  "helpExpertBody": "Protocol - HTTP/2 (TCP) or HTTP/3 (QUIC); anti-DPI works with HTTP/2 only.\nCustom SNI - the server name shown in the handshake instead of the domain; the server must accept it.\nSize masking - the first eight HTTP/2 frames of each connection get 0-255 random bytes (the PADDED flag, part of HTTP/2; the server accepts it as is). The sizes of the tunnel's first requests then differ every time, which makes the VPN harder to recognise. Costs a little traffic; off by default.\nClient Random - a tag at the start of the handshake random the server recognizes the client by. Set only when the admin says so.",
+  "antiDpiAutoFailedTitle": "Couldn't get through",
+  "antiDpiAutoFailedBody": "Mrrr... I tried all three techniques and none reached the server. Try another server or send a report - it shows where it got stuck.",
+  "ruExitLabel": "Russian exit (for trips abroad)",
+  "ruExitDescription": "This server is in Russia. Only Russian sites and apps (banks, government services, marketplaces) go through it, everything else directly. Don't turn it on for everyday use in Russia: it does the opposite",
+  "ruExitPromptTitle": "Is this server in Russia?",
+  "ruExitPromptBody": "\"{name}\" seems to be in Russia. Is it a key for trips abroad? Then only Russian sites and apps (banks, government services, marketplaces) go through it, everything else directly.\n\nIf you are in Russia and this is a regular VPN, pick \"No\". You can change it in the server settings.",
+  "ruExitPromptYes": "Yes, for trips",
+  "ruExitPromptNo": "No, regular",
+  "@ruExitPromptBody": {"placeholders": {"name": {"type": "String"}}},
+  "tlsOutOfBoundsError": "Mask and value should have the same length",
+  "tlsWrongFieldError": "Hex sequence only allows 0-9, a-f characters",
+  "tlsWrongValueError": "Value should have an even number of characters",
+  "tlsWrongMaskError": "Mask and value should have an even number of characters",
+  "somethingWentWrongSnackbar": "Something went wrong. Please try again later",
+  "appLogging": "App logging",
+  "downloadAppLogs": "Export app logs and system info",
+  "loggingLevel": "Logging level",
+  "loggingLevelBasic": "Default",
+  "loggingLevelDetailed": "Debug",
+  "loggingLevelDetailedDescription": "Logs extra events. Used for diagnosing problems",
+  "sensitiveData": "Sensitive data",
+  "sensitiveDataExcluded": "Stripped",
+  "sensitiveDataExcludedDescription": "Sensitive data is not logged",
+  "sensitiveDataIncluded": "Included",
+  "sensitiveDataIncludedDescription": "Logs may include sensitive data. Passwords and server access links are never logged",
+  "changeSensitiveDataLoggingDialogTitle": "Your logs may include sensitive data",
+  "changeSensitiveDataLoggingDialogDescription": "We recommend deleting app logs to remove any sensitive data before switching to Stripped",
+  "continueAnyway": "Continue anyway",
+  "confirm": "Confirm",
+  "connectionErrorDialogTitle": "Connection failed",
+  "gotIt": "Got it",
+  "deleteLogs": "Delete logs",
+  "share": "Share",
+  "exportCanceledSnackbar": "Export canceled",
+  "deleteAppLogs": "Delete app logs",
+  "deleteAppLogsDialogTitle": "Delete app logs?",
+  "deleteAppLogsDialogDescription": "App logs will be cleared. This will not delete your app settings or connection log",
+  "appLogsDeletedSnackbar": "App logs deleted",
+  "appLogsExportedSnackbar": "App logs exported",
+  "exportingLogs": "Exporting logs…",
+  "connectionLogEmptyTitle": "No connections yet",
+  "connectionLogEmptyDescription": "Connection log shows where your traffic goes and how it’s routed. Connect to your server and open a website to add the first record",
+  "exitDialogTitle": "Quit CatTunnel?",
+  "exitDialogDescription": "This will disconnect you from the active server",
+  "quit": "Quit",
+  "dontQuit": "Don’t quit",
+  "trayStatus": "Status: {status}",
+  "@trayStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "trayStatusConnected": "Connected",
+  "trayStatusConnecting": "Connecting…",
+  "trayStatusDisconnected": "Disconnected",
+  "connect": "Connect",
+  "disconnect": "Disconnect",
+  "connectTo": "Connect to",
+  "logging": "Logging",
+  "otherServers": "Other servers",
+  "trayOpenApp": "Open {appName}",
+  "@trayOpenApp": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "trayQuitApp": "Quit {appName}",
+  "@trayQuitApp": {
+    "placeholders": {
+      "appName": {
+        "type": "String"
+      }
+    }
+  },
+  "launchAndConnection": "Launch and connection",
+  "launch": "Launch",
+  "launchAppAtSystemLogin": "Launch app at system login",
+  "openHomeScreenAutomatically": "Open Home screen automatically",
+  "connection": "Connection",
+  "autoConnectOnAppLaunch": "Auto-connect on app launch",
+  "autoConnectNoServersAdded": "No servers added. To apply the setting, add a server",
+  "killSwitch": "Kill switch",
+  "killSwitchDescription": "Block all network traffic if the VPN connection drops unexpectedly",
+  "ruServicesBypass": "Russian services",
+  "ruServicesBypassDescription": "Route Russian banking and services (Sber, VK, Yandex, etc.) directly so they keep working",
+  "ruServicesRulesScreenTitle": "Russian services rules",
+  "connectionNotifications": "Disconnect notification",
+  "connectionNotificationsDescription": "Let you know when the VPN disconnects. While connected, there is always a single CatTunnel notification",
+  "exportServerDialogTitle": "Export server",
+  "copyLink": "Copy link",
+  "linkCopiedSnackbar": "Link copied to clipboard",
+  "importLinkDialogTitle": "Import from link",
+  "importLinkHint": "tt://?...",
+  "importLinkInvalidError": "This doesn't look like a valid server link",
+  "scanQrCode": "Scan QR code",
+  "qrTooLargeError": "This server's data is too large to fit in a QR code. Use copy or share instead.",
+  "edit": "Edit",
+  "subscriptions": "Subscriptions",
+  "addSubscription": "Add subscription",
+  "editSubscription": "Edit subscription",
+  "subscriptionNameLabel": "Name",
+  "subscriptionNameHint": "My servers",
+  "subscriptionUrlLabel": "Subscription URL",
+  "subscriptionSkipVerification": "Allow self-signed certificate",
+  "subscriptionInvalidUrlError": "Enter a valid URL",
+  "subscriptionAgeKeyLabel": "Encryption key (age, optional)",
+  "subscriptionAgeKeyHint": "AGE-SECRET-KEY-1...",
+  "subscriptionAgeKeyHelper": "If the subscription server encrypts its response with age (age-encryption.org), paste the matching private key here to decrypt it on-device.",
+  "subscriptionAgeKeyInvalidError": "Enter a valid age identity (starts with AGE-SECRET-KEY-1)",
+  "subscriptionNeverUpdated": "Never updated",
+  "subscriptionLastUpdated": "Updated {date}",
+  "@subscriptionLastUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noSubscriptionsPlaceholder": "No subscriptions yet. Add one to automatically keep a group of servers in sync.",
+  "deleteSubscriptionDialogTitle": "Delete subscription",
+  "deleteSubscriptionDescription": "Subscription <b>{subscriptionName}</b> and all servers it added will be deleted",
+  "@deleteSubscriptionDescription": {
+    "placeholders": {
+      "subscriptionName": {
+        "type": "String"
+      }
+    }
+  },
+  "addServers": "Add servers",
+  "addServerSheetTitle": "Add a server",
+  "addManuallyOption": "Enter manually",
+  "importLinkOption": "Import link",
+  "importConfigFileOption": "From a file (.toml)",
+  "importConfigFileInvalidError": "This doesn't look like a server config file. Use the .toml from the bot (\"🐧 Config for Linux / PC\").",
+  "serverUnreachable": "Unreachable",
+  "sortByTitle": "Sort by",
+  "sortByOrigin": "Date added",
+  "sortByName": "Name",
+  "sortByLatency": "Latency",
+  "testServersAction": "Test servers",
+  "testingServersSnackbar": "Testing servers…",
+  "testServersResultSnackbar": "{reachable} of {total} servers reachable",
+  "@testServersResultSnackbar": {
+    "placeholders": {
+      "reachable": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "testServersDialogTitle": "Test server availability?",
+  "testServersDialogDescription": "Check whether the servers this subscription just added are reachable right now.",
+  "testTimeoutLabel": "Server test timeout (seconds)",
+  "testTimeoutHelper": "Connects to the server's own address (the same one the VPN uses), 1–30 seconds",
+  "mtuLabel": "MTU",
+  "mtuHelper": "Tunnel interface MTU ({min}–{max})",
+  "@mtuHelper": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "subscriptionServersCount": "{count, plural, =1{1 server} other{{count} servers}}",
+  "@subscriptionServersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subscriptionServersCountUpdated": "{serversCount} · {updated}",
+  "@subscriptionServersCountUpdated": {
+    "placeholders": {
+      "serversCount": {
+        "type": "String"
+      },
+      "updated": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingWelcomeTitle": "Hi, I'm your CatTunnel guide!",
+  "onboardingWelcomeDescription": "A couple of quick tips before you start — won't take long.",
+  "onboardingConnectTitle": "One tap to connect",
+  "onboardingConnectDescription": "Tap the power button on any server to connect. Tap again to disconnect.",
+  "onboardingAddTitle": "Add servers here",
+  "onboardingAddDescription": "Add a server manually, scan a QR code, paste a link, or add a subscription that keeps a whole group in sync.",
+  "onboardingAutoConnectTitle": "One more thing",
+  "onboardingAutoConnectDescription": "In Settings → Launch and connection you can turn on auto-connect on app launch — so I'm already protecting you from the moment you open the app.",
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingDone": "Let's go",
+  "introFilmWatch": "Watch Marsik's intro",
+  "introFilmClose": "Close",
+  "introFilmSoundOn": "Sound on",
+  "introFilmSoundOff": "Mute",
+  "catPetHint": "Stroke me gently ♡",
+  "catHitReaction": "Hey! Pet me, don't poke me!",
+  "catLeavingMessage": "That's it, I'm offended! *storms off*",
+  "catSulkingMessage": "Marsik got offended and left. Come back in {hours}h {minutes}m.",
+  "@catSulkingMessage": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "catPoemOfferQuestion": "Would you like to read one of my poems?",
+  "catPoemOfferYes": "I'd love to!",
+  "catPoemOfferNo": "Not now",
+  "catPoemAuthor": "Author: CatTunnel",
+  "notificationConnectedTo": "Connected to {server}",
+  "@notificationConnectedTo": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationDisconnected": "VPN disconnected",
+  "language": "Language",
+  "languageSystem": "System default",
+  "catPetCounter": "Pets: {count}",
+  "@catPetCounter": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "catPurrOn": "Purring on",
+  "catPurrOff": "Purring off",
+  "diagTitleChecking": "Marsik is checking the connection…",
+  "diagTitleDone": "Here's what I found",
+  "diagStepInternet": "Internet",
+  "diagStepServer": "Server responds",
+  "diagStepTls": "Secure connection (TLS)",
+  "diagStepAccess": "Access and keys",
+  "diagVerdictNoInternet": "Mrrr... Your internet is gone - even Yandex doesn't answer. Check Wi-Fi or mobile data.",
+  "diagVerdictServerTimeout": "The server is silent - the wires got tangled somewhere along the way. Its IP is probably blocked, or the server is down.",
+  "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
+  "diagVerdictSniBlocked": "Found it! Your provider cuts the connection by the server name (SNI) - that's DPI. With another name the same server answers fine.",
+  "diagVerdictTlsBlocked": "The server answers, but your provider drops any secure connection to it. That happens on mobile networks with whitelists.",
+  "diagVerdictAccessEnded": "The network is fine, but the subscription can't be found anymore. Access has probably ended or the link was disabled - check the bot.",
+  "diagVerdictKeysUpdated": "The keys have changed - I already took the new ones from the subscription. Reconnecting!",
+  "diagVerdictKeysRejected": "The network is fine and the server answers, but it doesn't accept the keys. Access may have been disabled - contact your server admin.",
+  "diagAlternative": "But \"{server}\" answers right now - switch to it?",
+  "@diagAlternative": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "diagConnectedMeanwhile": "Oh, it connected while I was checking! 😸",
+  "diagSwitchTo": "Switch to {server}",
+  "@diagSwitchTo": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "diagDisconnect": "Disconnect",
+  "diagKeepWaiting": "Keep waiting",
+  "diagVerdictTrafficBlocked": "The server answers and accepts your keys, but the connection still won't come up - looks like your provider chokes the traffic after the handshake.",
+  "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
+  "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
+  "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
+  "shareSubscription": "Share via QR",
+  "shareSubscriptionTitle": "Scan with CatTunnel",
+  "shareSubscriptionWarning": "This code gives full access to your servers. Show it only to your own devices or people you trust - and never post a screenshot of it.",
+  "disguiseLabel": "Calculator",
+  "disguiseNotificationBody": "Running in the background",
+  "disguiseNotificationStopped": "Stopped",
+  "cyberSecurity": "Cyber security",
+  "cyberChecksHeader": "Checks",
+  "cyberProtectionHeader": "Protection",
+  "cyberOptionalHeader": "Optional",
+  "phoneChecklist": "Phone check",
+  "leakCheck": "Leak check",
+  "trustUserCas": "Strict server certificate check",
+  "trustUserCasDescription": "On: the VPN verifies the server against Android's system certificates only - without the Russian Ministry one or any other manually installed. Servers with their own certificate (PEM) are always verified against it. Turn it off only if the VPN won't connect because of it (Marsik will tell you) or your provider asked you to install their certificate.",
+  "trustCasStep1": "Meow... Do you really want to turn off the strict check? The VPN will then trust manually installed certificates again - one of them may be the Russian Ministry one, and with it your VPN can be decrypted, login and password included.",
+  "trustCasStep2": "This exposes not only you but also whoever runs the server: everything is visible in a decrypted tunnel. Really sure?",
+  "trustCasStep3": "Last time I ask! Turn it off only if the VPN won't connect otherwise or your provider asked you to. Turn it off?",
+  "marsikConfirmContinue": "Yes, continue",
+  "reconnectToApply": "Reconnect the VPN to apply.",
+  "panicButton": "Panic button",
+  "panicButtonDescription": "A long press on Marsik on the servers screen wipes all servers, subscriptions, keys, settings and logs.",
+  "panicEnabledHint": "Done. To wipe everything, long-press Marsik on the servers screen.",
+  "panicConfirmTitle": "Wipe everything?",
+  "panicConfirmBody": "Marsik will wipe all servers, subscriptions, keys, settings and logs and close the app. The only way back is re-importing from the bot.",
+  "panicConfirmAction": "Wipe",
+  "disguise": "Disguise",
+  "disguiseDescription": "Home-screen icon and name become \"Calculator\", and so do the notification and the tile. The VPN key icon in the status bar and the app name in Android settings stay the same.",
+  "disguiseEnabledHint": "The icon will change in a few seconds. If it disappeared from the home screen, look for \"Calculator\" in the app list.",
+  "appLock": "App lock",
+  "appLockDescription": "Fingerprint, face or phone PIN on opening and after a minute in the background.",
+  "appLockUnavailable": "Set up a screen lock on the phone first.",
+  "appLockReason": "Unlock CatTunnel",
+  "appLockLockedTitle": "CatTunnel is locked",
+  "appLockUnlock": "Unlock",
+  "checklistIntro": "Mrrr, looking over the phone...",
+  "checkOk": "All good",
+  "checkRussianCa": "Russian Ministry certificate",
+  "checkRussianCaNone": "Not found",
+  "checkRussianCaProtected": "Found. The VPN doesn't trust it, but browsers outside the VPN do. Remove it if your bank doesn't need it.",
+  "checkRussianCaExposed": "Found, and protection is off - the VPN can be decrypted! Turn protection on in Cyber security.",
+  "checkUserCas": "Other installed certificates",
+  "checkUserCasNone": "None",
+  "checkUserCasFound": "Found: {count}. Remove the ones you don't recognize.",
+  "@checkUserCasFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "checkScreenLock": "Screen lock",
+  "checkScreenLockOk": "Set",
+  "checkScreenLockMissing": "None - anyone holding the phone sees everything, your keys included.",
+  "checkPrivateDns": "Private DNS",
+  "checkPrivateDnsOk": "Automatic or off",
+  "checkPrivateDnsCustom": "Set to {host}. Make sure you know whose it is.",
+  "@checkPrivateDnsCustom": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "checkAdb": "USB debugging",
+  "checkAdbOk": "Off",
+  "checkAdbOn": "On - data can be pulled over a cable. Turn it off if you don't use it.",
+  "checkBattery": "Background work",
+  "checkBatteryOk": "Unrestricted",
+  "checkBatteryLimited": "Android may stop the VPN to save battery.",
+  "checkIpv6": "IPv6 leak",
+  "checkIpv6Ok": "None",
+  "checkIpv6Leak": "IPv6 traffic goes around the VPN!",
+  "checkNeedVpn": "Connect the VPN to check.",
+  "checkAlwaysOn": "Always-on VPN",
+  "checkAlwaysOnInfo": "Android doesn't let apps check this. Turn on \"Always-on VPN\" and \"Block connections without VPN\" for CatTunnel.",
+  "checkFix": "Fix",
+  "leakIntro": "I'll check that traffic really leaves through the VPN.",
+  "leakExitIp": "Exit through VPN",
+  "leakDirectIp": "Your real address",
+  "leakVpnDns": "DNS inside the VPN",
+  "leakVerdictOk": "Traffic through the VPN leaves from {country} ({ip}). Your real address is hidden.",
+  "@leakVerdictOk": {
+    "placeholders": {
+      "country": {
+        "type": "String"
+      },
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "leakVerdictSame": "The exit address matches your real one - something is wrong!",
+  "leakVerdictFail": "Couldn't get through the server. Check the connection or try another server.",
+  "leakNoServer": "Pick a server first.",
+  "leakBrowserCheck": "Check in the browser",
+  "leakBrowserHint": "The browser shows DNS and WebRTC leaks - those can't be checked from inside the app.",
+  "leakRunAgain": "Check again",
+  "connectionHelp": "How the connection works",
+  "readme": "Help",
+  "startFailedAlertTitle": "The VPN didn't start",
+  "startFailedAlertBody": "Mrrr... The VPN didn't even start connecting: the phone didn't let it start. This happens when another VPN, a firewall or a module with its own tunnel is running. Turn them off and try again. Didn't help? Restart the phone or send a report - it has the real reason.",
+  "startFailedAlertReport": "Send a report",
+  "startFailedAlertLater": "Later",
+  "unvalidatedVpnTitle": "The VPN works 😸",
+  "unvalidatedVpnBody": "Meow! Your phone may say there's no VPN or no internet - don't believe it. The tunnel is connected and working. BBK firmware (vivo, OPPO, realme, OnePlus, iQOO) sometimes doesn't mark a VPN as working. I won't mention it again.",
+  "@virusTotalBadge": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "updateAvailableTitle": "CatTunnel {version} is out!",
+  "updateAvailableBody": "Meow! A new version is ready. What's new:",
+  "updateLater": "Later",
+  "updateInstall": "Update",
+  "updateDownloading": "Downloading the update…",
+  "updatePermissionBody": "Android asks you to let CatTunnel install updates. Tap «Allow», switch it on and come back, then tap «Install».",
+  "updatePermissionAllow": "Allow",
+  "updateInstallRetry": "Install",
+  "updateHashMismatch": "The downloaded file isn't the one expected, so I won't install it. Try again later.",
+  "updateUntrusted": "This file isn't signed with our key or isn't newer than your version. I won't install it 🙀",
+  "updateDownloadFailed": "Couldn't download the update. Check the internet and try again.",
+  "updateClose": "Close",
+  "updateCheck": "Check for updates",
+  "updateUpToDate": "You have the latest version 😺",
+  "updateCheckFailed": "Couldn't check for updates. Try again later.",
+  "@updateAvailableTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "appearance": "Appearance",
+  "appearanceStyle": "Style",
+  "appearanceStyleMinimal": "Minimal",
+  "appearanceStyleMinimalDescription": "The classic look: a list of servers with power buttons.",
+  "appearanceStyleCozy": "Cozy",
+  "appearanceStyleCozyDescription": "A big connect button with Marsik, the session timer and a server card.",
+  "appearanceTheme": "Theme",
+  "appearanceThemeSystem": "Same as the phone",
+  "appearanceThemeLight": "Light",
+  "appearanceThemeDark": "Dark",
+  "cozyTapToConnect": "Tap Marsik to connect",
+  "cozySessionTime": "Session {time}",
+  "cozyPing": "Ping {ms} ms",
+  "cozyServer": "Server",
+  "cozyChooseServer": "Choose a server",
+  "cozyTestAll": "Test all",
+  "@cozySessionTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@cozyPing": {
+    "placeholders": {
+      "ms": {
+        "type": "int"
+      }
+    }
+  },
+  "whatsNewTitle": "What's new in {version}",
+  "whatsNewBody": "• Your own anti-DPI string in ByeDPI syntax, checked as you type, with ready-made examples. Server settings → Censorship bypass → Technique\n• TLS fingerprint: the connection looks like your default browser\n• The server page is split into sections, each with a \"?\" explanation\n• If a server's address gets frozen, I no longer knock on it every second: I pause, tell you what's wrong and offer another server\n• For experts: size masking of the first packets (HTTP/2)\n• Settings → How the connection works: what happens step by step\n• For experts: \"Turn off QUIC\" - browsers and YouTube go over TCP inside the tunnel\n• On Android, links and subscriptions now apply everything they set: Russian exit, technique, fingerprint\n• The VPN no longer reconnects when you open the app, and switching servers connects once",
+  "whatsNewPickStyle": "Which main screen do you like?",
+  "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
+  "whatsNewDone": "Done",
+  "@whatsNewTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsGroupConnection": "Connection",
+  "settingsGroupLook": "Look",
+  "settingsGroupSecurity": "Security",
+  "settingsGroupHelp": "Help",
+  "cozyRefreshSubscription": "Refresh subscription",
+  "cozyLongPressHint": "Press and hold a server to open its settings",
+  "appSplitTitle": "Apps and VPN",
+  "appSplitEntryDescription": "Which apps use the VPN",
+  "appSplitModeOff": "All apps through the VPN",
+  "appSplitModeOffDescription": "All traffic through the VPN (except Russian and Chinese apps if Auto is on)",
+  "appSplitModeExclude": "Selected apps bypass the VPN",
+  "appSplitModeExcludeDescription": "For example banks and government services: they see a plain connection",
+  "appSplitModeInclude": "Only selected apps use the VPN",
+  "appSplitModeIncludeDescription": "Everything else goes direct",
+  "appSplitSelectedCount": "Selected: {count}",
+  "@appSplitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appSplitSearch": "Search apps",
+  "appSplitShowSystem": "Show system apps",
+  "appSplitHideSystem": "Hide system apps",
+  "appSplitNoApps": "Couldn't get the list of apps",
+  "appSplitSaved": "Saved. Applies on the next connect 🐾",
+  "settingsAppliedReconnecting": "Saved. Reconnecting to apply 🐾",
+  "reportProblem": "Report a problem",
+  "reportTitle": "Problem report",
+  "reportDescription": "This goes to the chat you pick, together with the last lines of the connection log. Logins, passwords and keys are cut out.",
+  "splitTitle": "Split tunneling",
+  "splitSitesTitle": "Sites and IPs",
+  "splitSitesDescription": "Domains and addresses that go direct, around the VPN",
+  "ruListsStatus": "Plus the automatic RU lists: {networks} networks, {domains} domains (runetfreedom, ipverse, hydraponique), updated {date}",
+  "ruListsNotLoaded": "The automatic RU lists are not downloaded yet - they will be on connect",
+  "ruListsRefresh": "Refresh",
+  "@ruListsStatus": {
+    "placeholders": {
+      "networks": {
+        "type": "int"
+      },
+      "domains": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "appSplitSelectedCountWithSystem": "Selected: {count} ({system} of them system apps, hidden)",
+  "@appSplitSelectedCountWithSystem": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "system": {
+        "type": "int"
+      }
+    }
+  },
+  "appSplitAuto": "Auto: Chinese, Uzbek and other apps bypass the VPN",
+  "appSplitAutoDescription": "Chinese services, the phone vendor's apps, Uzbek and local ones. Any of them can go back into the VPN - untick it. Installed now: {count}",
+  "appSplitAutoInclude": "In this mode every app you don't select goes direct anyway",
+  "appSplitAutoTag": "auto",
+  "appSplitForcedTag": "through the VPN - your choice",
+  "appSplitRuTag": "Russian · always direct",
+  "appSplitRuNote": "Russian apps (banks, government services, marketplaces, VK, Yandex) always bypass the VPN: they don't work with it. Installed now: {count}",
+  "@appSplitRuNote": {"placeholders": {"count": {"type": "int"}}},
+  "@appSplitAutoDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
+}

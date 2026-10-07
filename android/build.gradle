@@ -1,0 +1,55 @@
+def getGprProp = { String name ->
+    def v = project.findProperty(name)
+    if (v != null) return v.toString()
+
+    // fallback to env
+    def envName = name.replace('.', '_').toUpperCase()   // gpr.key -> GPR_KEY
+    v = System.getenv(envName)
+    if (v != null && !v.toString().trim().isEmpty()) return v.toString()
+
+    return null
+}
+
+
+// TrustTunnel engine version for every platform. Single source: ENGINE_VERSION
+// in the repo root - change it with tools/update_engine.sh, not by hand here.
+// The Android build uses that version with CatTunnel's patches (per-app split
+// tunneling), built by tools/engine_patch/build.sh into engine-maven/ - only
+// the patched Kotlin classes differ from the official AAR.
+def engineBaseVersion = file("../ENGINE_VERSION").text.trim()
+def enginePatchLevel = file("../tools/engine_patch/PATCH_LEVEL").text.trim()
+ext.trustTunnelEngineVersion = "${engineBaseVersion}-cattunnel.${enginePatchLevel}"
+if (!file("engine-maven/com/adguard/trusttunnel/trusttunnel-client-android/${ext.trustTunnelEngineVersion}").isDirectory()) {
+    throw new GradleException("Patched engine ${ext.trustTunnelEngineVersion} is missing - run tools/engine_patch/build.sh")
+}
+
+allprojects {
+    repositories {
+        maven {
+            url = uri("${rootDir}/engine-maven")
+            content { includeVersionByRegex("com.adguard.trusttunnel", ".*", ".*-cattunnel\\..*") }
+        }
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://maven.pkg.github.com/TrustTunnel/TrustTunnelClient")
+            credentials {
+                username = ""
+                password = getGprProp("gpr.key")
+            }
+            authentication { basic(BasicAuthentication) }
+        }
+    }
+}
+
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

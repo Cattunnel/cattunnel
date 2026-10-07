@@ -1,0 +1,30 @@
+post_install() {
+    cat <<'MSG'
+==> CatTunnel: two steps, once
+    1. Allow your user to use the VPN helper, then log out and back in:
+         sudo usermod -aG cattunnel "$USER"
+    2. Start the helper (it runs the VPN client as root; the app itself doesn't):
+         sudo systemctl enable --now cattunnel-helper
+    DNS: with systemd-resolved the client sets it; otherwise the helper
+    replaces /etc/resolv.conf for the session and puts it back (NetworkManager
+    is paused with a runtime drop-in, profiles are not touched).
+    Details: /usr/share/doc/cattunnel/HELPER.md
+MSG
+}
+
+post_upgrade() {
+    # The helper is the only root part; a new one takes effect after a restart.
+    # Restarted right away unless a VPN session is up (that would cut it).
+    systemctl daemon-reload >/dev/null 2>&1 || true
+    if systemctl is-active --quiet cattunnel-helper; then
+        if pgrep -f /usr/lib/cattunnel/trusttunnel_client >/dev/null 2>&1; then
+            echo "==> CatTunnel: the VPN is on - restart the helper after disconnecting: sudo systemctl restart cattunnel-helper"
+        else
+            systemctl restart cattunnel-helper
+        fi
+    fi
+}
+
+pre_remove() {
+    systemctl disable --now cattunnel-helper >/dev/null 2>&1 || true
+}

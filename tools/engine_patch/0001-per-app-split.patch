@@ -1,0 +1,86 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt	2026-09-26 00:18:18.901732208 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt	2026-09-26 00:18:18.901732208 +0300
+@@ -12,7 +12,13 @@
+     @SerialName("excluded_routes")
+     val excludedRoutes: List<String>,
+     @SerialName("mtu_size")
+-    val mtuSize: Long
++    val mtuSize: Long,
++    // CatTunnel: per-app split tunneling. Package names; unknown to the
++    // upstream engine, which ignores unknown keys, so old builds are fine.
++    @SerialName("excluded_apps")
++    val excludedApps: List<String> = emptyList(),
++    @SerialName("included_apps")
++    val includedApps: List<String> = emptyList()
+ )
+ 
+ @Serializable
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-26 00:18:18.901732208 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-26 00:18:18.901732208 +0300
+@@ -5,6 +5,7 @@
+ import android.app.NotificationManager
+ import android.content.Context
+ import android.content.Intent
++import android.content.pm.PackageManager
+ import android.content.pm.ServiceInfo
+ import android.net.ConnectivityManager
+ import android.net.NetworkCapabilities
+@@ -306,7 +307,7 @@
+                 .setMtu(tunConfig.mtuSize.toInt())
+                 .addAddress("172.20.2.13", 32)
+                 .addAddress("fdfd:29::2", 64)
+-                .addDisallowedApplication(applicationContext.packageName)
++            applyAppSplit(builder, tunConfig)
+             val dnsServers = if (config.endpoint.dnsUpstreams.isEmpty()) {
+                 ADGUARD_DNS_SERVERS
+             } else {
+@@ -336,6 +337,47 @@
+     }
+ 
+     /**
++     * CatTunnel: which apps the tunnel captures. Android allows either an
++     * allow-list or a deny-list per Builder, not both:
++     * - included_apps set: only those apps use the VPN (our own app can't be
++     *   among them - it would loop through its own tunnel);
++     * - otherwise everything except excluded_apps and our own app.
++     * Packages that aren't installed are skipped.
++     */
++    private fun applyAppSplit(builder: Builder, tunConfig: Tun) {
++        val self = applicationContext.packageName
++        val included = tunConfig.includedApps.filter { it != self }
++        if (included.isNotEmpty()) {
++            var added = 0
++            included.forEach { app ->
++                try {
++                    builder.addAllowedApplication(app)
++                    added++
++                } catch (e: PackageManager.NameNotFoundException) {
++                    LOG.info("Split tunneling: $app is not installed, skipped")
++                }
++            }
++            if (added > 0) {
++                LOG.info("Split tunneling: only $added app(s) use the VPN")
++                return
++            }
++            LOG.info("Split tunneling: none of the included apps is installed, the VPN covers everything")
++        }
++
++        builder.addDisallowedApplication(self)
++        var excluded = 0
++        tunConfig.excludedApps.filter { it != self }.forEach { app ->
++            try {
++                builder.addDisallowedApplication(app)
++                excluded++
++            } catch (e: PackageManager.NameNotFoundException) {
++                LOG.info("Split tunneling: $app is not installed, skipped")
++            }
++        }
++        if (excluded > 0) LOG.info("Split tunneling: $excluded app(s) bypass the VPN")
++    }
++
++    /**
+      * Closes the VPN TUN interface and stops itself only if the called is the only one who
+      * tries to stop the service.
+      * @param startId start id known to the caller

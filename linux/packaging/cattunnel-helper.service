@@ -1,0 +1,58 @@
+# The root part of CatTunnel for Linux: runs trusttunnel_client for the app
+# and points DNS at the tunnel (plugins/vpn_plugin/linux/HELPER.md).
+[Unit]
+Description=CatTunnel helper (runs the TrustTunnel VPN client for the CatTunnel app)
+Documentation=file:///usr/share/doc/cattunnel/HELPER.md
+After=network.target NetworkManager.service systemd-resolved.service
+
+[Service]
+ExecStart=/usr/lib/cattunnel/cattunnel-helper --system
+Restart=on-failure
+RestartSec=2
+# SIGINT is Ctrl+C for trusttunnel_client - its only clean shutdown (routes,
+# ip rules). systemd sends it to the whole cgroup, so a CLI left behind by a
+# crashed helper also tears down properly (with SIGTERM it left its
+# `ip rule ... lookup 880` behind - seen on Debian 13). The helper treats
+# SIGINT like SIGTERM: stops the CLI, restores DNS, exits.
+KillSignal=SIGINT
+TimeoutStopSec=15
+# The helper, the CLI and at most 32 relay/probe threads (see main.cpp).
+TasksMax=64
+LimitNOFILE=1024
+
+# /run/cattunnel: helper.sock (0660, group cattunnel) and client.toml (0600).
+RuntimeDirectory=cattunnel
+RuntimeDirectoryMode=0755
+# /var/lib/cattunnel: the original resolv.conf while a session is up.
+StateDirectory=cattunnel
+StateDirectoryMode=0700
+LogsDirectory=cattunnel
+LogsDirectoryMode=0750
+UMask=0077
+
+# Hardening that leaves what the job needs: TUN and routes (CAP_NET_ADMIN),
+# SO_BINDTODEVICE for diagnostics, /etc/resolv.conf (hence not
+# ProtectSystem=full), nmcli/resolvectl over D-Bus.
+NoNewPrivileges=yes
+ProtectSystem=true
+ProtectHome=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+RestrictSUIDSGID=yes
+# Only the TUN device (plus the standard pseudo-devices).
+DevicePolicy=closed
+DeviceAllow=/dev/net/tun rw
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_KILL
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,81 @@
+# CatTunnel for Arch Linux. Generated from linux/packaging/PKGBUILD.in by
+# linux/packaging/build_release.sh - edit the template, not the output.
+#
+# What runs as root is built or fetched here, so it can be checked:
+#   - cattunnel-helper is compiled from source (cattunnel-helper-src-*.tar.gz,
+#     a `git archive` of commit @COMMIT@ - compare with the repository);
+#   - trusttunnel_client is TrustTunnelClient v@ENGINE@ (Apache-2.0) with
+#     CatTunnel's anti-DPI patch (tools/engine_native/0001-anti-dpi-desync.patch,
+#     also in the helper source tarball), built by tools/engine_native/build_linux.sh;
+#     pinned by sha256.
+# The Flutter app (cattunnel-app-*.tar.gz) is a prebuilt bundle; it runs as
+# the user and reaches root only through the helper's socket.
+
+pkgname=cattunnel
+pkgver=@PKGVER@
+pkgrel=1
+pkgdesc="CatTunnel - TrustTunnel VPN client (family build)"
+arch=('x86_64')
+url="https://github.com/Cattunnel/cattunnel"
+license=('Apache-2.0')
+depends=(
+    'gtk3'
+    'gstreamer' 'gst-plugins-base-libs' 'gst-plugins-good'  # Marsik's sounds (audioplayers)
+    'zenity'      # file dialogs (file_picker): "From a file (.toml)"
+    'xdg-utils'   # opening links
+    'iproute2'    # trusttunnel_client runs `ip`
+    'systemd'     # the helper is a system service; sysusers
+)
+optdepends=(
+    'networkmanager: DNS is handled through it when systemd-resolved is off'
+    'systemd-resolved: then trusttunnel_client sets DNS itself (resolvectl)'
+)
+makedepends=('cmake' 'ninja' 'gcc')
+install=cattunnel.install
+# The Flutter bundle ships as built: strip would rewrite lib/libapp.so (the
+# app's AOT code) - seen changing its hash in an Arch test build. The helper
+# is a Release build without debug info anyway.
+options=('!strip' '!debug')
+_engine=@ENGINE@
+source=(
+    "cattunnel-app-${pkgver}-x86_64.tar.gz"
+    "cattunnel-helper-src-${pkgver}.tar.gz"
+    "trusttunnel_client-v${_engine}-cattunnel-linux-x86_64.tar.gz"
+)
+sha256sums=(
+    '@APP_SHA256@'
+    '@SRC_SHA256@'
+    '@ENGINE_SHA256@'
+)
+
+build() {
+    cmake -S src/plugins/vpn_plugin/linux/helper -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release -DHELPER_TESTS=OFF
+    cmake --build build
+}
+
+package() {
+    # The app: a Flutter bundle finds lib/ and data/ next to its executable.
+    install -d "$pkgdir/opt/cattunnel"
+    cp -a bundle/. "$pkgdir/opt/cattunnel/"
+    install -d "$pkgdir/usr/bin"
+    ln -s /opt/cattunnel/cattunnel "$pkgdir/usr/bin/cattunnel"
+
+    # Root parts: fixed paths the helper uses (no PATH lookups).
+    install -Dm755 build/cattunnel-helper "$pkgdir/usr/lib/cattunnel/cattunnel-helper"
+    install -Dm755 "trusttunnel_client-v${_engine}-cattunnel-linux-x86_64/trusttunnel_client" \
+        "$pkgdir/usr/lib/cattunnel/trusttunnel_client"
+
+    local p=src/linux/packaging
+    install -Dm644 "$p/cattunnel-helper.service" "$pkgdir/usr/lib/systemd/system/cattunnel-helper.service"
+    install -Dm644 "$p/cattunnel.sysusers" "$pkgdir/usr/lib/sysusers.d/cattunnel.conf"
+    install -Dm644 "$p/com.cattunnel.app.desktop" "$pkgdir/usr/share/applications/com.cattunnel.app.desktop"
+    install -Dm644 src/assets/icon/icon_square.png "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/com.cattunnel.app.png"
+
+    install -Dm644 src/plugins/vpn_plugin/linux/HELPER.md "$pkgdir/usr/share/doc/cattunnel/HELPER.md"
+    install -Dm644 "$p/README.md" "$pkgdir/usr/share/doc/cattunnel/README.md"
+    install -Dm644 src/LICENSE "$pkgdir/usr/share/licenses/cattunnel/LICENSE"
+    install -Dm644 src/NOTICE "$pkgdir/usr/share/licenses/cattunnel/NOTICE"
+    install -Dm644 "trusttunnel_client-v${_engine}-cattunnel-linux-x86_64/LICENSE" \
+        "$pkgdir/usr/share/licenses/cattunnel/LICENSE.trusttunnel_client"
+}

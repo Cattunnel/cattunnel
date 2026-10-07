@@ -1,0 +1,132 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        mavenLocal()
+    }
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
+if (flutterVersionCode == null) {
+    flutterVersionCode = "1"
+}
+
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
+if (flutterVersionName == null) {
+    flutterVersionName = "1.0"
+}
+
+
+def getSigningProp = { String name ->
+    def v = project.findProperty(name)
+    if (v != null) return v.toString()
+    v = localProperties.getProperty(name)
+    return v != null ? v.toString() : null
+}
+
+// Real, long-lived release keystore (android/key.properties + android/keystore/,
+// both gitignored). Falls back to the throwaway dev keystore in local.properties
+// (signingConfigKey*) when key.properties doesn't exist, so debug builds still
+// work on a machine that hasn't been given the real release key.
+def keyProperties = new Properties()
+def keyPropertiesFile = rootProject.file("key.properties")
+def hasReleaseKey = keyPropertiesFile.exists()
+if (hasReleaseKey) {
+    keyPropertiesFile.withReader("UTF-8") { reader ->
+        keyProperties.load(reader)
+    }
+}
+
+android {
+    namespace = "com.adguard.trusttunnel"
+    compileSdk = 36
+    ndkVersion = "29.0.14206865"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        // Can be overridden at build time: ./gradlew ... -PappId=<id> (flutter build apk -PappId=<id>
+        // is passed as --android-project-arg / ORG_GRADLE_PROJECT_appId=<id>). Default: the public app.
+        applicationId = (project.findProperty("appId") ?: "com.cattunnel.app") as String
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdk = 26
+        targetSdk = 36
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseKey) {
+                keyAlias = keyProperties.getProperty("keyAlias")
+                keyPassword = keyProperties.getProperty("keyPassword")
+                storeFile = rootProject.file(keyProperties.getProperty("storeFile"))
+                storePassword = keyProperties.getProperty("storePassword")
+            } else {
+                keyAlias = getSigningProp("signingConfigKeyAlias")
+                keyPassword = getSigningProp("signingConfigKeyPassword")
+                storeFile = rootProject.file(getSigningProp("signingConfigKeyStorePath"))
+                storePassword = getSigningProp("signingConfigKeyStorePassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    // CatTunnel ships for real phones only (arm64 main APK + arm64/armv7
+    // universal fallback). `--target-platform` only trims Flutter's own
+    // libs - x86/x86_64 .so files from AARs (TrustTunnel core, ML Kit
+    // barcode) would still ride along, so drop them here. Unlike
+    // ndk.abiFilters, this doesn't conflict with `--split-per-abi`.
+    // CATTUNNEL_EMULATOR=1 keeps them, for a test build on the x86_64
+    // emulator (`--target-platform android-x64`).
+    if (System.getenv("CATTUNNEL_EMULATOR") != "1") {
+        packaging {
+            jniLibs {
+                excludes += ["lib/x86/**", "lib/x86_64/**"]
+            }
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+    // Needed directly (not just transitively via vpn_plugin) so
+    // CatTunnelQsTileService can call VpnService/VpnConfigStorage.
+    implementation "com.adguard.trusttunnel:trusttunnel-client-android:${rootProject.ext.trustTunnelEngineVersion}"
+    // AppCompat themes (LaunchTheme/NormalTheme) - local_auth's BiometricPrompt
+    // crashes on Android 8 without them (minSdk is 26).
+    implementation "androidx.appcompat:appcompat:1.7.0"
+}

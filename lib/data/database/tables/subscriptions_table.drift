@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS subscriptions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  skip_verification BOOLEAN NOT NULL DEFAULT false,
+  last_updated_at TEXT,
+  auto_refresh_enabled BOOLEAN NOT NULL DEFAULT true,
+  age_private_key TEXT
+);

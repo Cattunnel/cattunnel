@@ -1,0 +1,17 @@
+enum PresentationFieldName {
+  serverName,
+  sni,
+  profileName,
+  ipAddress,
+  domain,
+  userName,
+  password,
+  dnsServers,
+  clientRandom,
+  clientRandomMask,
+  clientRandomValue,
+  certificate,
+  rule,
+  url,
+  antiDpiDesync,
+}

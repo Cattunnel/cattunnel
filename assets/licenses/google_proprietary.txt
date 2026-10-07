@@ -1,0 +1,18 @@
+The QR scanner uses Google ML Kit and Google Play services components.
+They are not open source and are distributed under Google's terms:
+- ML Kit Terms of Service: https://developers.google.com/ml-kit/terms
+- Android Software Development Kit License: https://developer.android.com/studio/terms
+
+CatTunnel disables ML Kit usage reporting (the data transport backend is removed from the app).
+
+Components:
+- com.google.android.gms:play-services-base:18.1.0 (Android Software Development Kit License)
+- com.google.android.gms:play-services-basement:18.1.0 (Android Software Development Kit License)
+- com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.0 (ML Kit Terms of Service)
+- com.google.android.gms:play-services-tasks:18.0.2 (Android Software Development Kit License)
+- com.google.android.odml:image:1.0.0-beta1 (Android Software Development Kit License)
+- com.google.mlkit:barcode-scanning-common:17.0.0 (ML Kit Terms of Service)
+- com.google.mlkit:barcode-scanning:17.2.0 (ML Kit Terms of Service)
+- com.google.mlkit:common:18.9.0 (ML Kit Terms of Service)
+- com.google.mlkit:vision-common:17.3.0 (ML Kit Terms of Service)
+- com.google.mlkit:vision-interfaces:16.2.0 (ML Kit Terms of Service)
