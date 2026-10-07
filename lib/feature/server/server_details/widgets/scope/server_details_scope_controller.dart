@@ -1,0 +1,62 @@
+import 'package:flutter/foundation.dart';
+import 'package:trusttunnel/common/error/model/presentation_exception.dart';
+import 'package:trusttunnel/common/error/model/presentation_field.dart';
+import 'package:trusttunnel/common/models/value_data.dart';
+import 'package:trusttunnel/data/model/routing_profile.dart';
+import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:trusttunnel/data/model/vpn_protocol.dart';
+
+typedef DataChangedCallback =
+    void Function({
+      String? serverName,
+      String? ipAddress,
+      String? domain,
+      String? username,
+      String? password,
+      bool? enableIpv6,
+      bool? antiDpi,
+      int? antiDpiMode,
+      String? tlsProfile,
+      String? antiDpiDesync,
+      int? h2PaddingFrames,
+      bool? blockQuic,
+      bool? ruExit,
+      String? pathToPemFile,
+      VpnProtocol? protocol,
+      String? routingProfileId,
+      List<String>? dnsServers,
+      ValueData<String>? clientRandom,
+      ValueData<String>? customSni,
+    });
+
+abstract class ServerDetailsScopeController {
+  abstract final ServerData data;
+  abstract final List<RoutingProfile> routingProfiles;
+  abstract final List<PresentationField> fieldErrors;
+
+  abstract final String? id;
+
+  abstract final bool loading;
+
+  abstract final bool editing;
+
+  /// Set when the new server (e.g. from an imported link) updates an
+  /// existing manual one: that server's old address.
+  abstract final String? replacedAddress;
+
+  abstract final bool hasChanges;
+
+  abstract final PresentationException? error;
+
+  abstract final void Function() fetchServer;
+
+  abstract final DataChangedCallback changeData;
+
+  abstract final void Function(ValueChanged<String> onSaved) submit;
+
+  abstract final void Function(ValueChanged<String> onSaved) delete;
+
+  abstract final void Function() pickPemCertificate;
+
+  abstract final void Function() clearPemCertificate;
+}

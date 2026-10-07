@@ -1,0 +1,65 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 20:54:34.478087392 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 20:54:54.598085084 +0300
+@@ -279,27 +279,23 @@
+         }
+         if (configStr == null) {
+             LOG.error("Failed to get the Vpn Interface config settings")
+-            return
++            return startFailed()
+         }
+         val config = VpnServiceConfig.parseToml(configStr)
+         if (config == null) {
+             LOG.error("Failed to parse Vpn Interface config")
+-            return
++            return startFailed()
+         }
+ 
+         try {
+             certificateVerificator = CertificateVerificator()
+         } catch (e: Exception) {
+             LOG.error("Failed to create certificate verifier: $e")
+-            return run {
+-                close()
+-            }
++            return startFailed()
+         }
+ 
+         LOG.info("VPN is starting...")
+-        val vpnTunInterface = createTunInterface(config) ?: return run {
+-            close()
+-        }
++        val vpnTunInterface = createTunInterface(config) ?: return startFailed()
+         // This is required to save startId and pass it to `closeIfLast` in case of DISCONNECTED state event
+         val service = this
+         val proxyClientListener = object : VpnClientListener by service {
+@@ -321,12 +317,27 @@
+         vpnClient = VpnClient(configStr, proxyClientListener)
+ 
+         startNetworkNotifications(vpnClient)
++        // CatTunnel: Started before the check, so the close() in startFailed
++        // really tears the client down. It used to run while still Stopped
++        // (a no-op), and the service was marked Started afterwards anyway -
++        // every later start was then "already started" with a stale state.
++        state = State.Started
+         if (vpnClient?.start(vpnTunInterface) != true) {
+             LOG.error("Failed to start Vpn client");
+-            close();
++            startFailed()
+         }
++    }
+ 
+-        state = State.Started
++    /**
++     * CatTunnel: a start that failed before the tunnel was up (config, TUN
++     * interface refused by the system, client start) used to be only logged:
++     * the app waited for a state event that never came. Report DISCONNECTED
++     * and leave the foreground (close() does, see patch 0005).
++     */
++    private fun startFailed() {
++        LOG.info("VPN start failed, reporting DISCONNECTED")
++        onStateChanged(VpnState.DISCONNECTED.code)
++        close()
+     }
+ 
+     override fun onRevoke() = singleThread.execute {

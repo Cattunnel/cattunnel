@@ -1,0 +1,84 @@
+CatTunnel
+
+This software is a modified version of TrustTunnel
+(https://github.com/TrustTunnel/TrustTunnelFlutterClient), Copyright 2020
+Adguard Software Ltd, licensed under the Apache License, Version 2.0.
+See the LICENSE file for the full license text.
+
+Modifications made by the CatTunnel authors include, but are not limited to:
+
+- Rebranding: app name, package identifier, icons, splash screen and
+  in-app text; Russian localization and a language switch; onboarding.
+- Servers: kill switch, auto-connect and auto-reconnect, tt:// server link
+  export/import with QR codes, MTU configuration, server latency testing and
+  sorting, a consolidated "Add Server" flow.
+- Subscriptions: server subscriptions with per-subscription sync,
+  age-encrypted subscription responses (binary and ASCII armor), grouping by
+  subscription, sharing and importing a subscription via QR.
+- Connection: Quick Settings tile, a single connection notification,
+  stuck-connection diagnostics ("Marsik": internet, TCP, TLS/SNI,
+  credentials and subscription checks).
+- Security: strict server certificate verification that excludes
+  user-installed and "Russian Trusted" CAs, phone security check, leak check,
+  panic button (wipe app data), launcher disguise, app lock, FLAG_SECURE on
+  screens that show keys.
+- Privacy hardening: log sanitizer for subscription URLs and age keys,
+  https-only subscriptions without redirects, no cloud/device-transfer
+  backups, connection query log kept only per session, ML Kit usage
+  reporting disabled.
+- A cat companion (petting, compliments, purr sound).
+- Licenses of the native VPN engine's and Android dependencies added to the
+  in-app license page (assets/licenses/).
+- In-app updates on Android (latest.json from a download server given at
+  build time, sha256-checked APK handed to the system installer).
+- One engine version for all platforms (ENGINE_VERSION,
+  tools/update_engine.sh); Windows build branding.
+- Anti-DPI: an own build of the native engine (tools/engine_native) that
+  sends the TLS ClientHello with ByeDPI-style techniques, including a custom
+  split string; a ClientHello fingerprint per server.
+- Appearance: a dark theme derived from the original palette, and a
+  «Cozy» style with a big connect button, session timer and server picker.
+
+Third-party code and assets included in this repository:
+
+- packages/dage: a vendored copy of the "dage" package (age encryption for
+  Dart), Copyright 2022 Producement OÜ, BSD 3-Clause License (see
+  packages/dage/LICENSE). Modified for CatTunnel: two fixes for compatibility
+  with the age specification (header MAC HKDF salt and grease stanza
+  encoding).
+- assets/sounds/cat_purr.ogg: cut from "6_Cat, purr.wav" by
+  16GPanskaZlochova_Eliska (https://freesound.org/s/496275/), CC0 1.0.
+- Illustrations of the cat "Marsik" (assets/images/cats/, design/cats_png/)
+  and the app icon (assets/icon/) were created with ChatGPT (OpenAI).
+- tools/engine_native/0001-anti-dpi-desync.patch: anti-DPI techniques for the
+  native engine (out-of-band byte, TTL-1 piece, split positions and the
+  custom-string syntax) adapted from ByeDPI (https://github.com/hufrea/byedpi),
+  Copyright (c) 2024 hufrea, MIT License (see assets/licenses/byedpi.txt).
+- plugins/vpn_plugin/linux/helper/third_party/json.hpp: nlohmann/json,
+  Copyright (c) 2013-2022 Niels Lohmann, MIT License (LICENSE.nlohmann-json).
+- plugins/vpn_plugin/linux/helper/third_party/toml.hpp: toml++,
+  Copyright (c) Mark Gillard, MIT License (LICENSE.tomlplusplus).
+- assets/fonts/roboto/: Roboto 2.137, Copyright 2011 Google Inc., Apache
+  License 2.0; assets/fonts/IconFont.ttf and packages/adg_share,
+  packages/tray_manager come from the upstream repository (Apache-2.0).
+- packages/window_manager: from leanflutter/window_manager, Copyright (c) 2022
+  LiJianying, MIT License (packages/window_manager/LICENSE), as carried by the
+  upstream repository.
+- assets/video/marsik_intro.mp4: Marsik's intro film, generated with Google
+  Veo (Gemini) from our own illustrations.
+- The Linux build links the Dart packages dbus, gtk and nm (Canonical,
+  Mozilla Public License 2.0) unmodified; their source is available on
+  pub.dev.
+- The router edition lives in a separate repository:
+  https://github.com/Cattunnel/cattunnel-router
+- Licenses of third-party libraries compiled into the app are listed in
+  assets/licenses/ and on the in-app license page.
+
+Exception - poems: the poem texts in lib/feature/companion/domain/cat_poems.dart
+are Copyright (c) 2026 CatTunnel, all rights reserved. They are NOT licensed
+under the Apache License: they may not be copied, published, adapted or used
+outside CatTunnel without written permission. Forks must remove that file's
+poem texts (the app works with an empty list).
+
+Unless a file says otherwise, the changes and additions by the CatTunnel authors are
+licensed under the Apache License, Version 2.0, like the original work.

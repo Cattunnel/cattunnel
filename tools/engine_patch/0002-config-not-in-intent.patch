@@ -1,0 +1,39 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 01:48:40.039992223 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 01:48:54.259960665 +0300
+@@ -46,6 +46,13 @@
+         private const val ACTION_START = "Start"
+         private const val ACTION_STOP  = "Stop"
+         private const val PARAM_CONFIG = "Config Extra"
++        // CatTunnel: the config (Russian networks + CA bundle, ~700 KB) is
++        // too big for an Intent extra - Binder caps a transaction at 1 MB
++        // and strings travel as UTF-16. The service runs in the app's
++        // process, so it's handed over in memory; the persisted copy
++        // (VpnConfigStorage) covers a service restarted without it.
++        @Volatile
++        private var pendingConfig: String? = null
+         private const val NOTIFICATION_ID = 1
+         private val IPV4_NON_ROUTABLE = listOf("0.0.0.0/8", "224.0.0.0/3")
+         private val ADGUARD_DNS_SERVERS = listOf("46.243.231.30", "46.243.231.31", "2a10:50c0::2:ff", "2a10:50c0::1:ff")
+@@ -63,7 +70,7 @@
+                 }
+                 config?.apply {
+                     getConfigStorage(context).save(config)
+-                    intent.putExtra(PARAM_CONFIG, config)
++                    pendingConfig = config
+                 }
+                 context.startForegroundService(intent)
+             } catch (e: Exception) {
+@@ -215,7 +222,11 @@
+             try {
+                 currentStartId = startId
+                 val action = intent.action
+-                val config = intent.getStringExtra(PARAM_CONFIG)
++                val config = intent.getStringExtra(PARAM_CONFIG) ?: if (action == ACTION_START) {
++                    (pendingConfig ?: getConfigStorage(applicationContext).load()).also { pendingConfig = null }
++                } else {
++                    null
++                }
+                 LOG.info("Start executing action=$action flags=$flags startId=$startId")
+                 when (action) {
+                     ACTION_START    -> processStarting(config, startId)

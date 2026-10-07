@@ -1,0 +1,60 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 15:46:59.431388822 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 15:56:51.727178396 +0300
+@@ -53,6 +53,11 @@
+         // (VpnConfigStorage) covers a service restarted without it.
+         @Volatile
+         private var pendingConfig: String? = null
++        // CatTunnel: whether the service exists at all. A STOP sent to a
++        // service that isn't running used to create it just to do nothing -
++        // in the foreground, with its notification, until force-stop.
++        @Volatile
++        private var alive = false
+         private const val NOTIFICATION_ID = 1
+         private val IPV4_NON_ROUTABLE = listOf("0.0.0.0/8", "224.0.0.0/3")
+         private val ADGUARD_DNS_SERVERS = listOf("46.243.231.30", "46.243.231.31", "2a10:50c0::2:ff", "2a10:50c0::1:ff")
+@@ -80,6 +85,10 @@
+ 
+         fun stop(context: Context) {
+             getConfigStorage(context).clear()
++            if (!alive) {
++                LOG.info("Stop requested, but the VPN service isn't running")
++                return
++            }
+             start(context, ACTION_STOP, null)
+         }
+         fun start(context: Context, config: String?) = start(context, ACTION_START, config)
+@@ -198,6 +207,16 @@
+ 
+     private var state = State.Stopped
+     private val singleThread = ThreadManager.create("vpn-service", 1)
++
++    override fun onCreate() {
++        super.onCreate()
++        alive = true
++    }
++
++    override fun onDestroy() {
++        alive = false
++        super.onDestroy()
++    }
+     @Volatile
+     private var certificateVerificator: CertificateVerificator? = null
+ 
+@@ -445,7 +464,15 @@
+      *         false if something is wrong with closing or the service has already been closed
+      */
+     private fun close(startId: Int? = null): Boolean {
+-        if (state != State.Started) return false.also { LOG.info("VPN service is not running, do nothing") }
++        if (state != State.Started) {
++            // CatTunnel: nothing to close, but the service is still in the
++            // foreground (a STOP or a start that failed before the tunnel was
++            // up) - leave, or it hangs there. currentStartId: a start that
++            // arrived meanwhile keeps the service alive.
++            LOG.info("VPN service is not running, stopping the service")
++            stopSelf(startId ?: currentStartId)
++            return false
++        }
+ 
+         LOG.info("Closing VPN service")
+ 

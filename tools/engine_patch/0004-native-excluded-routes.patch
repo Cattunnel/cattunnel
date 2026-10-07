@@ -1,0 +1,63 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 15:45:17.732761209 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 15:46:59.431388822 +0300
+@@ -333,14 +333,17 @@
+                 builder.addDnsServer(server)
+             }
+ 
+-            val routes = VpnClient.excludeCidr(tunConfig.includedRoutes, tunConfig.excludedRoutes + IPV4_NON_ROUTABLE)
+-                ?: throw Exception("Failed to process routes")
+-            routes.forEach { route ->
+-                val r = NetworkUtils.convertCidrToAddressPrefixPair(route)
+-                if (r != null) {
+-                    builder.addRoute(r.first, r.second)
+-                } else {
+-                    throw Exception("Wrong syntax for included_routes")
++            val excluded = tunConfig.excludedRoutes + IPV4_NON_ROUTABLE
++            if (!addRoutesNatively(builder, tunConfig.includedRoutes, excluded)) {
++                val routes = VpnClient.excludeCidr(tunConfig.includedRoutes, excluded)
++                    ?: throw Exception("Failed to process routes")
++                routes.forEach { route ->
++                    val r = NetworkUtils.convertCidrToAddressPrefixPair(route)
++                    if (r != null) {
++                        builder.addRoute(r.first, r.second)
++                    } else {
++                        throw Exception("Wrong syntax for included_routes")
++                    }
+                 }
+             }
+ 
+@@ -353,6 +356,33 @@
+     }
+ 
+     /**
++     * CatTunnel: on Android 13+ the included routes go in as they are and the
++     * excluded ones through [Builder.excludeRoute], instead of "included minus
++     * excluded" computed here. The complement of N scattered networks is
++     * ~10 routes per network (31 Russian blocks -> ~360 routes, the full
++     * lists -> thousands), all handed to the OS in one Binder call; natively
++     * it's just the N networks. Everything is parsed before the builder is
++     * touched, so on a bad entry the caller falls back to the complement
++     * with a clean builder. Returns false when not used.
++     */
++    private fun addRoutesNatively(builder: Builder, included: List<String>, excluded: List<String>): Boolean {
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
++        fun parse(cidrs: List<String>) = cidrs.map {
++            NetworkUtils.convertCidrToIpPrefix(it) ?: throw IllegalArgumentException("Wrong route: $it")
++        }
++        val (include, exclude) = try {
++            parse(included) to parse(excluded)
++        } catch (e: Exception) {
++            LOG.warn("Routes: can't parse for excludeRoute, computing the complement", e)
++            return false
++        }
++        include.forEach { builder.addRoute(it) }
++        exclude.forEach { builder.excludeRoute(it) }
++        LOG.info("Routes: ${include.size} included, ${exclude.size} excluded natively (Android 13+)")
++        return true
++    }
++
++    /**
+      * CatTunnel: which apps the tunnel captures. Android allows either an
+      * allow-list or a deny-list per Builder, not both:
+      * - included_apps set: only those apps use the VPN (our own app can't be

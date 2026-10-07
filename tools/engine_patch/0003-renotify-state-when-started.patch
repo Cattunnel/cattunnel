@@ -1,0 +1,15 @@
+diff -ru a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 03:53:07.153103726 +0300
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt	2026-09-27 03:53:07.173103721 +0300
+@@ -251,6 +251,11 @@
+     private fun processStarting(configStr: String?, startId: Int) {
+         if (state == State.Started) {
+             LOG.info("VPN service has already been started, do nothing")
++            // CatTunnel: the app asked to start because it believes the VPN
++            // is down (e.g. it lost track after a stop that didn't close the
++            // service) - tell it the real state, or it waits for an event
++            // that never comes and reports a working VPN as failed.
++            onStateChanged(lastState)
+             return
+         }
+         if (configStr == null) {
