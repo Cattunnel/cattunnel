@@ -8,6 +8,7 @@ import 'package:trusttunnel/common/logging/app_logger.dart';
 import 'package:trusttunnel/common/logging/extensions/db_logger_extension.dart';
 import 'package:trusttunnel/common/logging/extensions/global_error_logger_extension.dart';
 import 'package:trusttunnel/common/logging/extensions/vpn_logger_extension.dart';
+import 'package:trusttunnel/common/utils/earlier_install_migration.dart';
 import 'package:trusttunnel/common/utils/third_party_licenses.dart';
 import 'package:trusttunnel/di/model/initialization_helper.dart';
 import 'package:trusttunnel/di/widgets/dependency_scope.dart';
@@ -44,6 +45,8 @@ Future<void> main() async {
   await runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      // Before the database and preferences are opened (desktop only, once).
+      await migrateFromEarlierInstall();
       _applyGlobalErrorHandling(dispatchError);
       _registerAppLicense();
       registerThirdPartyLicenses();
