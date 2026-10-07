@@ -57,6 +57,11 @@ enum DiagnosisVerdict {
   /// subscription gave a clear answer about the credentials.
   inconclusive,
 
+  /// The device clock is off by more than [ConnectionDiagnostics.clockSkewLimit]
+  /// from a reference server's time: certificate checks can fail on that alone
+  /// ("not yet valid" / "expired"). Turning on automatic date and time fixes it.
+  clockWrong,
+
   /// The engine's ClientHello to this server got no answer a moment ago
   /// (ConnectFailures): a filter froze the address for a couple of minutes.
   /// Not probed - each handshake would keep it frozen.
@@ -233,6 +238,16 @@ class ConnectionDiagnostics {
     }
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
 
+    // 1a. The device clock: a clock that is days off breaks every certificate
+    // check (the tunnel's included) while everything else looks fine. Plain
+    // HTTP on purpose - TLS itself would fail on a wrong clock.
+    final skew = await _clockSkew(_referenceHost);
+    if (skew != null && skew.abs() > clockSkewLimit) {
+      skipFrom(DiagnosisStep.internet);
+
+      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.clockWrong);
+    }
+
     // 2. TCP to the server itself.
     onStep(DiagnosisStep.server, DiagnosisStepStatus.running);
     final (host, port) = ServerLatencyTester.parseAddress(server.serverData.ipAddress);
@@ -366,6 +381,47 @@ class ConnectionDiagnostics {
     );
 
     return candidates.whereIndexed((index, _) => results[index]).firstOrNull;
+  }
+
+  /// How far the device clock may be from a reference server's before the
+  /// diagnosis blames it. Certificates of a renewed server can be "not yet
+  /// valid" for a clock that is behind by hours, so an hour is the line.
+  static const clockSkewLimit = Duration(hours: 1);
+
+  /// Device time minus the `Date` of a plain HTTP answer from [host] (over the
+  /// physical network, like the other probes); null when there is no answer.
+  Future<Duration?> _clockSkew(String host) async {
+    Socket? socket;
+    try {
+      socket = await PhysicalNet.connect(host, 80, timeout: _tcpTimeout);
+      socket.write('HEAD / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n');
+      final head = await socket.cast<List<int>>().transform(latin1.decoder).join().timeout(_tlsTimeout);
+      final serverTime = httpDateOf(head);
+
+      return serverTime == null ? null : DateTime.now().toUtc().difference(serverTime);
+    } catch (_) {
+      return null;
+    } finally {
+      socket?.destroy();
+    }
+  }
+
+  /// The `Date:` header of an HTTP response head, or null.
+  @visibleForTesting
+  static DateTime? httpDateOf(String responseHead) {
+    for (final line in const LineSplitter().convert(responseHead)) {
+      if (line.isEmpty) break;
+      final colon = line.indexOf(':');
+      if (colon > 0 && line.substring(0, colon).trim().toLowerCase() == 'date') {
+        try {
+          return HttpDate.parse(line.substring(colon + 1).trim());
+        } on Object {
+          return null;
+        }
+      }
+    }
+
+    return null;
   }
 
   Future<_ProbeOutcome> _tcp(String host, int port) async {

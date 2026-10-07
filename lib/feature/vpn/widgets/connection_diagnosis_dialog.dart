@@ -192,6 +192,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       DiagnosisVerdict.keysRejected => AssetImages.catGear,
       DiagnosisVerdict.inconclusive => AssetImages.catFace,
       DiagnosisVerdict.addressFrozen => AssetImages.catSleeping,
+      DiagnosisVerdict.clockWrong => AssetImages.catAlert,
     };
   }
 
@@ -207,6 +208,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.keysRejected => context.ln.diagVerdictKeysRejected,
     DiagnosisVerdict.inconclusive => context.ln.diagVerdictInconclusive,
     DiagnosisVerdict.addressFrozen => context.ln.diagVerdictAddressFrozen,
+    DiagnosisVerdict.clockWrong => context.ln.diagVerdictClockWrong,
   };
 
   String _stepLabel(DiagnosisStep step) => switch (step) {
