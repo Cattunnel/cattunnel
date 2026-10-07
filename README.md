@@ -95,6 +95,8 @@ CatTunnel — клиентское приложение: он подключае
 | `cattunnel_<версия>_amd64.deb` | Debian, Ubuntu | `sudo apt install ./cattunnel_<версия>_amd64.deb` |
 | `cattunnel-<версия>-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U …`; рядом `PKGBUILD` для сборки из исходников |
 
+**Windows:** установщик пока не подписан сертификатом разработчика, поэтому SmartScreen может показать «Windows защитила ваш компьютер» — «Подробнее» → «Выполнить в любом случае». По той же причине отдельные антивирусы с эвристикой иногда помечают установщик (результаты VirusTotal — в описании каждого релиза). Подлинность файла проверяется по `SHA256SUMS` (см. ниже). Обновления затем приходят из самого приложения.
+
 На Linux приложение работает от обычного пользователя; права root нужны только небольшому помощнику `cattunnel-helper` (systemd, доступ по группе `cattunnel`) — см. [plugins/vpn_plugin/linux/HELPER.md](plugins/vpn_plugin/linux/HELPER.md).
 
 Для роутеров (OpenWrt, Keenetic, ASUS Merlin) — отдельный репозиторий [cattunnel-router](https://github.com/Cattunnel/cattunnel-router).
