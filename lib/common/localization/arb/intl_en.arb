@@ -511,6 +511,7 @@
   "diagKeepWaiting": "Keep waiting",
   "diagVerdictTrafficBlocked": "The server answers and accepts your keys, but the connection still won't come up - looks like your provider chokes the traffic after the handshake.",
   "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
+  "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",
   "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
