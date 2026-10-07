@@ -174,7 +174,7 @@ test/                     тесты (flutter test)
 
 ## Безопасность
 
-Нашли уязвимость — пожалуйста, не публикуйте её в Issues, а сообщите через [GitHub Security Advisories](../../security/advisories/new). Известные и исправленные проблемы — в [docs/security/](docs/security/).
+Нашли уязвимость — пожалуйста, не публикуйте её в Issues, а сообщите через [GitHub Security Advisories](../../security/advisories/new).
 
 ## Лицензия
 
