@@ -106,6 +106,23 @@ flutter:
     - family: IconFont
       fonts:
         - asset: assets/fonts/IconFont.ttf
+    # Y2K style: wide display + technical UI, both with Cyrillic (SIL OFL 1.1)
+    - family: Unbounded
+      fonts:
+        - asset: assets/fonts/y2k/Unbounded-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/y2k/Unbounded-Bold.ttf
+          weight: 700
+    - family: Exo2
+      fonts:
+        - asset: assets/fonts/y2k/Exo2-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/y2k/Exo2-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/y2k/Exo2-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/y2k/Exo2-Bold.ttf
+          weight: 700
     - family: Roboto
       fonts:
         - asset: assets/fonts/roboto/Roboto-Thin.ttf

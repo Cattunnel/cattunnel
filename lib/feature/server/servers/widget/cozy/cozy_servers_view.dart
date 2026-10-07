@@ -18,6 +18,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
+import 'package:trusttunnel/feature/server/servers/widget/y2k/y2k_widgets.dart';
 import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
@@ -29,12 +30,17 @@ import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
 /// round connect button with Marsik, the status with a session timer and
 /// ping, and a card of the current server that opens [CozyServerPicker].
 /// Connecting goes through [ServerConnectionActions], same as the list.
+/// With [y2k] the same home is drawn in the «Y2K» style (Y2kBackdrop, chrome
+/// title, ring button, glass card) - the behaviour stays one piece of code.
 class CozyServersView extends StatefulWidget {
   /// A tt:// link that opened the app: shown as a pre-filled server form
   /// (nothing is saved until the person confirms), like the list style.
   final ServerData? deepLinkData;
 
-  const CozyServersView({super.key, this.deepLinkData});
+  /// The «Y2K» look (AppStyle.y2k) instead of «Уютный».
+  final bool y2k;
+
+  const CozyServersView({super.key, this.deepLinkData, this.y2k = false});
 
   @override
   State<CozyServersView> createState() => _CozyServersViewState();
@@ -102,125 +108,144 @@ class _CozyServersViewState extends State<CozyServersView> {
     _trackSession(state);
     if (current != null) _pingOnce(current);
 
-    return ScaffoldWrapper(
-      child: ScaffoldMessenger(
-        key: _scaffoldMessengerKey,
-        child: Scaffold(
-          appBar: const CustomAppBar(title: 'CatTunnel'),
-          body: current == null
-              ? const ServersEmptyPlaceholder()
-              : context.isMobileBreakpoint
-              ? ListView(
-                  // Room for the bottom buttons, which grow with the font.
-                  padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
-                  children: [
-                    Center(
-                      child: _ConnectButton(
-                        state: state,
-                        onTap: () => _onConnectTap(context, current, state),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _StatusBlock(
-                      state: state,
-                      connectedSince: _connectedSince,
-                      server: current,
-                    ),
-                    const SizedBox(height: 24),
-                    _CurrentServerCard(
-                      server: current,
-                      onTap: () => _openPicker(context, servers, current, state),
-                    ),
-                  ],
-                )
-              // Wide (desktop) window: Marsik and the status on the left, the
-              // server list always open on the right. Narrower than 600 px
-              // it's the phone layout above.
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  _ConnectButton(
-                                    state: state,
-                                    size: 260,
-                                    onTap: () => _onConnectTap(context, current, state),
-                                  ),
-                                  const SizedBox(height: 28),
-                                  _StatusBlock(
-                                    state: state,
-                                    connectedSince: _connectedSince,
-                                    server: current,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const Positioned(left: 16, bottom: 16, child: CatPettingButton()),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 8, 16, 16),
-                      child: SizedBox(
-                        width: (MediaQuery.sizeOf(context).width * 0.38).clamp(320.0, 480.0),
-                        child: Material(
-                          color: context.colors.backgroundSystem,
-                          borderRadius: BorderRadius.circular(28),
-                          clipBehavior: Clip.antiAlias,
-                          child: CozyServerPicker.panel(
-                            currentId: current.id,
-                            onOpenDetails: (server) => _openServerDetails(context, server),
-                            onPick: (server) => _switchTo(context, server, current, state),
-                            onAdd: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+    final y2k = widget.y2k;
+    final connectLabel = state == VpnState.connected ? context.ln.disconnect : context.ln.connect;
+    Widget connectButton({double? size}) => y2k
+        ? Y2kConnectButton(
+            state: state,
+            label: connectLabel,
+            size: size == null ? 196 : size * 0.88,
+            onTap: () => _onConnectTap(context, current!, state),
+          )
+        : _ConnectButton(state: state, size: size ?? 224, onTap: () => _onConnectTap(context, current!, state));
+
+    final scaffold = Scaffold(
+      backgroundColor: y2k ? Colors.transparent : null,
+      appBar: y2k
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              title: const Y2kChromeTitle('CATTUNNEL'),
+            )
+          : const CustomAppBar(title: 'CatTunnel'),
+      body: current == null
+          ? const ServersEmptyPlaceholder()
+          : context.isMobileBreakpoint
+          ? ListView(
+              // Room for the bottom buttons, which grow with the font.
+              padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
+              children: [
+                Center(child: connectButton()),
+                const SizedBox(height: 24),
+                _StatusBlock(
+                  state: state,
+                  connectedSince: _connectedSince,
+                  server: current,
                 ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-          // Wide window: the petting button sits under Marsik, "+" is in the
-          // server panel.
-          floatingActionButton: current != null && !context.isMobileBreakpoint
-              ? null
-              : SizedBox(
-                  width: double.infinity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                const SizedBox(height: 24),
+                if (y2k)
+                  _Y2kServerCard(server: current, onTap: () => _openPicker(context, servers, current, state))
+                else
+                  _CurrentServerCard(
+                    server: current,
+                    onTap: () => _openPicker(context, servers, current, state),
+                  ),
+                if (y2k) ...[
+                  const SizedBox(height: 14),
+                  const _Y2kTechRow(),
+                ],
+              ],
+            )
+          // Wide (desktop) window: Marsik and the status on the left, the
+          // server list always open on the right. Narrower than 600 px
+          // it's the phone layout above.
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Stack(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(left: 16),
-                        child: CatPettingButton(),
-                      ),
-                      // Shrinks instead of pushing the cat off screen with a
-                      // large system font.
-                      Flexible(
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: 12, right: 16),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerRight,
-                            child: CustomFloatingActionButton.extended(
-                              icon: AssetIcons.add,
-                              onPressed: () =>
-                                  presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
-                              label: context.ln.addServers,
-                            ),
+                      Center(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              connectButton(size: 260),
+                              const SizedBox(height: 28),
+                              _StatusBlock(
+                                state: state,
+                                connectedSince: _connectedSince,
+                                server: current,
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      const Positioned(left: 16, bottom: 16, child: CatPettingButton()),
                     ],
                   ),
                 ),
-        ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 16, 16),
+                  child: SizedBox(
+                    width: (MediaQuery.sizeOf(context).width * 0.38).clamp(320.0, 480.0),
+                    child: Material(
+                      color: context.colors.backgroundSystem,
+                      borderRadius: BorderRadius.circular(28),
+                      clipBehavior: Clip.antiAlias,
+                      child: CozyServerPicker.panel(
+                        currentId: current.id,
+                        onOpenDetails: (server) => _openServerDetails(context, server),
+                        onPick: (server) => _switchTo(context, server, current, state),
+                        onAdd: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      // Wide window: the petting button sits under Marsik, "+" is in the
+      // server panel.
+      floatingActionButton: current != null && !context.isMobileBreakpoint
+          ? null
+          : SizedBox(
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16),
+                    child: CatPettingButton(),
+                  ),
+                  // Shrinks instead of pushing the cat off screen with a
+                  // large system font.
+                  Flexible(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 12, right: 16),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: CustomFloatingActionButton.extended(
+                          icon: AssetIcons.add,
+                          onPressed: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
+                          label: context.ln.addServers,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+
+    return ScaffoldWrapper(
+      child: ScaffoldMessenger(
+        key: _scaffoldMessengerKey,
+        child: y2k ? Y2kBackdrop(child: scaffold) : scaffold,
       ),
     );
   }
@@ -468,4 +493,100 @@ class _CurrentServerCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// «Y2K»: the current server on a clipped glass card.
+class _Y2kServerCard extends StatelessWidget {
+  final Server server;
+  final VoidCallback onTap;
+
+  const _Y2kServerCard({required this.server, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final latency = ServerLatencyScope.of(context).resultFor(server.id)?.latency;
+
+    return Y2kGlassCard(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Y2kMicro(context.ln.cozyServer),
+                  const SizedBox(height: 4),
+                  Text(
+                    server.serverData.name,
+                    style: context.textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Y2kMicro(server.serverData.ipAddress, color: Y2kColors.dim),
+                ],
+              ),
+            ),
+            if (latency != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  context.ln.cozyPing(latency.inMilliseconds),
+                  style: context.textTheme.titleSmall?.copyWith(color: Y2kColors.glow),
+                ),
+              ),
+            const Icon(Icons.expand_more_rounded, color: Y2kColors.steel),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// «Y2K»: three thin technical captions under the card.
+class _Y2kTechRow extends StatelessWidget {
+  const _Y2kTechRow();
+
+  @override
+  Widget build(BuildContext context) => const Row(
+    children: [
+      Expanded(
+        child: _Y2kTechCell(top: 'trusttunnel', bottom: 'http/2'),
+      ),
+      SizedBox(width: 8),
+      Expanded(
+        child: _Y2kTechCell(top: 'encryption', bottom: 'age x25519'),
+      ),
+      SizedBox(width: 8),
+      Expanded(
+        child: _Y2kTechCell(top: 'anti-dpi', bottom: 'on', accent: true),
+      ),
+    ],
+  );
+}
+
+class _Y2kTechCell extends StatelessWidget {
+  final String top, bottom;
+  final bool accent;
+
+  const _Y2kTechCell({required this.top, required this.bottom, this.accent = false});
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: Container(
+      padding: const EdgeInsets.only(top: 6),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: (accent ? Y2kColors.warn : Y2kColors.steel).withValues(alpha: 0.5)),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Y2kMicro(top, color: Y2kColors.dim),
+          Y2kMicro(bottom, color: accent ? Y2kColors.warn : Colors.white),
+        ],
+      ),
+    ),
+  );
 }

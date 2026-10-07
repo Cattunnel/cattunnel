@@ -500,6 +500,8 @@
   "appearanceStyleMinimalDescription": "Классический вид: список серверов с кнопками включения.",
   "appearanceStyleCozy": "Уютный",
   "appearanceStyleCozyDescription": "Большая кнопка с Марсиком, таймер сеанса и карточка сервера.",
+  "appearanceStyleY2k": "Y2K",
+  "appearanceStyleY2kDescription": "Дизайн начала 2000-х: тёмно-синий, электрик, хром и «осколки». Всегда тёмная тема.",
   "appearanceTheme": "Тема",
   "appearanceThemeSystem": "Как на телефоне",
   "appearanceThemeLight": "Светлая",

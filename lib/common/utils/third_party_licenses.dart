@@ -43,6 +43,9 @@ const _entries = <(List<String>, String)>[
   (['sqlite'], 'sqlite.txt'),
   (['TrustTunnel engine, AndroidX, Kotlin and other Apache-2.0 components'], 'apache_2_0_components.txt'),
   (['Google ML Kit, Play services'], 'google_proprietary.txt'),
+  // Fonts of the Y2K style
+  (['Unbounded (font)'], 'font_unbounded.txt'),
+  (['Exo 2 (font)'], 'font_exo2.txt'),
 ];
 
 void registerThirdPartyLicenses() {
