@@ -5,6 +5,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 enum AddServerOption { manual, qrCode, link, subscription, configFile }
 
@@ -43,7 +44,7 @@ class AddServerOptionsSheet extends StatelessWidget {
               const SizedBox(
                 width: 56,
                 child: Center(
-                  child: Image(image: AssetImage(AssetImages.catFace), height: 36, fit: BoxFit.contain),
+                  child: MarsikImage(AssetImages.catFace, height: 36, fit: BoxFit.contain),
                 ),
               ),
               Expanded(

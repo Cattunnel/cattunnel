@@ -16,6 +16,8 @@ import 'package:trusttunnel/widgets/common/custom_arrow_list_tile.dart';
 import 'package:trusttunnel/widgets/common/custom_radio_list_tile.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -27,9 +29,9 @@ class SettingsScreen extends StatelessWidget {
         appBar: CustomAppBar(
           title: context.ln.settings,
           actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Image.asset(AssetImages.catGear, height: 36),
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: MarsikImage(AssetImages.catGear, height: 36),
             ),
           ],
         ),
@@ -146,9 +148,17 @@ class _SettingsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
-    child: Text(
-      text,
-      style: context.textTheme.titleSmall?.copyWith(color: context.colors.neutralDark),
-    ),
+    child: context.isY2k
+        ? Row(
+            children: [
+              Y2kMicro('// $text', color: Y2kColors.glow),
+              const SizedBox(width: 10),
+              Expanded(child: Container(height: 1, color: Y2kColors.electric.withValues(alpha: 0.35))),
+            ],
+          )
+        : Text(
+            text,
+            style: context.textTheme.titleSmall?.copyWith(color: context.colors.neutralDark),
+          ),
   );
 }

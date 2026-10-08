@@ -18,13 +18,13 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
-import 'package:trusttunnel/feature/server/servers/widget/y2k/y2k_widgets.dart';
 import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// The Servers tab in the «Уютный» style (AppearancePreferences): a big
 /// round connect button with Marsik, the status with a session timer and
@@ -243,9 +243,10 @@ class _CozyServersViewState extends State<CozyServersView> {
     );
 
     return ScaffoldWrapper(
+      y2kLoud: true,
       child: ScaffoldMessenger(
         key: _scaffoldMessengerKey,
-        child: y2k ? Y2kBackdrop(child: scaffold) : scaffold,
+        child: scaffold,
       ),
     );
   }

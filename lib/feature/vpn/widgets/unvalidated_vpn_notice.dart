@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik's note for BBK phones (vivo, OPPO, realme, OnePlus, iQOO) whose
 /// firmware reports "no VPN" when Android didn't validate the VPN network
@@ -29,7 +30,7 @@ abstract final class UnvalidatedVpnNotice {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(AssetImages.catShield, height: 110),
+          const MarsikImage(AssetImages.catShield, height: 110),
           const SizedBox(height: 16),
           Text(dialogContext.ln.unvalidatedVpnBody, textAlign: TextAlign.center),
         ],

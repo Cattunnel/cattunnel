@@ -17,6 +17,7 @@ import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
 import 'package:trusttunnel/widgets/inputs/custom_text_field.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 class LaunchAndConnectionScreen extends StatefulWidget {
   const LaunchAndConnectionScreen({super.key});
@@ -100,9 +101,9 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
         centerTitle: true,
         leadingIconType: AppBarLeadingIconType.back,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Image.asset(AssetImages.catShield, height: 36),
+          const Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: MarsikImage(AssetImages.catShield, height: 36),
           ),
         ],
       ),

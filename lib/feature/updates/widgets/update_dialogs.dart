@@ -9,6 +9,7 @@ import 'package:trusttunnel/feature/updates/domain/update_platform.dart';
 import 'package:trusttunnel/feature/updates/domain/update_service.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik offers [update]; "Update" downloads and installs it.
 Future<void> showUpdateOffer(BuildContext context, AppUpdate update) async {
@@ -20,7 +21,7 @@ Future<void> showUpdateOffer(BuildContext context, AppUpdate update) async {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(AssetImages.catWave, height: 110),
+          const MarsikImage(AssetImages.catWave, height: 110),
           const SizedBox(height: 16),
           Text(dialogContext.ln.updateAvailableBody, textAlign: TextAlign.center),
           if (update.notes.isNotEmpty) ...[
@@ -154,7 +155,7 @@ class _UpdateInstallDialogState extends State<_UpdateInstallDialog> {
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(_failed ? AssetImages.catWires : AssetImages.catGear, height: 110),
+        MarsikImage(_failed ? AssetImages.catWires : AssetImages.catGear, height: 110),
         const SizedBox(height: 16),
         ...switch (_stage) {
           _Stage.downloading => [

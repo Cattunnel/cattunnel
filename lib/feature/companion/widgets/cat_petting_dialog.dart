@@ -15,6 +15,8 @@ import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/security/widgets/marsik_confirm.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// The actual "petting" interaction, opened from [CatPettingButton]: stroke
 /// (drag) across the cat to pet it, or tap it several times fast and it
@@ -376,7 +378,7 @@ class _CatPettingDialogState extends State<CatPettingDialog> with SingleTickerPr
                     ),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 200),
-                      child: Image.asset(asset, key: ValueKey(asset), height: 200 / textScale.clamp(1.0, 1.6)),
+                      child: MarsikImage(asset, key: ValueKey(asset), height: 200 / textScale.clamp(1.0, 1.6)),
                     ),
                   ),
                   for (final heart in _hearts)
@@ -513,18 +515,22 @@ class CatPettingButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final asset = CatCompanion.assetFor(VpnScope.vpnControllerOf(context).state);
 
+    final y2k = context.isY2k;
+
     return Material(
-      color: context.theme.floatingActionButtonTheme.backgroundColor,
-      borderRadius: BorderRadius.circular(16),
+      color: y2k ? Y2kColors.navy.withValues(alpha: 0.85) : context.theme.floatingActionButtonTheme.backgroundColor,
+      shape: y2k
+          ? y2kCut(14, BorderSide(color: Y2kColors.glow.withValues(alpha: 0.6)))
+          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
         onTap: () => _onTap(context),
         onLongPress: () => _onLongPress(context),
         child: SizedBox(
           width: 56,
           height: 56,
           child: Center(
-            child: Image.asset(asset, height: 36),
+            child: MarsikImage(asset, height: 36),
           ),
         ),
       ),

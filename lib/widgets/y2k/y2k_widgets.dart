@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/assets/font_families.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Colors of the «Y2K» style beyond the theme palette (ThemePalette.y2k).
 abstract final class Y2kColors {
@@ -18,21 +20,57 @@ abstract final class Y2kColors {
   static const warn = Color(0xFFFF8A47);
 }
 
+/// Marks the «Y2K» theme (only its ThemeData carries it), so widgets can ask
+/// [Y2kContext.isY2k] and rebuild when the style changes.
+class Y2kStyle extends ThemeExtension<Y2kStyle> {
+  const Y2kStyle();
+
+  @override
+  Y2kStyle copyWith() => this;
+
+  @override
+  Y2kStyle lerp(Y2kStyle? other, double t) => this;
+}
+
+extension Y2kContext on BuildContext {
+  bool get isY2k => Theme.of(this).extension<Y2kStyle>() != null;
+}
+
+/// The Y2K panel shape: top-right and bottom-left corners cut off.
+BeveledRectangleBorder y2kCut([double cut = 12, BorderSide side = BorderSide.none]) => BeveledRectangleBorder(
+  side: side,
+  borderRadius: BorderRadius.only(topRight: Radius.circular(cut), bottomLeft: Radius.circular(cut)),
+);
+
 /// The whole-screen background: a navy radial glow, a burst of thin "shard"
 /// lines drifting slowly, a halftone dot corner, scanlines and a light sweep.
-/// Drawn in code - no images. Sits behind a transparent Scaffold.
+/// Drawn in code - no images. Sits behind a transparent Scaffold. [calm] is
+/// the version for the other screens: dimmer rays (text sits on top), the
+/// same drift and sweep. The still parts are painted once, only the rays,
+/// shards and sweep repaint.
 class Y2kBackdrop extends StatefulWidget {
   final Widget child;
+  final bool calm;
 
-  const Y2kBackdrop({super.key, required this.child});
+  const Y2kBackdrop({super.key, required this.child, this.calm = false});
 
   @override
   State<Y2kBackdrop> createState() => _Y2kBackdropState();
 }
 
 class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStateMixin {
-  late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(seconds: 18))
-    ..repeat();
+  late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(seconds: 18));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Respect "reduce motion": the picture stays, the drift and sweep stop.
+    if (MediaQuery.of(context).disableAnimations) {
+      _clock.stop();
+    } else if (!_clock.isAnimating) {
+      unawaited(_clock.repeat());
+    }
+  }
 
   @override
   void dispose() {
@@ -41,47 +79,44 @@ class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStat
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Respect "reduce motion": the picture stays, the drift and sweep stop.
-    final still = MediaQuery.of(context).disableAnimations;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment(0, -0.25),
-              radius: 1.15,
-              colors: [Y2kColors.navyLight, Y2kColors.navy, Y2kColors.ink],
-              stops: [0, 0.34, 0.75],
-            ),
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0, widget.calm ? -0.6 : -0.25),
+            radius: widget.calm ? 1.3 : 1.15,
+            colors: const [Y2kColors.navyLight, Y2kColors.navy, Y2kColors.ink],
+            stops: const [0, 0.34, 0.75],
           ),
         ),
-        RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _clock,
-            builder: (context, _) => CustomPaint(painter: _ShardsPainter(still ? 0 : _clock.value)),
-          ),
-        ),
-        widget.child,
-      ],
-    );
-  }
+      ),
+      RepaintBoundary(
+        child: CustomPaint(painter: _StillPainter(calm: widget.calm)),
+      ),
+      RepaintBoundary(
+        child: CustomPaint(painter: _ShardsPainter(_clock, calm: widget.calm)),
+      ),
+      widget.child,
+    ],
+  );
 }
 
 class _ShardsPainter extends CustomPainter {
-  /// 0..1 over one drift cycle.
-  final double t;
+  final Animation<double> clock;
+  final bool calm;
 
-  const _ShardsPainter(this.t);
+  _ShardsPainter(this.clock, {required this.calm}) : super(repaint: clock);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final t = clock.value;
     final w = size.width, h = size.height;
+    final dim = calm ? 0.45 : 1.0;
     final phase = t * 2 * math.pi;
     final drift = Offset(math.sin(phase) * 8, math.cos(phase) * 5);
-    final focus = Offset(w * 0.5, h * 0.36) + drift;
+    final focus = (calm ? Offset(w * 0.85, h * 0.08) : Offset(w * 0.5, h * 0.36)) + drift;
 
     // Burst of rays from the focus.
     final ray = Paint()
@@ -101,7 +136,7 @@ class _ShardsPainter extends CustomPainter {
     for (final (x, y, width, alpha) in ends) {
       ray
         ..strokeWidth = width
-        ..color = Y2kColors.electric.withValues(alpha: alpha * 0.8);
+        ..color = Y2kColors.electric.withValues(alpha: alpha * 0.8 * dim);
       canvas.drawLine(focus, Offset(w * x, h * y) + drift * 2, ray);
     }
 
@@ -109,7 +144,7 @@ class _ShardsPainter extends CustomPainter {
     final shard = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8
-      ..color = Y2kColors.electric.withValues(alpha: 0.38);
+      ..color = Y2kColors.electric.withValues(alpha: 0.38 * dim);
     const tris = [
       [(0.13, 0.13), (0.45, 0.29), (0.28, 0.33)],
       [(0.78, 0.17), (0.98, 0.09), (0.9, 0.28)],
@@ -125,83 +160,157 @@ class _ShardsPainter extends CustomPainter {
       canvas.drawPath(path..close(), shard);
     }
 
-    // Thin technical rules.
+    // A soft light band sweeping down, three times per cycle.
+    final bandY = (t * 3 % 1) * (h + 240) - 120;
+    final band = Rect.fromLTWH(0, bandY, w, 120);
+    canvas.drawRect(
+      band,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Y2kColors.glow.withValues(alpha: 0.08 * (calm ? 0.8 : 1)),
+            Colors.transparent,
+          ],
+        ).createShader(band),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ShardsPainter old) => old.clock != clock || old.calm != calm;
+}
+
+/// Halftone corner, technical rules and scanlines - painted once.
+class _StillPainter extends CustomPainter {
+  final bool calm;
+
+  const _StillPainter({required this.calm});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final dim = calm ? 0.6 : 1.0;
+
     final rule = Paint()
       ..strokeWidth = 1
-      ..color = Y2kColors.ice.withValues(alpha: 0.18);
+      ..color = Y2kColors.ice.withValues(alpha: 0.18 * dim);
     canvas
       ..drawLine(Offset(w * 0.05, h * 0.22), Offset(w * 0.4, h * 0.22), rule)
       ..drawLine(Offset(w * 0.7, h * 0.33), Offset(w * 1.0, h * 0.33), rule)
       ..drawLine(Offset(0, h * 0.7), Offset(w * 0.28, h * 0.7), rule);
 
-    // Halftone dots fading from the top-left corner.
-    final dot = Paint()..color = Y2kColors.glow;
+    // Halftone dots fading from a corner (top-left; bottom-right when calm,
+    // away from the titles).
+    final dot = Paint();
     const step = 7.0;
     final cornerW = math.min(w * 0.7, 280.0), cornerH = math.min(h * 0.38, 320.0);
     for (var y = step / 2; y < cornerH; y += step) {
       for (var x = step / 2; x < cornerW; x += step) {
         final fade = 1 - (x / cornerW + y / cornerH) / 1.3;
         if (fade <= 0) continue;
-        canvas.drawCircle(Offset(x, y), 1.0, dot..color = Y2kColors.glow.withValues(alpha: 0.4 * fade));
+        final at = calm ? Offset(w - x, h - y) : Offset(x, y);
+        canvas.drawCircle(at, 1.0, dot..color = Y2kColors.glow.withValues(alpha: 0.4 * fade * dim));
       }
     }
 
-    // Scanlines over everything, and a soft light band sweeping down.
     final scan = Paint()..color = Colors.white.withValues(alpha: 0.03);
     for (var y = 0.0; y < h; y += 3) {
       canvas.drawRect(Rect.fromLTWH(0, y, w, 1), scan);
     }
-    final bandY = (t * 3 % 1) * (h + 240) - 120;
-    canvas.drawRect(
-      Rect.fromLTWH(0, bandY, w, 120),
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Y2kColors.glow.withValues(alpha: 0.08), Colors.transparent],
-        ).createShader(Rect.fromLTWH(0, bandY, w, 120)),
-    );
   }
 
   @override
-  bool shouldRepaint(_ShardsPainter old) => old.t != t;
+  bool shouldRepaint(_StillPainter old) => old.calm != calm;
 }
 
 /// "CATTUNNEL" in chrome: a white-steel-white gradient through the letters,
-/// with a blue glow. Wide display font (Unbounded).
-class Y2kChromeTitle extends StatelessWidget {
+/// with a blue glow. Wide display font (Unbounded). Every few seconds a light
+/// glint runs across the letters.
+class Y2kChromeTitle extends StatefulWidget {
   final String text;
   final double size;
 
   const Y2kChromeTitle(this.text, {super.key, this.size = 22});
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    header: true,
-    label: text,
-    child: ExcludeSemantics(
-      child: ShaderMask(
-        blendMode: BlendMode.srcIn,
-        shaderCallback: (bounds) => const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.white, Y2kColors.ice, Color(0xFF4C7FB8), Color(0xFFE6F4FF), Y2kColors.steel],
-          stops: [0, 0.38, 0.52, 0.6, 1],
-        ).createShader(bounds),
-        child: Text(
-          text,
-          style: TextStyle(
-            fontFamily: FontFamilies.unbounded,
-            fontWeight: FontWeight.w700,
-            fontSize: size,
-            letterSpacing: size * 0.06,
-            height: 1,
-            shadows: [Shadow(color: Y2kColors.electric.withValues(alpha: 0.6), blurRadius: 12)],
-          ),
+  State<Y2kChromeTitle> createState() => _Y2kChromeTitleState();
+}
+
+class _Y2kChromeTitleState extends State<Y2kChromeTitle> with SingleTickerProviderStateMixin {
+  // The glint takes the first ~18% of the cycle, then the title rests.
+  late final AnimationController _shine = AnimationController(vsync: this, duration: const Duration(seconds: 7));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.of(context).disableAnimations) {
+      _shine.stop();
+    } else if (!_shine.isAnimating) {
+      unawaited(_shine.repeat());
+    }
+  }
+
+  @override
+  void dispose() {
+    _shine.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = widget.size;
+    final letters = ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Colors.white, Y2kColors.ice, Color(0xFF4C7FB8), Color(0xFFE6F4FF), Y2kColors.steel],
+        stops: [0, 0.38, 0.52, 0.6, 1],
+      ).createShader(bounds),
+      child: Text(
+        widget.text,
+        maxLines: 1,
+        style: TextStyle(
+          fontFamily: FontFamilies.unbounded,
+          fontWeight: FontWeight.w700,
+          fontSize: size,
+          letterSpacing: size * 0.06,
+          height: 1,
+          shadows: [Shadow(color: Y2kColors.electric.withValues(alpha: 0.6), blurRadius: 12)],
         ),
       ),
-    ),
-  );
+    );
+
+    return Semantics(
+      header: true,
+      label: widget.text,
+      child: ExcludeSemantics(
+        child: AnimatedBuilder(
+          animation: _shine,
+          child: letters,
+          builder: (context, child) {
+            final p = _shine.value / 0.18;
+            if (p >= 1 || !_shine.isAnimating) return child!;
+            // A slanted white band from left to right, only on the letters.
+            final x = -1.6 + p * 3.2;
+
+            return ShaderMask(
+              blendMode: BlendMode.srcATop,
+              shaderCallback: (bounds) => LinearGradient(
+                begin: Alignment(x - 0.5, -1),
+                end: Alignment(x + 0.5, 1),
+                colors: [Colors.transparent, Colors.white.withValues(alpha: 0.9), Colors.transparent],
+                stops: const [0.35, 0.5, 0.65],
+              ).createShader(bounds),
+              child: child,
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
 /// The round connect button: a glowing core with Marsik, two dashed rings
@@ -335,7 +444,7 @@ class _Y2kConnectButtonState extends State<Y2kConnectButton> with SingleTickerPr
                     padding: EdgeInsets.all(size * 0.17),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
-                      child: Image.asset(image, key: ValueKey(image)),
+                      child: MarsikImage(image, key: ValueKey(image)),
                     ),
                   ),
                 ),

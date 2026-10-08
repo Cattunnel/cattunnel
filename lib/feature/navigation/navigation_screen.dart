@@ -21,6 +21,8 @@ import 'package:trusttunnel/feature/settings/logs_manager/widgets/scope/logs_man
 import 'package:trusttunnel/feature/settings/query_log/widgets/query_log_screen.dart';
 import 'package:trusttunnel/feature/settings/settings/settings_screen.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_navigation_bar.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
@@ -82,14 +84,14 @@ class _NavigationScreenState extends State<NavigationScreen> {
     child: TrayMenuScope(
       onRouteRequested: _openRouteFromTray,
       child: ColoredBox(
-        color: context.colors.background,
+        color: context.isY2k ? Y2kColors.ink : context.colors.background,
         child: SafeArea(
           right: false,
           bottom: false,
           left: false,
           child: Scaffold(
             primary: false,
-            backgroundColor: context.colors.backgroundSystem,
+            backgroundColor: context.isY2k ? Y2kColors.ink : context.colors.backgroundSystem,
             body: SafeArea(
               top: false,
               child: context.isMobileBreakpoint
@@ -114,13 +116,22 @@ class _NavigationScreenState extends State<NavigationScreen> {
             bottomNavigationBar: context.isMobileBreakpoint
                 ? ValueListenableBuilder(
                     valueListenable: _selectedTabNotifier,
-                    builder: (context, index, _) => SafeArea(
-                      child: NavigationBar(
-                        selectedIndex: index,
-                        onDestinationSelected: _onDestinationSelected,
-                        destinations: NavigationUtils.getBottomNavigationDestinations(context),
-                      ),
-                    ),
+                    builder: (context, index, _) => context.isY2k
+                        ? Y2kNavigationBar(
+                            selectedIndex: index,
+                            onDestinationSelected: _onDestinationSelected,
+                            destinations: [
+                              for (final d in NavigationUtils.getDestinations(context))
+                                (d['icon']! as IconData, d['label'].toString()),
+                            ],
+                          )
+                        : SafeArea(
+                            child: NavigationBar(
+                              selectedIndex: index,
+                              onDestinationSelected: _onDestinationSelected,
+                              destinations: NavigationUtils.getBottomNavigationDestinations(context),
+                            ),
+                          ),
                   )
                 : null,
           ),

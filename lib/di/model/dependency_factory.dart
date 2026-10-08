@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/assets/font_families.dart';
 import 'package:trusttunnel/common/theme/app_theme.dart';
 import 'package:trusttunnel/common/theme/theme_palette.dart';
+import 'package:trusttunnel/common/theme/y2k_theme.dart';
 import 'package:trusttunnel/common/utils/certificate_encoders.dart';
 import 'package:trusttunnel/data/database/app_database.dart' as db;
 import 'package:trusttunnel/data/datasources/app_split_settings_datasource.dart';
@@ -204,7 +205,8 @@ class DependencyFactoryImpl implements DependencyFactory {
   ThemeData get darkThemeData => _darkThemeData ??= AppTheme(ThemePalette.dark).data;
 
   @override
-  ThemeData get y2kThemeData => _y2kThemeData ??= AppTheme(ThemePalette.y2k, font: FontFamilies.exo2).data;
+  ThemeData get y2kThemeData =>
+      _y2kThemeData ??= Y2kTheme.apply(AppTheme(ThemePalette.y2k, font: FontFamilies.exo2).data);
 
   @override
   VpnPlugin get vpnPlugin => _vpnPlugin ??= VpnPluginImpl();
