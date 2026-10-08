@@ -80,13 +80,17 @@ abstract final class Y2kTheme {
   }
 }
 
-/// A new page comes in like a monitor drawing it: revealed from the top by a
-/// scan line, sliding in a little and fading up. Going back is a plain fade.
+/// A new page comes in like a monitor drawing it: a glowing scan line runs
+/// down the screen, the page appears above it (with a short flicker at the
+/// start) while the old one is still seen below. Going back is a plain fade.
 class Y2kPageTransitionsBuilder extends PageTransitionsBuilder {
   const Y2kPageTransitionsBuilder();
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 420);
+  Duration get transitionDuration => const Duration(milliseconds: 650);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 250);
 
   @override
   Widget buildTransitions<T>(
@@ -102,25 +106,55 @@ class Y2kPageTransitionsBuilder extends PageTransitionsBuilder {
       animation: animation,
       child: child,
       builder: (context, child) {
-        final t = Curves.easeOutCubic.transform(animation.value);
-        if (t >= 1) return child!;
-        if (animation.status == AnimationStatus.reverse) return Opacity(opacity: t, child: child);
+        final value = animation.value;
+        if (value >= 1) return child!;
+        if (animation.status == AnimationStatus.reverse) return Opacity(opacity: value, child: child);
 
-        return Opacity(
-          opacity: math.min(1, t * 1.6),
-          child: Transform.translate(
-            offset: Offset(0, (1 - t) * 24),
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) => LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: const [Colors.white, Colors.white, Colors.transparent],
-                stops: [0, t, math.min(1, t + 0.08)],
-              ).createShader(bounds),
-              child: child,
-            ),
-          ),
+        final t = Curves.easeInOutCubic.transform(value);
+        final flicker = value < 0.15 && (value * 60).floor().isEven ? 0.6 : 1.0;
+
+        return LayoutBuilder(
+          builder: (context, box) {
+            final y = t * box.maxHeight;
+
+            return Stack(
+              children: [
+                Opacity(
+                  opacity: flicker,
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (bounds) => LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: const [Colors.white, Colors.white, Colors.transparent],
+                      stops: [0, t, math.min(1, t + 0.015)],
+                    ).createShader(bounds),
+                    child: child,
+                  ),
+                ),
+                // The beam: a soft glow trailing above a bright line.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: y - 46,
+                  height: 48,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Y2kColors.glow.withValues(alpha: 0.22)],
+                        ),
+                        border: const Border(bottom: BorderSide(color: Y2kColors.ice, width: 2)),
+                        boxShadow: [BoxShadow(color: Y2kColors.electric.withValues(alpha: 0.5), blurRadius: 18)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
