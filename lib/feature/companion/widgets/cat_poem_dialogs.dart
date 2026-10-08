@@ -5,6 +5,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_poems.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Small "want to read one of my poems?" prompt, offered occasionally after
 /// petting (see [CatPettingDialog]) - only ever shown when [catPoems] isn't
@@ -36,7 +37,7 @@ class CatPoemOfferDialog extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Image.asset(AssetImages.catFace, height: 72),
+          const MarsikImage(AssetImages.catFace, height: 72),
           const SizedBox(height: 12),
           Text(
             context.ln.catPoemOfferQuestion,

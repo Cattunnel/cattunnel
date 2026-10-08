@@ -5,6 +5,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/generated/l10n.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Target for the "add a server" spotlight step - [ServersEmptyPlaceholder]
 /// attaches this to its button. A plain top-level [GlobalKey] instead of a
@@ -237,7 +238,7 @@ class _SpeechBubble extends StatelessWidget {
           children: [
             Row(
               children: [
-                Image.asset(step.cat, height: 64),
+                MarsikImage(step.cat, height: 64),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

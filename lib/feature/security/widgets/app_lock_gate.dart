@@ -8,6 +8,7 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/widgets/secure_screen.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// App lock (Cyber security section): covers the whole UI - dialogs included,
 /// it wraps the Navigator via MaterialApp.builder - with Marsik asleep
@@ -131,7 +132,7 @@ class _AppLockGateState extends State<AppLockGate> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.asset(AssetImages.catSleeping, height: 140),
+                      const MarsikImage(AssetImages.catSleeping, height: 140),
                       const SizedBox(height: 16),
                       Text(context.ln.appLockLockedTitle, style: context.textTheme.titleMedium),
                       const SizedBox(height: 24),
