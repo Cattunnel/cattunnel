@@ -329,8 +329,8 @@ class _CatPettingDialogState extends State<CatPettingDialog> with SingleTickerPr
     final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 3.0);
 
     return Dialog(
-      backgroundColor: context.colors.backgroundSystem,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
+      shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

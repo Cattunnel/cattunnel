@@ -6,6 +6,7 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/logging/observers/logging_navigator_observer.dart';
 import 'package:trusttunnel/common/router/app_route.dart';
 import 'package:trusttunnel/common/router/app_routes.dart';
+import 'package:trusttunnel/common/theme/y2k_theme.dart';
 import 'package:trusttunnel/common/utils/navigation_utils.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/deep_link/deep_link_scope.dart';
@@ -237,23 +238,39 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
 
     _selectedTabNotifier.value = selectedIndex;
-    navigatorState.pushAndRemoveUntil(
-      PageRouteBuilder(
-        settings: AppRoutes.byNavigationIndex(selectedIndex).settings,
-        pageBuilder:
-            (
-              context,
-              animation,
-              secondaryAnimation,
-            ) => getScreenByIndex(
-              selectedIndex,
-              deepLinkData: deepLinkData,
-            ),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
-      (_) => false,
+    // Y2K: the new tab is drawn by the scan line over the old one, which is
+    // dropped once the line has reached the bottom bar.
+    final scan = context.isY2k && !MediaQuery.of(context).disableAnimations;
+    final route = PageRouteBuilder<void>(
+      settings: AppRoutes.byNavigationIndex(selectedIndex).settings,
+      pageBuilder:
+          (
+            context,
+            animation,
+            secondaryAnimation,
+          ) => getScreenByIndex(
+            selectedIndex,
+            deepLinkData: deepLinkData,
+          ),
+      transitionDuration: scan ? const Duration(milliseconds: 650) : Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+          scan ? Y2kPageTransitionsBuilder.scanIn(context, animation, child) : child,
     );
+    if (scan) {
+      unawaited(navigatorState.push(route));
+      void dropBelow(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        route.animation?.removeStatusListener(dropBelow);
+        while (route.isActive && !route.isFirst) {
+          navigatorState.removeRouteBelow(route);
+        }
+      }
+
+      route.animation?.addStatusListener(dropBelow);
+    } else {
+      unawaited(navigatorState.pushAndRemoveUntil(route, (_) => false));
+    }
 
     await SchedulerBinding.instance.endOfFrame;
   }

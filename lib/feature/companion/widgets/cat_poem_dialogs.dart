@@ -6,6 +6,7 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_poems.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// Small "want to read one of my poems?" prompt, offered occasionally after
 /// petting (see [CatPettingDialog]) - only ever shown when [catPoems] isn't
@@ -30,8 +31,8 @@ class CatPoemOfferDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: context.colors.backgroundSystem,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
+    shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -66,7 +67,7 @@ class CatPoemOfferDialog extends StatelessWidget {
 
 /// Shows one random poem from [catPoems], with its real author credited in
 /// small print - the poems are by the CatTunnel author, Marsik is just reciting them.
-class CatPoemDialog extends StatelessWidget {
+class CatPoemDialog extends StatefulWidget {
   const CatPoemDialog({super.key});
 
   static Future<void> show(BuildContext context) => showDialog<void>(
@@ -75,12 +76,23 @@ class CatPoemDialog extends StatelessWidget {
   );
 
   @override
+  State<CatPoemDialog> createState() => _CatPoemDialogState();
+}
+
+class _CatPoemDialogState extends State<CatPoemDialog> {
+  /// Picked once, so a rebuild doesn't swap the poem mid-reading.
+  int? _index;
+
+  @override
   Widget build(BuildContext context) {
-    final poem = catPoems[Random().nextInt(catPoems.length)];
+    // English for everyone but Russian readers, when the translation is there.
+    final russian = Localizations.localeOf(context).languageCode == 'ru';
+    final poems = russian || catPoemsEn.length != catPoems.length ? catPoems : catPoemsEn;
+    final poem = poems[_index ??= Random().nextInt(poems.length)];
 
     return Dialog(
-      backgroundColor: context.colors.backgroundSystem,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
+      shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
