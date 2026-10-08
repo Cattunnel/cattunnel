@@ -99,7 +99,10 @@ class Y2kPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) {
+  ) => scanIn(context, animation, child);
+
+  /// The same scan-in for routes that are no MaterialPageRoute (the tabs).
+  static Widget scanIn(BuildContext context, Animation<double> animation, Widget child) {
     if (MediaQuery.of(context).disableAnimations) return child;
 
     return AnimatedBuilder(

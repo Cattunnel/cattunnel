@@ -3,6 +3,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_owner_preferences.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// One-time introduction shown the first time the cat petting button is
 /// opened: Marsik introduces himself and (entirely optionally) asks for a
@@ -44,8 +45,8 @@ class _CatIntroDialogState extends State<CatIntroDialog> {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: context.colors.backgroundSystem,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
+    shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
     // Scrolls with a large system font - the buttons fell off the dialog.
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),

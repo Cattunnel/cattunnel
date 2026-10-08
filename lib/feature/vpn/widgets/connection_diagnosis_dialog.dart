@@ -20,6 +20,7 @@ import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// Marsik's "why won't it connect" report (see [ConnectionDiagnostics]):
 /// a magnifier cat and a live checklist while probing, then a verdict in
@@ -225,8 +226,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     final done = result != null || _connectedMeanwhile;
 
     return Dialog(
-      backgroundColor: context.colors.backgroundSystem,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
+      shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
