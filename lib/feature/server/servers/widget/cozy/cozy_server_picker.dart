@@ -200,6 +200,9 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                           : RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       clipBehavior: Clip.antiAlias,
                       child: ListTile(
+                        // Y2K: compact rows, more servers on screen.
+                        contentPadding: y2k ? const EdgeInsets.fromLTRB(18, 4, 16, 6) : null,
+                        visualDensity: y2k ? VisualDensity.compact : null,
                         onTap: () => panel ? widget.onPick!(server) : Navigator.of(context).pop(server),
                         onLongPress: () {
                           if (!panel) Navigator.of(context).pop();

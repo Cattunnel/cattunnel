@@ -47,7 +47,8 @@ class Y2kNavigationBar extends StatelessWidget {
                 alignment: Alignment(count == 1 ? 0 : -1 + 2 * selectedIndex / (count - 1), -1),
                 child: FractionallySizedBox(
                   widthFactor: 1 / count,
-                  child: Center(
+                  child: Align(
+                    alignment: Alignment.topCenter,
                     child: Container(
                       width: 44,
                       height: 2,
