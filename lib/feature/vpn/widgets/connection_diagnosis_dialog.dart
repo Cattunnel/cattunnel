@@ -8,6 +8,7 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/logging/enum/logging_level.dart';
 import 'package:trusttunnel/common/logging/enum/logging_security_type.dart';
+import 'package:trusttunnel/common/theme/own_style.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/vpn_configuration_log_level.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
@@ -19,6 +20,7 @@ import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/exclu
 import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik's "why won't it connect" report (see [ConnectionDiagnostics]):
 /// a magnifier cat and a live checklist while probing, then a verdict in
@@ -224,8 +226,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     final done = result != null || _connectedMeanwhile;
 
     return Dialog(
-      backgroundColor: context.colors.backgroundSystem,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.hasOwnStyle ? null : context.colors.backgroundSystem,
+      shape: context.hasOwnStyle ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -243,7 +245,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                   scale: Tween(begin: 0.85, end: 1.0).animate(animation),
                   child: FadeTransition(opacity: animation, child: child),
                 ),
-                child: Image.asset(_catAsset, key: ValueKey(_catAsset), height: 130),
+                child: MarsikImage(_catAsset, key: ValueKey(_catAsset), height: 130),
               ),
             ),
             const SizedBox(height: 12),

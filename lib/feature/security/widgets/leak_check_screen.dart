@@ -8,6 +8,7 @@ import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Marsik's leak check: exit address through the selected server vs the
@@ -97,7 +98,7 @@ class _LeakCheckScreenState extends State<LeakCheckScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             Center(
-              child: Image.asset(
+              child: MarsikImage(
                 _running || (_exit == null && _direct == null && !_noServer)
                     ? AssetImages.catMagnifier
                     : (_allGood ? AssetImages.catShield : AssetImages.catAlert),
@@ -118,12 +119,16 @@ class _LeakCheckScreenState extends State<LeakCheckScreen> {
               _row(
                 context,
                 context.ln.leakVpnDns,
-                vpnActive && network!.vpnDnsServers.isNotEmpty ? network.vpnDnsServers.join(', ') : context.ln.checkNeedVpn,
+                vpnActive && network!.vpnDnsServers.isNotEmpty
+                    ? network.vpnDnsServers.join(', ')
+                    : context.ln.checkNeedVpn,
               ),
               _row(
                 context,
                 context.ln.checkIpv6,
-                !vpnActive ? context.ln.checkNeedVpn : (network!.ipv6Leak ? context.ln.checkIpv6Leak : context.ln.checkIpv6Ok),
+                !vpnActive
+                    ? context.ln.checkNeedVpn
+                    : (network!.ipv6Leak ? context.ln.checkIpv6Leak : context.ln.checkIpv6Ok),
                 warning: vpnActive && network!.ipv6Leak,
               ),
               const SizedBox(height: 16),

@@ -6,6 +6,8 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/logging/observers/logging_navigator_observer.dart';
 import 'package:trusttunnel/common/router/app_route.dart';
 import 'package:trusttunnel/common/router/app_routes.dart';
+import 'package:trusttunnel/common/theme/aero_theme.dart';
+import 'package:trusttunnel/common/theme/y2k_theme.dart';
 import 'package:trusttunnel/common/utils/navigation_utils.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/deep_link/deep_link_scope.dart';
@@ -20,7 +22,11 @@ import 'package:trusttunnel/feature/server/servers/widget/servers_screen.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/widgets/scope/logs_manager_scope.dart';
 import 'package:trusttunnel/feature/settings/query_log/widgets/query_log_screen.dart';
 import 'package:trusttunnel/feature/settings/settings/settings_screen.dart';
+import 'package:trusttunnel/widgets/aero/aero_navigation_bar.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_navigation_bar.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
@@ -77,21 +83,29 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
   }
 
+  /// «Аэро»: the strip behind the status bar takes the sky's top color.
+  Color get _aeroTop => AeroScene.of(AeroClock.phase.value).top;
+
   @override
   Widget build(BuildContext context) => LogsManagerScope(
     child: TrayMenuScope(
       onRouteRequested: _openRouteFromTray,
       child: ColoredBox(
-        color: context.colors.background,
+        color: context.isY2k ? Y2kColors.ink : (context.isAero ? _aeroTop : context.colors.background),
         child: SafeArea(
           right: false,
           bottom: false,
           left: false,
           child: Scaffold(
             primary: false,
-            backgroundColor: context.colors.backgroundSystem,
+            // Аэро: the pages' landscape runs on under the floating glass bar.
+            extendBody: context.isAero,
+            backgroundColor: context.isY2k
+                ? Y2kColors.ink
+                : (context.isAero ? AeroScene.of(AeroClock.phase.value).ground : context.colors.backgroundSystem),
             body: SafeArea(
               top: false,
+              bottom: !context.isAero,
               child: context.isMobileBreakpoint
                   ? _getContent()
                   : Row(
@@ -114,13 +128,31 @@ class _NavigationScreenState extends State<NavigationScreen> {
             bottomNavigationBar: context.isMobileBreakpoint
                 ? ValueListenableBuilder(
                     valueListenable: _selectedTabNotifier,
-                    builder: (context, index, _) => SafeArea(
-                      child: NavigationBar(
-                        selectedIndex: index,
-                        onDestinationSelected: _onDestinationSelected,
-                        destinations: NavigationUtils.getBottomNavigationDestinations(context),
-                      ),
-                    ),
+                    builder: (context, index, _) => context.isAero
+                        ? AeroNavigationBar(
+                            selectedIndex: index,
+                            onDestinationSelected: _onDestinationSelected,
+                            destinations: [
+                              for (final d in NavigationUtils.getDestinations(context))
+                                (d['icon']! as IconData, d['label'].toString()),
+                            ],
+                          )
+                        : context.isY2k
+                        ? Y2kNavigationBar(
+                            selectedIndex: index,
+                            onDestinationSelected: _onDestinationSelected,
+                            destinations: [
+                              for (final d in NavigationUtils.getDestinations(context))
+                                (d['icon']! as IconData, d['label'].toString()),
+                            ],
+                          )
+                        : SafeArea(
+                            child: NavigationBar(
+                              selectedIndex: index,
+                              onDestinationSelected: _onDestinationSelected,
+                              destinations: NavigationUtils.getBottomNavigationDestinations(context),
+                            ),
+                          ),
                   )
                 : null,
           ),
@@ -226,23 +258,43 @@ class _NavigationScreenState extends State<NavigationScreen> {
     }
 
     _selectedTabNotifier.value = selectedIndex;
-    navigatorState.pushAndRemoveUntil(
-      PageRouteBuilder(
-        settings: AppRoutes.byNavigationIndex(selectedIndex).settings,
-        pageBuilder:
-            (
-              context,
-              animation,
-              secondaryAnimation,
-            ) => getScreenByIndex(
-              selectedIndex,
-              deepLinkData: deepLinkData,
-            ),
-        transitionDuration: Duration.zero,
-        reverseTransitionDuration: Duration.zero,
-      ),
-      (_) => false,
+    // Y2K / Аэро: the new tab is drawn by the scan line (rises as a bubble)
+    // over the old one, which is dropped once the transition is done.
+    final scan = (context.isY2k || context.isAero) && !MediaQuery.of(context).disableAnimations;
+    final aero = context.isAero;
+    final route = PageRouteBuilder<void>(
+      settings: AppRoutes.byNavigationIndex(selectedIndex).settings,
+      pageBuilder:
+          (
+            context,
+            animation,
+            secondaryAnimation,
+          ) => getScreenByIndex(
+            selectedIndex,
+            deepLinkData: deepLinkData,
+          ),
+      transitionDuration: scan ? Duration(milliseconds: aero ? 420 : 650) : Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) => scan
+          ? (aero
+                ? AeroPageTransitionsBuilder.bubbleIn(context, animation, child)
+                : Y2kPageTransitionsBuilder.scanIn(context, animation, child))
+          : child,
     );
+    if (scan) {
+      unawaited(navigatorState.push(route));
+      void dropBelow(AnimationStatus status) {
+        if (status != AnimationStatus.completed) return;
+        route.animation?.removeStatusListener(dropBelow);
+        while (route.isActive && !route.isFirst) {
+          navigatorState.removeRouteBelow(route);
+        }
+      }
+
+      route.animation?.addStatusListener(dropBelow);
+    } else {
+      unawaited(navigatorState.pushAndRemoveUntil(route, (_) => false));
+    }
 
     await SchedulerBinding.instance.endOfFrame;
   }

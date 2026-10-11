@@ -3,6 +3,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Shown when a VPN connection attempt fails.
 class ConnectionErrorDialog extends StatelessWidget {
@@ -20,7 +21,7 @@ class ConnectionErrorDialog extends StatelessWidget {
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(AssetImages.catAlert, height: 96),
+        const MarsikImage(AssetImages.catAlert, height: 96),
         const SizedBox(height: 16),
         Text(message),
       ],

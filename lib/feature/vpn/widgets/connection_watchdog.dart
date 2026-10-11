@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/vpn/widgets/connection_diagnosis_dialog.dart
 import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Opens [ConnectionDiagnosisDialog] when a connection attempt has been
 /// stuck for [_stuckAfter] - i.e. the VPN left `connected`/`disconnected`
@@ -72,7 +73,7 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(AssetImages.catWires, height: 110),
+              const MarsikImage(AssetImages.catWires, height: 110),
               const SizedBox(height: 16),
               Text(dialogContext.ln.startFailedAlertBody, textAlign: TextAlign.center),
             ],
@@ -115,7 +116,7 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(AssetImages.catWires, height: 110),
+              const MarsikImage(AssetImages.catWires, height: 110),
               const SizedBox(height: 16),
               Text(dialogContext.ln.antiDpiAutoFailedBody, textAlign: TextAlign.center),
             ],

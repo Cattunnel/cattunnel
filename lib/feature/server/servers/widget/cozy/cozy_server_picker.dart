@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/asset_icons.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/theme/own_style.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_sort_option.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
@@ -10,7 +13,9 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/server_sort_sheet.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// Bottom sheet of the «Уютный» style: every server with its ping, sorted
 /// like the servers list (same saved sort option), "sort" and "test all" on
@@ -55,8 +60,11 @@ class CozyServerPicker extends StatefulWidget {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    backgroundColor: context.colors.background,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    // Y2K: the theme's glass sheet with cut corner.
+    backgroundColor: context.hasOwnStyle ? null : context.colors.background,
+    shape: context.hasOwnStyle
+        ? null
+        : const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     builder: (_) => CozyServerPicker(currentId: currentId, onOpenDetails: onOpenDetails),
   );
 
@@ -115,6 +123,8 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
     final servers = sortServers(allServers, _sortOption, ServerLatencyScope.of(context));
 
     final panel = widget._panel;
+    final y2k = context.isY2k;
+    final aero = context.isAero;
     final content = Column(
       mainAxisSize: panel ? MainAxisSize.max : MainAxisSize.min,
       children: [
@@ -122,7 +132,17 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
           padding: EdgeInsets.fromLTRB(24, panel ? 16 : 0, 12, 8),
           child: Row(
             children: [
-              Expanded(child: Text(context.ln.cozyChooseServer, style: context.textTheme.titleLarge)),
+              Expanded(
+                child: y2k
+                    ? Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Y2kChromeTitle(context.ln.cozyChooseServer.toUpperCase(), size: 15),
+                        ),
+                      )
+                    : Text(context.ln.cozyChooseServer, style: context.textTheme.titleLarge),
+              ),
               if (_subscriptions.isNotEmpty)
                 _refreshing
                     ? const Padding(
@@ -159,37 +179,68 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
             shrinkWrap: !panel,
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             children: [
-              for (final server in servers)
+              for (final (index, server) in servers.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Material(
-                    color: server.id == widget.currentId ? colors.blend : colors.backgroundAdditional,
-                    borderRadius: BorderRadius.circular(20),
-                    clipBehavior: Clip.antiAlias,
-                    child: ListTile(
-                      onTap: () => panel ? widget.onPick!(server) : Navigator.of(context).pop(server),
-                      onLongPress: () {
-                        if (!panel) Navigator.of(context).pop();
-                        widget.onOpenDetails(server);
-                      },
-                      title: Text(server.serverData.name, style: context.textTheme.titleSmall),
-                      subtitle: Text(
-                        server.serverData.ipAddress,
-                        style: context.textTheme.bodySmall?.copyWith(color: colors.neutralDark),
-                      ),
-                      trailing: panel
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _Latency(server: server),
-                                IconButton(
-                                  tooltip: server.serverData.name,
-                                  icon: Icon(Icons.more_horiz_rounded, color: colors.neutralDark),
-                                  onPressed: () => widget.onOpenDetails(server),
-                                ),
-                              ],
+                  child: _Y2kEntrance(
+                    enabled: y2k,
+                    index: index,
+                    child: Material(
+                      color: y2k
+                          ? (server.id == widget.currentId
+                                ? Y2kColors.electric.withValues(alpha: 0.2)
+                                : Y2kColors.navy.withValues(alpha: 0.55))
+                          : (server.id == widget.currentId ? colors.blend : colors.backgroundAdditional),
+                      shape: y2k
+                          ? y2kCut(
+                              12,
+                              BorderSide(
+                                color: server.id == widget.currentId
+                                    ? Y2kColors.glow.withValues(alpha: 0.8)
+                                    : Y2kColors.steel.withValues(alpha: 0.25),
+                              ),
                             )
-                          : _Latency(server: server),
+                          : RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              // Аэро: the current server is ringed in lime.
+                              side: aero && server.id == widget.currentId
+                                  ? BorderSide(
+                                      color: context.isAeroNight ? AeroColors.limeNight : AeroColors.lime,
+                                      width: 2,
+                                    )
+                                  : BorderSide.none,
+                            ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        // Y2K: compact rows, more servers on screen.
+                        contentPadding: y2k ? const EdgeInsets.fromLTRB(18, 4, 16, 6) : null,
+                        visualDensity: y2k ? VisualDensity.compact : null,
+                        onTap: () => panel ? widget.onPick!(server) : Navigator.of(context).pop(server),
+                        onLongPress: () {
+                          if (!panel) Navigator.of(context).pop();
+                          widget.onOpenDetails(server);
+                        },
+                        title: Text(server.serverData.name, style: context.textTheme.titleSmall),
+                        subtitle: y2k
+                            ? Y2kMicro(server.serverData.ipAddress, color: Y2kColors.dim)
+                            : Text(
+                                server.serverData.ipAddress,
+                                style: context.textTheme.bodySmall?.copyWith(color: colors.neutralDark),
+                              ),
+                        trailing: panel
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _Latency(server: server),
+                                  IconButton(
+                                    tooltip: server.serverData.name,
+                                    icon: Icon(Icons.more_horiz_rounded, color: colors.neutralDark),
+                                    onPressed: () => widget.onOpenDetails(server),
+                                  ),
+                                ],
+                              )
+                            : _Latency(server: server),
+                      ),
                     ),
                   ),
                 ),
@@ -209,11 +260,20 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
     );
 
     if (panel) return content;
+    // Y2K: the calm moving backdrop behind the sheet's content.
+    final sheet = y2k
+        ? Stack(
+            children: [
+              const Positioned.fill(child: Y2kBackdrop(calm: true, child: SizedBox.shrink())),
+              content,
+            ],
+          )
+        : content;
 
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.75),
-        child: content,
+        child: sheet,
       ),
     );
   }
@@ -237,7 +297,34 @@ class _Latency extends StatelessWidget {
     return Text(
       ms != null ? context.ln.cozyPing(ms) : context.ln.serverUnreachable,
       style: context.textTheme.bodySmall?.copyWith(
-        color: ms != null ? context.colors.neutralDark : context.colors.orange1,
+        color: ms != null ? (context.isY2k ? Y2kColors.glow : context.colors.neutralDark) : context.colors.orange1,
+      ),
+    );
+  }
+}
+
+/// Y2K: list rows slide in from the left one after another and light up.
+class _Y2kEntrance extends StatelessWidget {
+  final bool enabled;
+  final int index;
+  final Widget child;
+
+  const _Y2kEntrance({required this.enabled, required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled || MediaQuery.of(context).disableAnimations) return child;
+    // Rows further down start later; past the 10th all come together.
+    final delay = math.min(index, 10) * 0.06;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 380 + (delay * 1000).round()),
+      curve: Interval(delay / (0.38 + delay), 1, curve: Curves.easeOutCubic),
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(offset: Offset((1 - t) * -28, 0), child: child),
       ),
     );
   }

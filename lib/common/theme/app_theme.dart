@@ -9,7 +9,10 @@ import 'package:trusttunnel/widgets/custom_icon.dart';
 class AppTheme {
   final ThemePalette _p;
 
-  AppTheme(this._p);
+  /// Text font: Roboto, or Exo 2 in the Y2K style.
+  final String _font;
+
+  AppTheme(this._p, {String font = FontFamilies.roboto}) : _font = font;
 
   // Legacy colors
 
@@ -771,7 +774,7 @@ class AppTheme {
       fontSize: 57,
       letterSpacing: -0.25,
       height: 1.12,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     displayMedium: TextStyle(
@@ -780,7 +783,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 45,
       height: 1.15,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     displaySmall: TextStyle(
@@ -789,7 +792,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 36,
       height: 1.22,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     headlineLarge: TextStyle(
@@ -798,7 +801,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 32,
       height: 1.25,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     headlineMedium: TextStyle(
@@ -807,7 +810,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 28,
       height: 1.28,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     headlineSmall: TextStyle(
@@ -816,7 +819,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 24,
       height: 1.33,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     titleLarge: TextStyle(
@@ -825,7 +828,7 @@ class AppTheme {
       color: _p.neutralBlack,
       fontSize: 22,
       height: 1.27,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     titleMedium: TextStyle(
@@ -835,7 +838,7 @@ class AppTheme {
       fontSize: 16,
       letterSpacing: 0.15,
       height: 1.5,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     titleSmall: TextStyle(
@@ -845,7 +848,7 @@ class AppTheme {
       fontSize: 14,
       letterSpacing: 0.1,
       height: 1.42,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     labelLarge: TextStyle(
@@ -855,7 +858,7 @@ class AppTheme {
       fontSize: 14,
       letterSpacing: 0.1,
       height: 1.42,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     labelMedium: TextStyle(
@@ -865,7 +868,7 @@ class AppTheme {
       fontSize: 12,
       letterSpacing: 0.5,
       height: 1.33,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     labelSmall: TextStyle(
@@ -875,7 +878,7 @@ class AppTheme {
       fontSize: 11,
       letterSpacing: 0.5,
       height: 1.45,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     bodyLarge: TextStyle(
@@ -885,7 +888,7 @@ class AppTheme {
       fontSize: 16,
       letterSpacing: 0.5,
       height: 1.5,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     bodyMedium: TextStyle(
@@ -895,7 +898,7 @@ class AppTheme {
       fontSize: 14,
       letterSpacing: 0.25,
       height: 1.42,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
     bodySmall: TextStyle(
@@ -905,7 +908,7 @@ class AppTheme {
       fontSize: 12,
       letterSpacing: 0.4,
       height: 1.33,
-      fontFamily: FontFamilies.roboto,
+      fontFamily: _font,
       leadingDistribution: TextLeadingDistribution.even,
     ),
   );
@@ -979,7 +982,7 @@ class AppTheme {
 
     // TYPOGRAPHY & ICONOGRAPHY
     textTheme: _textTheme,
-    fontFamily: FontFamilies.roboto,
+    fontFamily: _font,
     iconTheme: _iconThemeData,
     textSelectionTheme: _textSelectionTheme,
 

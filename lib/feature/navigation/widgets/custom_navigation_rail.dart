@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 class CustomNavigationRail extends StatelessWidget {
   final int selectedIndex;
@@ -24,9 +25,9 @@ class CustomNavigationRail extends StatelessWidget {
           child: IntrinsicHeight(
             child: NavigationRail(
               // Marsik on top, like the app icon: the wide window's face.
-              leading: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Image.asset(AssetImages.catFace, width: 44, height: 44),
+              leading: const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: MarsikImage(AssetImages.catFace, width: 44, height: 44),
               ),
               selectedIndex: selectedIndex,
               onDestinationSelected: onDestinationSelected,
