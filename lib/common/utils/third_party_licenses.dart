@@ -46,6 +46,8 @@ const _entries = <(List<String>, String)>[
   // Fonts of the Y2K style
   (['Unbounded (font)'], 'font_unbounded.txt'),
   (['Exo 2 (font)'], 'font_exo2.txt'),
+  // Font of the Aero style
+  (['Nunito (font)'], 'font_nunito.txt'),
 ];
 
 void registerThirdPartyLicenses() {

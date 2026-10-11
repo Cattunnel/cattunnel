@@ -64,6 +64,9 @@ Third-party code and assets included in this repository:
 - assets/fonts/y2k/: Unbounded (Copyright 2022 The Unbounded Project Authors)
   and Exo 2 (Copyright 2013 The Exo 2 Project Authors), SIL Open Font
   License 1.1 (assets/licenses/font_unbounded.txt, font_exo2.txt).
+- assets/fonts/aero/: Nunito (Copyright 2014 The Nunito Project Authors),
+  SIL Open Font License 1.1 (assets/licenses/font_nunito.txt); static weights
+  cut from the variable font with fontTools' instancer, unmodified otherwise.
 - packages/window_manager: from leanflutter/window_manager, Copyright (c) 2022
   LiJianying, MIT License (packages/window_manager/LICENSE), as carried by the
   upstream repository.

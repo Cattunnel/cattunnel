@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/theme/own_style.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_compliments.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_owner_preferences.dart';
 import 'package:trusttunnel/feature/companion/widgets/cat_companion.dart';
@@ -329,8 +330,8 @@ class _CatPettingDialogState extends State<CatPettingDialog> with SingleTickerPr
     final textScale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 3.0);
 
     return Dialog(
-      backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
-      shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.hasOwnStyle ? null : context.colors.backgroundSystem,
+      shape: context.hasOwnStyle ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

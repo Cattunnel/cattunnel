@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/theme/own_style.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_poems.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
-import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 /// Small "want to read one of my poems?" prompt, offered occasionally after
 /// petting (see [CatPettingDialog]) - only ever shown when [catPoems] isn't
@@ -31,8 +31,8 @@ class CatPoemOfferDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
-    shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    backgroundColor: context.hasOwnStyle ? null : context.colors.backgroundSystem,
+    shape: context.hasOwnStyle ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -91,8 +91,8 @@ class _CatPoemDialogState extends State<CatPoemDialog> {
     final poem = poems[_index ??= Random().nextInt(poems.length)];
 
     return Dialog(
-      backgroundColor: context.isY2k ? null : context.colors.backgroundSystem,
-      shape: context.isY2k ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: context.hasOwnStyle ? null : context.colors.backgroundSystem,
+      shape: context.hasOwnStyle ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

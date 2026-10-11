@@ -60,6 +60,7 @@ dependencies:
   # versions the lock already had transitively.
   ffi: 2.1.5
   win32: 5.15.0
+  sensors_plus: 7.1.1
 
 # dage 1.0.9 (pub.dev) computes the age header MAC key with the wrong HKDF
 # salt length (see packages/dage/lib/src/header.dart) - breaks decrypting
@@ -123,6 +124,20 @@ flutter:
           weight: 600
         - asset: assets/fonts/y2k/Exo2-Bold.ttf
           weight: 700
+    # «Аэро» style: rounded and soft, with Cyrillic (SIL OFL 1.1); static
+    # weights cut from the variable font with fontTools' instancer
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/aero/Nunito-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/aero/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/aero/Nunito-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/aero/Nunito-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/aero/Nunito-Black.ttf
+          weight: 900
     - family: Roboto
       fonts:
         - asset: assets/fonts/roboto/Roboto-Thin.ttf
