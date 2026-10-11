@@ -659,6 +659,14 @@
   "appearanceStyleY2kDescription": "Early-2000s look: deep navy, electric blue, chrome and shards. Always dark.",
   "appearanceStyleAero": "Aero",
   "appearanceStyleAeroDescription": "Frutiger Aero: sky, grass, glass and bubbles. Morning, day, evening and night follow the phone's clock.",
+  "appearanceUseStyle": "Use {name}",
+  "@appearanceUseStyle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "appearanceTheme": "Theme",
   "appearanceThemeSystem": "Same as the phone",
   "appearanceThemeLight": "Light",
@@ -684,7 +692,7 @@
     }
   },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• Your own anti-DPI string in ByeDPI syntax, checked as you type, with ready-made examples. Server settings → Censorship bypass → Technique\n• TLS fingerprint: the connection looks like your default browser\n• The server page is split into sections, each with a \"?\" explanation\n• If a server's address gets frozen, I no longer knock on it every second: I pause, tell you what's wrong and offer another server\n• For experts: size masking of the first packets (HTTP/2)\n• Settings → How the connection works: what happens step by step\n• For experts: \"Turn off QUIC\" - browsers and YouTube go over TCP inside the tunnel\n• On Android, links and subscriptions now apply everything they set: Russian exit, technique, fingerprint\n• The VPN no longer reconnects when you open the app, and switching servers connects once",
+  "whatsNewBody": "• Two new looks. «Aero»: sky, grass, glass and bubbles; morning, day, evening and night follow your phone's clock, and the scene shifts a little as you tilt the phone. «Y2K»: the early 2000s, deep navy, chrome and a holographic Marsik\n• Pick one right here or later: Settings → Appearance\n• Marsik's poems now in English too\n• About: a link to the source code on GitHub",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",
