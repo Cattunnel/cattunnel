@@ -65,6 +65,7 @@
   "discardChangesDialogTitle": "Discard changes?",
   "discardChangesDialogDescription": "Are you sure you want to discard all changes?",
   "about": "About",
+  "aboutSourceCode": "Source code on GitHub",
   "aboutAttribution": "CatTunnel is a client built on the open-source TrustTunnel engine by AdGuard, licensed under Apache 2.0.",
   "viewLicenses": "View open-source licenses",
   "virusTotalBadge": "Scanned with VirusTotal — detections: {count}",

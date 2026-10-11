@@ -51,6 +51,7 @@
   "discardChangesDialogTitle": "Отменить изменения?",
   "discardChangesDialogDescription": "Вы уверены, что хотите отменить все изменения?",
   "about": "О приложении",
+  "aboutSourceCode": "Исходный код на GitHub",
   "aboutAttribution": "CatTunnel — клиент на основе открытого движка TrustTunnel от AdGuard, распространяется по лицензии Apache 2.0.",
   "viewLicenses": "Лицензии open-source",
   "virusTotalBadge": "Проверено VirusTotal — угроз: {count}",
