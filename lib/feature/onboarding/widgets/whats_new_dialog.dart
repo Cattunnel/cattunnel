@@ -4,6 +4,7 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/theme/appearance_preferences.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// "What's new" once per [_release]: shown after an update (and right after
 /// the onboarding on a fresh install). The main-screen style pick is in it
@@ -60,7 +61,7 @@ class _WhatsNewViewState extends State<_WhatsNewView> {
         // The style pick comes first: with a large system font the list of
         // news pushed it far below "Done", people tapped "Done" without
         // ever seeing it and stayed on whatever was preselected.
-        Image.asset(AssetImages.catWave, height: 96),
+        const MarsikImage(AssetImages.catWave, height: 96),
         const SizedBox(height: 12),
         if (widget.pickStyle) ...[
           Text(context.ln.whatsNewPickStyle, style: context.textTheme.titleSmall),
@@ -172,7 +173,7 @@ class _CozyPreview extends StatelessWidget {
             color: colors.background,
             border: Border.all(color: colors.accent, width: 2),
           ),
-          child: Image.asset(AssetImages.catSleeping),
+          child: const MarsikImage(AssetImages.catSleeping),
         ),
         const SizedBox(height: 10),
         Container(

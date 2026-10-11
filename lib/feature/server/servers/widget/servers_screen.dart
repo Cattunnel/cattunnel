@@ -31,6 +31,8 @@ class _ServersScreenState extends State<ServersScreen> {
     valueListenable: AppearancePreferences.style,
     builder: (context, style, _) => switch (style) {
       AppStyle.cozy => CozyServersView(deepLinkData: widget.deepLinkData),
+      AppStyle.y2k => CozyServersView(deepLinkData: widget.deepLinkData, y2k: true),
+      AppStyle.aero => CozyServersView(deepLinkData: widget.deepLinkData, aero: true),
       AppStyle.minimal => ServersScreenView(deepLinkData: widget.deepLinkData),
     },
   );

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_icon_button.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
+import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 const _toolbarHeight = 64.0;
 
@@ -40,14 +42,20 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final showBackButton = leadingIconType != null;
+    final y2k = context.isY2k;
+    final aero = context.isAero;
     final backButton = showBackButton ? _getBackButtonByType(context, leadingIconType!) : null;
     final body = AppBar(
       centerTitle: centerTitle ?? !showBackButton,
       title: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-        child: Text(title),
+        child: y2k
+            ? FittedBox(fit: BoxFit.scaleDown, child: Y2kChromeTitle(title.toUpperCase(), size: 16))
+            : aero
+            ? FittedBox(fit: BoxFit.scaleDown, child: AeroTitle(title, size: 24))
+            : Text(title),
       ),
-      backgroundColor: context.colors.background,
+      backgroundColor: y2k || aero ? Colors.transparent : context.colors.background,
       bottom: bottom != null
           ? PreferredSize(
               preferredSize: Size.fromHeight(bottomHeight),

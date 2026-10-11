@@ -9,6 +9,7 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/ru_lists/cidr_set.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Before the first connect to a key the person added themselves (not from
 /// a subscription - ours mark their Russian-exit keys, and the cascade,
@@ -50,17 +51,26 @@ abstract final class RuExitPrompt {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Image.asset(AssetImages.catMagnifier, height: 96),
+            const MarsikImage(AssetImages.catMagnifier, height: 96),
             const SizedBox(height: 12),
             Text(dialogContext.ln.ruExitPromptBody(data.name)),
           ],
         ),
         actionsBuilder: (_) => [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(dialogContext.ln.ruExitPromptNo)),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(dialogContext.ln.ruExitPromptNo),
+          ),
           if (byName && byAddress)
-            FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(dialogContext.ln.ruExitPromptYes))
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.ln.ruExitPromptYes),
+            )
           else
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(dialogContext.ln.ruExitPromptYes)),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.ln.ruExitPromptYes),
+            ),
         ],
       ),
     );
@@ -89,7 +99,9 @@ abstract final class RuExitPrompt {
     try {
       final resolved = await InternetAddress.lookup(host).timeout(const Duration(seconds: 2));
 
-      return resolved.any((a) => cidrsContain(a.type == InternetAddressType.IPv6 ? lists.v6Cidrs : lists.v4Cidrs, a.address));
+      return resolved.any(
+        (a) => cidrsContain(a.type == InternetAddressType.IPv6 ? lists.v6Cidrs : lists.v4Cidrs, a.address),
+      );
     } on Object {
       return false;
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 class DefaultPage extends StatelessWidget {
   final String title;
@@ -67,7 +68,7 @@ class DefaultPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset(
+                MarsikImage(
                   imagePath,
                   width: imageSize.width,
                   height: imageSize.height,

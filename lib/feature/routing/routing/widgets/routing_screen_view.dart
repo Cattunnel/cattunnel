@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/routing/routing_details/widgets/routing_deta
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 class RoutingScreenView extends StatefulWidget {
   const RoutingScreenView({super.key});
@@ -55,9 +56,9 @@ class _RoutingScreenViewState extends State<RoutingScreenView> {
               tooltip: context.ln.splitTitle,
               onPressed: () => showSplitChoiceDialog(context),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Image.asset(AssetImages.catWires, height: 36),
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: MarsikImage(AssetImages.catWires, height: 36),
             ),
           ],
         ),

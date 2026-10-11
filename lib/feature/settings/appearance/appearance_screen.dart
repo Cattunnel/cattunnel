@@ -50,11 +50,15 @@ class AppearanceScreen extends StatelessWidget {
   static String _styleName(BuildContext context, AppStyle style) => switch (style) {
     AppStyle.minimal => context.ln.appearanceStyleMinimal,
     AppStyle.cozy => context.ln.appearanceStyleCozy,
+    AppStyle.y2k => context.ln.appearanceStyleY2k,
+    AppStyle.aero => context.ln.appearanceStyleAero,
   };
 
   static String _styleDescription(BuildContext context, AppStyle style) => switch (style) {
     AppStyle.minimal => context.ln.appearanceStyleMinimalDescription,
     AppStyle.cozy => context.ln.appearanceStyleCozyDescription,
+    AppStyle.y2k => context.ln.appearanceStyleY2kDescription,
+    AppStyle.aero => context.ln.appearanceStyleAeroDescription,
   };
 
   static String _themeName(BuildContext context, ThemeMode mode) => switch (mode) {

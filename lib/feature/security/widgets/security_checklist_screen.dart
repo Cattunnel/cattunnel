@@ -6,6 +6,7 @@ import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 enum _CheckStatus { ok, warning, info }
 
@@ -137,8 +138,10 @@ class _SecurityChecklistScreenState extends State<SecurityChecklistScreen> with 
           padding: const EdgeInsets.symmetric(vertical: 16),
           children: [
             Center(
-              child: Image.asset(
-                items == null ? AssetImages.catMagnifier : (warnings == 0 ? AssetImages.catShield : AssetImages.catAlert),
+              child: MarsikImage(
+                items == null
+                    ? AssetImages.catMagnifier
+                    : (warnings == 0 ? AssetImages.catShield : AssetImages.catAlert),
                 height: 110,
               ),
             ),

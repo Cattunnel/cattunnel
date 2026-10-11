@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Cat shown in the servers screen's app bar: purely a live VPN-state
 /// indicator (sleeping/working/shielded), no interaction of its own -
@@ -24,7 +25,7 @@ class CatCompanion extends StatelessWidget {
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
-      child: Image.asset(asset, key: ValueKey(asset), height: 36),
+      child: MarsikImage(asset, key: ValueKey(asset), height: 36),
     );
   }
 }

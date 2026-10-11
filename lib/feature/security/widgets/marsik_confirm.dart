@@ -3,6 +3,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik asks [steps] questions in a row (e.g. three escalating "are you
 /// sure?" before weakening a protection). Resolves to true only if every
@@ -29,7 +30,7 @@ Future<bool> marsikConfirmSteps(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Calmer cat on the first question, alarmed from then on.
-            Image.asset(i == 0 && !destructive ? AssetImages.catFace : AssetImages.catAlert, height: 96),
+            MarsikImage(i == 0 && !destructive ? AssetImages.catFace : AssetImages.catAlert, height: 96),
             const SizedBox(height: 16),
             Text(steps[i], textAlign: TextAlign.center),
           ],
