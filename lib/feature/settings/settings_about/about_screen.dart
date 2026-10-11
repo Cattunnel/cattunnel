@@ -23,6 +23,9 @@ import 'package:url_launcher/url_launcher.dart';
 const _virusTotalReportUrl = String.fromEnvironment('VT_REPORT_URL');
 const _virusTotalDetections = String.fromEnvironment('VT_DETECTIONS', defaultValue: '?');
 
+/// The app's open source code.
+const _sourceUrl = 'https://github.com/Cattunnel/cattunnel';
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -46,6 +49,14 @@ class AboutScreen extends StatelessWidget {
                 imagePath: AssetImages.catShield,
                 buttonText: context.ln.viewLicenses,
                 onButtonPressed: () => _showLicenses(context),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextButton.icon(
+                icon: const Icon(Icons.code),
+                label: Text(context.ln.aboutSourceCode),
+                onPressed: () => launchUrl(Uri.parse(_sourceUrl), mode: LaunchMode.externalApplication),
               ),
             ),
             if (IntroFilm.supported)
