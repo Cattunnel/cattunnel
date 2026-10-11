@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// «Минимализм» is the original look; «Уютный» adds the big connect button
 /// with Marsik on the Servers screen and rounder shapes; «Y2K» is the same
 /// home as «Уютный» in an early-2000s look (navy, electric blue, chrome,
-/// shards), always dark.
-enum AppStyle { minimal, cozy, y2k }
+/// shards), always dark; «Аэро» is that home again in the Frutiger Aero
+/// look (sky, grass, glass, bubbles) that follows the time of day.
+enum AppStyle { minimal, cozy, y2k, aero }
 
 /// Settings -> Appearance: the style and light/dark/system theme, stored in
 /// SharedPreferences. [App] listens to both and rebuilds its `MaterialApp`,

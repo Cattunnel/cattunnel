@@ -20,6 +20,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_as
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
 import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
@@ -31,7 +32,9 @@ import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 /// ping, and a card of the current server that opens [CozyServerPicker].
 /// Connecting goes through [ServerConnectionActions], same as the list.
 /// With [y2k] the same home is drawn in the «Y2K» style (Y2kBackdrop, chrome
-/// title, ring button, glass card) - the behaviour stays one piece of code.
+/// title, ring button, glass card), with [aero] in the «Аэро» style
+/// (AeroBackdrop, glossy title, glass bubble, frosted card) - the behaviour
+/// stays one piece of code.
 class CozyServersView extends StatefulWidget {
   /// A tt:// link that opened the app: shown as a pre-filled server form
   /// (nothing is saved until the person confirms), like the list style.
@@ -40,7 +43,10 @@ class CozyServersView extends StatefulWidget {
   /// The «Y2K» look (AppStyle.y2k) instead of «Уютный».
   final bool y2k;
 
-  const CozyServersView({super.key, this.deepLinkData, this.y2k = false});
+  /// The «Аэро» look (AppStyle.aero).
+  final bool aero;
+
+  const CozyServersView({super.key, this.deepLinkData, this.y2k = false, this.aero = false});
 
   @override
   State<CozyServersView> createState() => _CozyServersViewState();
@@ -109,8 +115,16 @@ class _CozyServersViewState extends State<CozyServersView> {
     if (current != null) _pingOnce(current);
 
     final y2k = widget.y2k;
+    final aero = widget.aero;
     final connectLabel = state == VpnState.connected ? context.ln.disconnect : context.ln.connect;
-    Widget connectButton({double? size}) => y2k
+    Widget connectButton({double? size}) => aero
+        ? AeroConnectButton(
+            state: state,
+            label: connectLabel,
+            size: size == null ? 208 : size * 0.9,
+            onTap: () => _onConnectTap(context, current!, state),
+          )
+        : y2k
         ? Y2kConnectButton(
             state: state,
             label: connectLabel,
@@ -120,8 +134,16 @@ class _CozyServersViewState extends State<CozyServersView> {
         : _ConnectButton(state: state, size: size ?? 224, onTap: () => _onConnectTap(context, current!, state));
 
     final scaffold = Scaffold(
-      backgroundColor: y2k ? Colors.transparent : null,
-      appBar: y2k
+      backgroundColor: y2k || aero ? Colors.transparent : null,
+      appBar: aero
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              centerTitle: true,
+              title: const AeroTitle('CatTunnel'),
+            )
+          : y2k
           ? AppBar(
               backgroundColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
@@ -138,14 +160,24 @@ class _CozyServersViewState extends State<CozyServersView> {
               padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
               children: [
                 Center(child: connectButton()),
+                SizedBox(height: aero ? 8 : 24),
+                if (aero)
+                  Center(
+                    child: AeroGlass(
+                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+                      child: _StatusBlock(state: state, connectedSince: _connectedSince, server: current),
+                    ),
+                  )
+                else
+                  _StatusBlock(
+                    state: state,
+                    connectedSince: _connectedSince,
+                    server: current,
+                  ),
                 const SizedBox(height: 24),
-                _StatusBlock(
-                  state: state,
-                  connectedSince: _connectedSince,
-                  server: current,
-                ),
-                const SizedBox(height: 24),
-                if (y2k)
+                if (aero)
+                  _AeroServerCard(server: current, onTap: () => _openPicker(context, servers, current, state))
+                else if (y2k)
                   _Y2kServerCard(server: current, onTap: () => _openPicker(context, servers, current, state))
                 else
                   _CurrentServerCard(
@@ -590,4 +622,99 @@ class _Y2kTechCell extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// «Аэро»: the current server on frosted glass, with a glossy globe.
+class _AeroServerCard extends StatelessWidget {
+  final Server server;
+  final VoidCallback onTap;
+
+  const _AeroServerCard({required this.server, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final latency = ServerLatencyScope.of(context).resultFor(server.id)?.latency;
+
+    return AeroGlass(
+      onTap: onTap,
+      drops: true,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                center: Alignment(-0.3, -0.4),
+                colors: [Color(0xFF8FD0FF), Color(0xFF2386F0), Color(0xFF0B4FB0)],
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.85)),
+              boxShadow: const [BoxShadow(color: Color(0x4D003C8C), blurRadius: 8, offset: Offset(0, 3))],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.public_rounded, color: Colors.white, size: 26),
+                Positioned(
+                  top: 3,
+                  left: 8,
+                  right: 8,
+                  height: 18,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.all(Radius.elliptical(30, 18)),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.white.withValues(alpha: 0.7), Colors.white.withValues(alpha: 0)],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  server.serverData.name,
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: colors.neutralBlack,
+                  ),
+                ),
+                Text(
+                  server.serverData.ipAddress,
+                  style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: colors.neutralDark),
+                ),
+              ],
+            ),
+          ),
+          if (latency != null)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: (context.isAeroNight ? AeroColors.limeNight : AeroColors.lime).withValues(alpha: 0.28),
+              ),
+              child: Text(
+                context.ln.cozyPing(latency.inMilliseconds),
+                style: context.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: context.isAeroNight ? const Color(0xFFC9FF6A) : const Color(0xFF2F6D0A),
+                ),
+              ),
+            ),
+          Icon(Icons.expand_more_rounded, color: colors.neutralDark),
+        ],
+      ),
+    );
+  }
 }

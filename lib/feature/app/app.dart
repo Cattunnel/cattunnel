@@ -15,6 +15,7 @@ import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/security/widgets/app_lock_gate.dart';
 import 'package:trusttunnel/feature/updates/widgets/update_watcher.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_watchdog.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -49,6 +50,7 @@ class _AppState extends State<App> {
       AppLocalePreferences.current,
       AppearancePreferences.themeMode,
       AppearancePreferences.style,
+      AeroClock.phase,
     ]),
     builder: (context, _) => _buildApp(context, AppLocalePreferences.current.value.value ?? Localization.defaultLocale),
   );
@@ -56,10 +58,33 @@ class _AppState extends State<App> {
   // «Y2K» is dark only: its own theme for both slots, dark mode forced.
   bool get _y2k => AppearancePreferences.style.value == AppStyle.y2k;
 
-  Widget _buildApp(BuildContext context, Locale locale) => MaterialApp(
-    theme: _y2k ? context.dependencyFactory.y2kThemeData : context.dependencyFactory.lightThemeData,
-    darkTheme: _y2k ? context.dependencyFactory.y2kThemeData : context.dependencyFactory.darkThemeData,
-    themeMode: _y2k ? ThemeMode.dark : AppearancePreferences.themeMode.value,
+  // «Аэро» follows the clock, not the light/dark setting: the night theme
+  // from 21 to 5, the light one the rest of the day.
+  bool get _aero => AppearancePreferences.style.value == AppStyle.aero;
+
+  ThemeData? get _ownTheme {
+    final factory = context.dependencyFactory;
+    if (_y2k) return factory.y2kThemeData;
+    if (!_aero) return null;
+
+    return AeroClock.phase.value == AeroPhase.night ? factory.aeroNightThemeData : factory.aeroThemeData;
+  }
+
+  Widget _buildApp(BuildContext context, Locale locale) {
+    if (_aero) {
+      AeroClock.start();
+    } else {
+      AeroClock.stop();
+    }
+    final own = _ownTheme;
+
+    return _materialApp(context, locale, own);
+  }
+
+  Widget _materialApp(BuildContext context, Locale locale, ThemeData? own) => MaterialApp(
+    theme: own ?? context.dependencyFactory.lightThemeData,
+    darkTheme: own ?? context.dependencyFactory.darkThemeData,
+    themeMode: own != null ? ThemeMode.dark : AppearancePreferences.themeMode.value,
     navigatorObservers: [
       LoggingNavigatorObserver(
         navigatorName: 'root',

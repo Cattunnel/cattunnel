@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/assets/font_families.dart';
+import 'package:trusttunnel/common/theme/aero_theme.dart';
 import 'package:trusttunnel/common/theme/app_theme.dart';
 import 'package:trusttunnel/common/theme/theme_palette.dart';
 import 'package:trusttunnel/common/theme/y2k_theme.dart';
@@ -70,6 +71,11 @@ abstract class DependencyFactory {
 
   /// The «Y2K» style's theme (always dark).
   ThemeData get y2kThemeData;
+
+  /// The «Аэро» style's themes: light (morning, day, evening) and night.
+  ThemeData get aeroThemeData;
+
+  ThemeData get aeroNightThemeData;
 
   VpnPlugin get vpnPlugin;
 
@@ -146,6 +152,10 @@ class DependencyFactoryImpl implements DependencyFactory {
 
   ThemeData? _y2kThemeData;
 
+  ThemeData? _aeroThemeData;
+
+  ThemeData? _aeroNightThemeData;
+
   VpnPlugin? _vpnPlugin;
 
   DeepLinkManager? _deepLinkManager;
@@ -207,6 +217,18 @@ class DependencyFactoryImpl implements DependencyFactory {
   @override
   ThemeData get y2kThemeData =>
       _y2kThemeData ??= Y2kTheme.apply(AppTheme(ThemePalette.y2k, font: FontFamilies.exo2).data);
+
+  @override
+  ThemeData get aeroThemeData => _aeroThemeData ??= AeroTheme.apply(
+    AppTheme(ThemePalette.aeroLight, font: FontFamilies.nunito).data,
+    night: false,
+  );
+
+  @override
+  ThemeData get aeroNightThemeData => _aeroNightThemeData ??= AeroTheme.apply(
+    AppTheme(ThemePalette.aeroDark, font: FontFamilies.nunito).data,
+    night: true,
+  );
 
   @override
   VpnPlugin get vpnPlugin => _vpnPlugin ??= VpnPluginImpl();

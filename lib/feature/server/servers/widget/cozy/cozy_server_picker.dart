@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/asset_icons.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/theme/own_style.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_sort_option.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
@@ -12,6 +13,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/server_sort_sheet.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
 import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
@@ -59,8 +61,8 @@ class CozyServerPicker extends StatefulWidget {
     isScrollControlled: true,
     showDragHandle: true,
     // Y2K: the theme's glass sheet with cut corner.
-    backgroundColor: context.isY2k ? null : context.colors.background,
-    shape: context.isY2k
+    backgroundColor: context.hasOwnStyle ? null : context.colors.background,
+    shape: context.hasOwnStyle
         ? null
         : const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     builder: (_) => CozyServerPicker(currentId: currentId, onOpenDetails: onOpenDetails),
@@ -122,6 +124,7 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
 
     final panel = widget._panel;
     final y2k = context.isY2k;
+    final aero = context.isAero;
     final content = Column(
       mainAxisSize: panel ? MainAxisSize.max : MainAxisSize.min,
       children: [
@@ -197,7 +200,16 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                                     : Y2kColors.steel.withValues(alpha: 0.25),
                               ),
                             )
-                          : RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          : RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              // Аэро: the current server is ringed in lime.
+                              side: aero && server.id == widget.currentId
+                                  ? BorderSide(
+                                      color: context.isAeroNight ? AeroColors.limeNight : AeroColors.lime,
+                                      width: 2,
+                                    )
+                                  : BorderSide.none,
+                            ),
                       clipBehavior: Clip.antiAlias,
                       child: ListTile(
                         // Y2K: compact rows, more servers on screen.

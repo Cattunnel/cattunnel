@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope
 import 'package:trusttunnel/feature/settings/logs/widgets/logs_screen.dart';
 import 'package:trusttunnel/feature/settings/readme/readme_screen.dart';
 import 'package:trusttunnel/feature/settings/settings_about/about_screen.dart';
+import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/common/custom_arrow_list_tile.dart';
 import 'package:trusttunnel/widgets/common/custom_radio_list_tile.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
@@ -155,6 +156,21 @@ class _SettingsSection extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(child: Container(height: 1, color: Y2kColors.electric.withValues(alpha: 0.35))),
             ],
+          )
+        : context.isAero
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: AeroGlass(
+              radius: 999,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              child: Text(
+                text,
+                style: context.textTheme.titleSmall?.copyWith(
+                  color: context.colors.neutralBlack,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           )
         : Text(
             text,
