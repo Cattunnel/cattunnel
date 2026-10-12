@@ -13,7 +13,8 @@ import java.util.UUID
  * (see CatTunnelQsTileService.openApp and AutoConnectOnLaunchSettingsScope).
  *
  * Cold start: Dart pulls the flag once via `consumeLaunchedFromTile`.
- * Already running (singleTask -> onNewIntent): pushed via `launchedFromTile`.
+ * Already running (singleTask -> onNewIntent): pushed via `launchedFromTile`;
+ * the tile also pushes it directly while the engine is alive (TileConnector).
  *
  * Also toggles FLAG_SECURE for screens that show keys (see SecureScreen on
  * the Dart side) and hosts [SecurityChannel].
@@ -45,6 +46,7 @@ class CatTunnelActivity : FlutterFragmentActivity() {
                 }
             }
         }
+        liveTileLaunchChannel = tileLaunchChannel
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SECURE_SCREEN_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -63,6 +65,11 @@ class CatTunnelActivity : FlutterFragmentActivity() {
         SecurityChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         UpdateChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         AppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        if (liveTileLaunchChannel === tileLaunchChannel) liveTileLaunchChannel = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -93,6 +100,14 @@ class CatTunnelActivity : FlutterFragmentActivity() {
         const val EXTRA_FROM_TILE = "cattunnel.from_tile"
         private const val TILE_LAUNCH_CHANNEL = "cattunnel/tile_launch"
         private const val SECURE_SCREEN_CHANNEL = "cattunnel/secure_screen"
+
+        /**
+         * The running app's tile channel - set while its Flutter engine is
+         * alive (also in the background), so the tile can ask Dart to
+         * connect without opening a window (TileConnector).
+         */
+        @Volatile
+        var liveTileLaunchChannel: MethodChannel? = null
 
         /** Per-process secret for [EXTRA_FROM_TILE]. */
         val tileLaunchToken: String = UUID.randomUUID().toString()

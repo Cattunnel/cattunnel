@@ -15,10 +15,10 @@ import android.service.quicksettings.TileService
  * "Connect" reuses the last configuration the vendor VPN service persisted in
  * its own [VpnConfigStorage] (the same storage Always-On VPN relies on). That
  * storage is cleared by the vendor service on every explicit `stop()` call
- * (including ours below), so a reconnect only works if the VPN was last left
- * running (e.g. killed by the system) rather than manually disconnected - in
- * that case we fall back to opening the app, marked as a tile launch so it
- * connects to the last server right away (see CatTunnelActivity).
+ * (including ours below), so after a manual disconnect [TileConnector] has
+ * Dart build the configuration (in the running app, or in a windowless
+ * engine) - no window opens. The app is opened only when the VPN permission
+ * isn't granted yet, or that connect failed.
  */
 class CatTunnelQsTileService : TileService() {
 
@@ -44,14 +44,21 @@ class CatTunnelQsTileService : TileService() {
         }
 
         val config = VpnConfigStorage(applicationContext).load()
-        if (config.isNullOrEmpty()) {
-            openApp()
+        if (!config.isNullOrEmpty()) {
+            VpnService.start(applicationContext, config)
+            setTileState(Tile.STATE_ACTIVE)
 
             return
         }
 
-        VpnService.start(applicationContext, config)
+        if (TileConnector.busy) return
         setTileState(Tile.STATE_ACTIVE)
+        TileConnector.connect(applicationContext) { connected ->
+            if (!connected) {
+                runCatching { openApp() }
+            }
+            requestListeningState(applicationContext, ComponentName(applicationContext, CatTunnelQsTileService::class.java))
+        }
     }
 
     private fun updateTileState() = setTileState(if (isVpnActive()) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE)

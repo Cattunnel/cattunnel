@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
@@ -23,7 +24,7 @@ import java.security.cert.X509Certificate
  * `cattunnel/security` - native side of the Cyber security section and
  * Marsik's phone checklist / leak check (see lib/feature/security).
  */
-class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
+class SecurityChannel(private val context: Context, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
 
     init {
         MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
@@ -103,16 +104,16 @@ class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger
     // --- Device checks ------------------------------------------------------
 
     private fun deviceReport(): Map<String, Any?> {
-        val keyguard = activity.getSystemService(KeyguardManager::class.java)
-        val power = activity.getSystemService(PowerManager::class.java)
-        val resolver = activity.contentResolver
+        val keyguard = context.getSystemService(KeyguardManager::class.java)
+        val power = context.getSystemService(PowerManager::class.java)
+        val resolver = context.contentResolver
 
         return mapOf(
             "deviceSecure" to (keyguard?.isDeviceSecure ?: false),
             "privateDnsMode" to Settings.Global.getString(resolver, "private_dns_mode"),
             "privateDnsHost" to Settings.Global.getString(resolver, "private_dns_specifier"),
             "adbEnabled" to (Settings.Global.getInt(resolver, Settings.Global.ADB_ENABLED, 0) == 1),
-            "batteryOptimizationIgnored" to (power?.isIgnoringBatteryOptimizations(activity.packageName) ?: false),
+            "batteryOptimizationIgnored" to (power?.isIgnoringBatteryOptimizations(context.packageName) ?: false),
         )
     }
 
@@ -125,7 +126,7 @@ class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger
      */
     @Suppress("DEPRECATION")
     private fun vpnNetworkReport(): Map<String, Any?> {
-        val connectivity = activity.getSystemService(ConnectivityManager::class.java)
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
             ?: return mapOf("vpnActive" to false)
 
         var vpnActive = false
@@ -185,12 +186,12 @@ class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger
         }
 
         return try {
-            activity.startActivity(intent)
+            context.startActivity(intent.withNewTaskIfNeeded())
             true
         } catch (_: Throwable) {
             // Some OEM builds lack the specific screen - fall back to Settings.
             try {
-                activity.startActivity(Intent(Settings.ACTION_SETTINGS))
+                context.startActivity(Intent(Settings.ACTION_SETTINGS).withNewTaskIfNeeded())
                 true
             } catch (_: Throwable) {
                 false
@@ -200,15 +201,15 @@ class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger
 
     // --- Disguise -----------------------------------------------------------
 
-    private fun component(alias: String) = ComponentName(activity.packageName, "com.adguard.trusttunnel.$alias")
+    private fun component(alias: String) = ComponentName(context.packageName, "com.adguard.trusttunnel.$alias")
 
     private fun isDisguised(): Boolean =
-        activity.packageManager.getComponentEnabledSetting(component(ALIAS_DISGUISED)) ==
+        context.packageManager.getComponentEnabledSetting(component(ALIAS_DISGUISED)) ==
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
 
     /** Swaps the launcher entry between CatTunnel and the "Calculator" alias. */
     private fun setDisguised(disguised: Boolean) {
-        val pm = activity.packageManager
+        val pm = context.packageManager
         val on = PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         val off = PackageManager.COMPONENT_ENABLED_STATE_DISABLED
         pm.setComponentEnabledSetting(component(ALIAS_DISGUISED), if (disguised) on else off, PackageManager.DONT_KILL_APP)
@@ -225,11 +226,15 @@ class SecurityChannel(private val activity: Activity, messenger: BinaryMessenger
      */
     private fun wipeAllData() {
         try {
-            VpnService.stop(activity.applicationContext)
+            VpnService.stop(context.applicationContext)
         } catch (_: Throwable) {
         }
-        activity.getSystemService(ActivityManager::class.java)?.clearApplicationUserData()
+        context.getSystemService(ActivityManager::class.java)?.clearApplicationUserData()
     }
+
+    /** Outside an Activity (the tile's background engine) a start needs its own task. */
+    private fun Intent.withNewTaskIfNeeded(): Intent =
+        if (context is Activity) this else addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     companion object {
         private const val CHANNEL = "cattunnel/security"
