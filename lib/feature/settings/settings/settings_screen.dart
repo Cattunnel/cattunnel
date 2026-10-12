@@ -12,6 +12,8 @@ import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope
 import 'package:trusttunnel/feature/settings/logs/widgets/logs_screen.dart';
 import 'package:trusttunnel/feature/settings/readme/readme_screen.dart';
 import 'package:trusttunnel/feature/settings/settings_about/about_screen.dart';
+import 'package:trusttunnel/feature/traffic/traffic_data.dart';
+import 'package:trusttunnel/feature/traffic/traffic_stats_screen.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/common/custom_arrow_list_tile.dart';
 import 'package:trusttunnel/widgets/common/custom_radio_list_tile.dart';
@@ -48,6 +50,13 @@ class SettingsScreen extends StatelessWidget {
               title: context.ln.excludedRoutes,
               onTap: () => _pushExcludedRoutesScreen(context),
             ),
+            if (TrafficSource.supported) ...[
+              const Divider(),
+              CustomArrowListTile(
+                title: context.ln.trafficStats,
+                onTap: () => context.push(const TrafficStatsScreen()),
+              ),
+            ],
             _SettingsSection(context.ln.settingsGroupLook),
             CustomArrowListTile(
               title: context.ln.appearance,

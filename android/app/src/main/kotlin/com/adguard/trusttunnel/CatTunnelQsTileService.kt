@@ -1,6 +1,5 @@
 package com.adguard.trusttunnel
 
-import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
@@ -74,21 +73,7 @@ class CatTunnelQsTileService : TileService() {
         ComponentName(packageName, "com.adguard.trusttunnel.${SecurityChannel.ALIAS_DISGUISED}"),
     ) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
 
-    /**
-     * Whether *our* VPN service is up. Checking for any VPN transport on the
-     * active network would also count another app's VPN - the tile would show
-     * "on" and a tap would try to stop ours. Since Android 8,
-     * getRunningServices only returns the caller's own services, which is
-     * exactly the question here.
-     */
-    @Suppress("DEPRECATION")
-    private fun isVpnActive(): Boolean {
-        val activityManager = applicationContext.getSystemService(ActivityManager::class.java) ?: return false
-
-        return activityManager.getRunningServices(Int.MAX_VALUE).any {
-            it.service.className == VpnService::class.java.name && it.foreground
-        }
-    }
+    private fun isVpnActive(): Boolean = OwnVpn.isActive(applicationContext)
 
     @Suppress("DEPRECATION")
     private fun openApp() {
