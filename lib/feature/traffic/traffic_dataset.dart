@@ -125,8 +125,10 @@ class TrafficDataset {
     final end = period.hourly
         ? times.last.add(const Duration(hours: 1))
         : DateTime(times.last.year, times.last.month, times.last.day + 1);
-    final span = end.difference(start);
-    final previousStart = start.subtract(span);
+    // Calendar steps, not durations: a DST day is 23 or 25 hours.
+    final previousStart = period.hourly
+        ? start.subtract(const Duration(hours: 24))
+        : DateTime(start.year, start.month, start.day - period.days);
 
     int timeIndex(DateTime hour) {
       if (period.hourly) {
@@ -197,8 +199,8 @@ class TrafficDataset {
       tx += row.tx;
     }
 
-    // Growth: the second half of the period against the first (time axis
-    // buckets - for the folded axes the whole period has no halves).
+    // Growth: each series' second half of the period against its first,
+    // whatever the x axis shows.
     final growthBase = <String, double>{};
     if (sort == TrafficSort.growth) {
       final half = times.length ~/ 2;
@@ -227,8 +229,10 @@ class TrafficDataset {
 
     var shown = all;
     if (all.length > maxSeries) {
-      final keep = all.take(maxSeries - 1).toList();
-      final rest = all.skip(maxSeries - 1).toList();
+      // The biggest ones stay whatever the order; they keep the sort order.
+      final biggest = ([...all]..sort(byVolume)).take(maxSeries - 1).toSet();
+      final keep = all.where(biggest.contains).toList();
+      final rest = all.where((s) => !biggest.contains(s)).toList();
       final others = List.filled(count, 0);
       for (final s in rest) {
         for (var i = 0; i < count; i++) {

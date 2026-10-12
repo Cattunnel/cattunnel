@@ -38,6 +38,7 @@ object TrafficRecorder {
     private var started = false
     private var lastRx = -1L
     private var lastTx = -1L
+    private var wasActive = false
     private var foldedHour = -1L
 
     private val file: File get() = File(app.filesDir, FILE_NAME)
@@ -74,7 +75,11 @@ object TrafficRecorder {
         val tx = TrafficStats.getUidTxBytes(uid)
         if (rx < 0 || tx < 0) return // TrafficStats.UNSUPPORTED
 
-        if (OwnVpn.isActive(app) && lastRx >= 0 && rx >= lastRx && tx >= lastTx) {
+        // Up now or at the last sample: a VPN that stopped in between still
+        // carried that traffic (the app's own few requests around a start
+        // or stop are the price).
+        val active = OwnVpn.isActive(app)
+        if ((active || wasActive) && lastRx >= 0 && rx >= lastRx && tx >= lastTx) {
             val dRx = rx - lastRx
             val dTx = tx - lastTx
             if (dRx + dTx > 0) {
@@ -83,6 +88,7 @@ object TrafficRecorder {
         }
         lastRx = rx
         lastTx = tx
+        wasActive = active
 
         val hour = currentHour()
         if (hour != foldedHour) {
