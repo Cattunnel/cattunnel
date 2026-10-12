@@ -18,6 +18,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
+import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
@@ -173,6 +174,7 @@ class _CozyServersViewState extends State<CozyServersView> {
                     connectedSince: _connectedSince,
                     server: current,
                   ),
+                const VpnBadgeHint(padding: EdgeInsets.only(top: 16)),
                 const SizedBox(height: 24),
                 if (aero)
                   _AeroServerCard(server: current, onTap: () => _openPicker(context, servers, current, state))
@@ -211,6 +213,7 @@ class _CozyServersViewState extends State<CozyServersView> {
                                 connectedSince: _connectedSince,
                                 server: current,
                               ),
+                              const VpnBadgeHint(padding: EdgeInsets.only(top: 16)),
                             ],
                           ),
                         ),
