@@ -25,7 +25,6 @@ import java.util.concurrent.Executors
  */
 class AppsChannel(private val context: Context, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
 
-    private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     init {
@@ -189,6 +188,8 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
     }
 
     companion object {
+        /** One for all channel instances (the tile's background engines make new ones). */
+        private val executor = Executors.newSingleThreadExecutor()
         const val CHANNEL = "cattunnel/apps"
     }
 }

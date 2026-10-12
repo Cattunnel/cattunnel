@@ -86,7 +86,13 @@ String formatBytes(num bytes, {required bool ru, int? fractionDigits}) {
     value /= 1024;
     unit++;
   }
-  final digits = fractionDigits ?? (unit == 0 || value >= 100 ? 0 : (value >= 10 ? 1 : 2));
+  var digits = fractionDigits ?? (unit == 0 || value >= 100 ? 0 : (value >= 10 ? 1 : 2));
+  // 1023.99 KB would round to "1024 KB": show it as the next unit.
+  if (unit < units.length - 1 && double.parse(value.toStringAsFixed(digits)) >= 1024) {
+    value /= 1024;
+    unit++;
+    digits = fractionDigits ?? 2;
+  }
   var number = value.toStringAsFixed(digits);
   if (digits > 0) {
     number = number.replaceFirst(RegExp(r'\.?0+$'), '');
