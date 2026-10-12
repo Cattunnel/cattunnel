@@ -2,14 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
-import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
-import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_diagnosis_dialog.dart';
-import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
@@ -32,12 +29,8 @@ class ConnectionWatchdog extends StatefulWidget {
 class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   static const _stuckAfter = Duration(seconds: 10);
 
-  /// Android validates a new network within a few seconds.
-  static const _validationCheckAfter = Duration(seconds: 20);
-
   VpnState? _state;
   Timer? _timer;
-  Timer? _validationTimer;
   bool _dialogOpen = false;
 
   @override
@@ -45,7 +38,6 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
     super.initState();
     VpnScope.startDidNotBegin.addListener(_onStartDidNotBegin);
     VpnScope.antiDpiAutoFailed.addListener(_onAntiDpiAutoFailed);
-    UnvalidatedVpnNotice.load(context.dependencyFactory.sharedPreferences);
   }
 
   @override
@@ -146,7 +138,6 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
     VpnScope.startDidNotBegin.removeListener(_onStartDidNotBegin);
     VpnScope.antiDpiAutoFailed.removeListener(_onAntiDpiAutoFailed);
     _timer?.cancel();
-    _validationTimer?.cancel();
     super.dispose();
   }
 
@@ -155,9 +146,6 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
       return;
     }
     _state = state;
-
-    _validationTimer?.cancel();
-    _validationTimer = state == VpnState.connected ? Timer(_validationCheckAfter, _checkValidation) : null;
 
     if (state == VpnState.connected || state == VpnState.disconnected) {
       _timer?.cancel();
@@ -191,40 +179,6 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
         server: server,
         otherServers: serversController.servers.where((other) => other.id != server.id).toList(),
       );
-    } finally {
-      _dialogOpen = false;
-    }
-  }
-
-  /// BBK firmwares (vivo, OPPO, realme, OnePlus, iQOO) report "no VPN" when
-  /// Android didn't validate the VPN network - e.g. with the Russian
-  /// networks' ~2200 routes - although the tunnel works. On those phones,
-  /// once, Marsik says it's fine (UnvalidatedVpnNotice; later the "i" next to
-  /// "Connected" reopens it). Other firmwares don't show such a badge, so
-  /// nothing there.
-  Future<void> _checkValidation() async {
-    _validationTimer = null;
-    final preferences = context.dependencyFactory.sharedPreferences;
-    if (!mounted || _dialogOpen || _state != VpnState.connected || UnvalidatedVpnNotice.detected.value) {
-      return;
-    }
-
-    final report = await SecurityPlatform.vpnNetworkReport();
-    if (report == null || !report.isBbk || report.vpnValidated != false) {
-      return;
-    }
-    if (!mounted || _dialogOpen || _state != VpnState.connected) {
-      return;
-    }
-
-    await UnvalidatedVpnNotice.markDetected(preferences);
-    if (!mounted) {
-      return;
-    }
-
-    _dialogOpen = true;
-    try {
-      await UnvalidatedVpnNotice.show(context);
     } finally {
       _dialogOpen = false;
     }
