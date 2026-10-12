@@ -618,8 +618,6 @@
   "startFailedAlertBody": "Mrrr... The VPN didn't even start connecting: the phone didn't let it start. This happens when another VPN, a firewall or a module with its own tunnel is running. Turn them off and try again. Didn't help? Restart the phone or send a report - it has the real reason.",
   "startFailedAlertReport": "Send a report",
   "startFailedAlertLater": "Later",
-  "unvalidatedVpnTitle": "The VPN works 😸",
-  "unvalidatedVpnBody": "Meow! Your phone may say there's no VPN or no internet - don't believe it. The tunnel is connected and working. BBK firmware (vivo, OPPO, realme, OnePlus, iQOO) sometimes doesn't mark a VPN as working. I won't mention it again.",
   "@virusTotalBadge": {
     "placeholders": {
       "count": {

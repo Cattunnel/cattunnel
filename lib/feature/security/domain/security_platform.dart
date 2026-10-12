@@ -57,11 +57,6 @@ class VpnNetworkReport {
     this.brand = '',
   });
 
-  /// BBK Electronics phones: vivo, iQOO, OPPO, realme, OnePlus.
-  bool get isBbk => const {'vivo', 'iqoo', 'oppo', 'realme', 'oneplus'}.any(
-    (name) => manufacturer.toLowerCase().contains(name) || brand.toLowerCase().contains(name),
-  );
-
   /// The phone has real IPv6 connectivity but the tunnel doesn't claim ::/0 -
   /// IPv6 traffic goes around the VPN.
   bool get ipv6Leak => vpnActive && underlyingHasGlobalIpv6 && !defaultRouteV6;

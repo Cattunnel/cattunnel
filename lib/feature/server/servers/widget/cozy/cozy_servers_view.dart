@@ -18,7 +18,6 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
-import 'package:trusttunnel/feature/vpn/widgets/unvalidated_vpn_notice.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
@@ -442,28 +441,10 @@ class _StatusBlock extends StatelessWidget {
 
     return Column(
       children: [
-        ValueListenableBuilder<bool>(
-          valueListenable: UnvalidatedVpnNotice.detected,
-          builder: (context, detected, _) => Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.headlineSmall?.copyWith(color: titleColor),
-                ),
-              ),
-              // Marsik found the firmware's "no VPN" badge on this phone -
-              // his note stays one tap away.
-              if (detected && state == VpnState.connected)
-                IconButton(
-                  icon: Icon(Icons.info_outline, color: titleColor),
-                  tooltip: context.ln.unvalidatedVpnTitle,
-                  onPressed: () => UnvalidatedVpnNotice.show(context),
-                ),
-            ],
-          ),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: context.textTheme.headlineSmall?.copyWith(color: titleColor),
         ),
         const SizedBox(height: 6),
         Text(
