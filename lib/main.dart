@@ -20,6 +20,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.da
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/auto_connect_on_launch_settings_scope.dart';
+import 'package:trusttunnel/feature/vpn/tile_connect.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_update_manager.dart';
 
@@ -29,6 +30,11 @@ void _registerAppLicense() {
     yield LicenseEntryWithLineBreaks(['CatTunnel'], license);
   });
 }
+
+/// The Quick Settings tile's windowless engine runs this by name (see
+/// tile_connect.dart, TileConnector.kt).
+@pragma('vm:entry-point')
+Future<void> tileConnect() => tileConnectMain();
 
 Future<void> main() async {
   final logger = AppLogger(

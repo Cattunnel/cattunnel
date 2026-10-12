@@ -26,13 +26,19 @@ abstract class InitializationHelper {
 }
 
 class InitializationHelperIo extends InitializationHelper {
-  const InitializationHelperIo();
+  /// No window behind it: the Quick Settings tile's background engine (see
+  /// tile_connect.dart) - no splash, no orientation, no macOS window.
+  final bool headless;
+
+  const InitializationHelperIo({this.headless = false});
 
   @override
   Future<InitializationResult> init() async {
     final bindings = WidgetsFlutterBinding.ensureInitialized();
-    FlutterNativeSplash.preserve(widgetsBinding: bindings);
-    await _updateDeviceOrientation();
+    if (!headless) {
+      FlutterNativeSplash.preserve(widgetsBinding: bindings);
+      await _updateDeviceOrientation();
+    }
 
     BaseController.observer = const LoggingControllerObserver();
 
@@ -65,7 +71,7 @@ class InitializationHelperIo extends InitializationHelper {
       logStorage: logStorage,
     );
 
-    if (defaultTargetPlatform == TargetPlatform.macOS) {
+    if (!headless && defaultTargetPlatform == TargetPlatform.macOS) {
       await dependenciesFactory.appWindowController.configureMainWindow(
         minimumWindowSize: const Size(905, 680),
         defaultWindowSize: const Size(1024, 768),
@@ -91,7 +97,9 @@ class InitializationHelperIo extends InitializationHelper {
 
     final initialVpnState = await repositoryFactory.vpnRepository.requestState();
 
-    FlutterNativeSplash.remove();
+    if (!headless) {
+      FlutterNativeSplash.remove();
+    }
 
     logger.logInfo(
       'App initialization completed',

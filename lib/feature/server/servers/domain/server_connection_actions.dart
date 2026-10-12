@@ -40,6 +40,17 @@ abstract final class ServerConnectionActions {
     return true;
   }
 
+  /// The engine's log level for the app's logging settings (also used by
+  /// the Quick Settings tile's background connect, tile_connect.dart).
+  static VpnConfigurationLogLevel engineLogLevel(LoggingSecurityType securityType, LoggingLevel loggingLevel) =>
+      switch (securityType) {
+        LoggingSecurityType.stripped => VpnConfigurationLogLevel.error,
+        LoggingSecurityType.full => switch (loggingLevel) {
+          LoggingLevel.defaultLevel => VpnConfigurationLogLevel.info,
+          LoggingLevel.debug => VpnConfigurationLogLevel.debug,
+        },
+      };
+
   /// Guards against a second tap while a connect is still being prepared
   /// (the pre-connect subscription refresh can take a few seconds, and the
   /// VPN state doesn't leave "disconnected" until it's done).
@@ -73,13 +84,7 @@ abstract final class ServerConnectionActions {
       return;
     }
 
-    final logLevel = switch (loggingController.securityType) {
-      LoggingSecurityType.stripped => VpnConfigurationLogLevel.error,
-      LoggingSecurityType.full => switch (loggingController.loggingLevel) {
-        LoggingLevel.defaultLevel => VpnConfigurationLogLevel.info,
-        LoggingLevel.debug => VpnConfigurationLogLevel.debug,
-      },
-    };
+    final logLevel = engineLogLevel(loggingController.securityType, loggingController.loggingLevel);
 
     final routingProfile = RoutingScope.controllerOf(context, listen: false).routingList.firstWhere(
       (element) => element.id == server.serverData.routingProfileId,

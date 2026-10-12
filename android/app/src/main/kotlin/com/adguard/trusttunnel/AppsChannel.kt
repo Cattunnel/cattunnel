@@ -1,11 +1,12 @@
 package com.adguard.trusttunnel
 
-import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.telephony.TelephonyManager
 import android.graphics.Bitmap
@@ -22,9 +23,10 @@ import java.util.concurrent.Executors
  * (QUERY_ALL_PACKAGES) - vendor services have no launcher entry but still
  * need to be excludable.
  */
-class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
+class AppsChannel(private val context: Context, messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
 
     private val executor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     init {
         MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
@@ -51,18 +53,18 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
         executor.execute {
             try {
                 val value = block()
-                activity.runOnUiThread { result.success(value) }
+                mainHandler.post { result.success(value) }
             } catch (t: Throwable) {
-                activity.runOnUiThread { result.error("apps_error", t.message, null) }
+                mainHandler.post { result.error("apps_error", t.message, null) }
             }
         }
     }
 
     /** [{package, label, system}] of every installed package, CatTunnel itself left out. */
     private fun list(): List<Map<String, Any>> {
-        val pm = activity.packageManager
+        val pm = context.packageManager
         return pm.getInstalledApplications(0)
-            .filter { it.packageName != activity.packageName }
+            .filter { it.packageName != context.packageName }
             .map { info ->
                 mapOf(
                     "package" to info.packageName,
@@ -84,7 +86,7 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
      * counts if it is one of the real https handlers.
      */
     private fun defaultBrowser(): String? {
-        val pm = activity.packageManager
+        val pm = context.packageManager
         val info = pm.resolveActivity(browserIntent(), android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
         val pkg = info?.activityInfo?.packageName ?: return null
         return if (pkg in browsers()) pkg else null
@@ -92,10 +94,10 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
 
     /** Every installed app that handles https links, CatTunnel left out. */
     private fun browsers(): List<String> =
-        activity.packageManager
+        context.packageManager
             .queryIntentActivities(browserIntent(), android.content.pm.PackageManager.MATCH_ALL)
             .map { it.activityInfo.packageName }
-            .filter { it != activity.packageName }
+            .filter { it != context.packageName }
             .distinct()
 
     private fun browserIntent() =
@@ -104,9 +106,9 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
 
     /** Package names only: no labels to load, fast enough for every connect. */
     private fun packages(): List<String> =
-        activity.packageManager.getInstalledApplications(0)
+        context.packageManager.getInstalledApplications(0)
             .map { it.packageName }
-            .filter { it != activity.packageName }
+            .filter { it != context.packageName }
 
     /**
      * Phone, OS and network facts for the problem report
@@ -126,7 +128,7 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
             "abi" to Build.SUPPORTED_ABIS.firstOrNull(),
         )
         runCatching {
-            val tm = activity.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
             info["operator"] = tm.networkOperatorName
             info["operatorCode"] = tm.networkOperator
             info["simOperator"] = tm.simOperatorName
@@ -134,7 +136,7 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
             info["roaming"] = tm.isNetworkRoaming
         }
         runCatching {
-            val cm = activity.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             // The underlying network, not our own VPN.
             val transports = mutableSetOf<String>()
             var vpnUp = false
@@ -162,8 +164,8 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
             }
         }
         runCatching {
-            val pm = activity.getSystemService(Context.POWER_SERVICE) as PowerManager
-            info["batteryUnrestricted"] = pm.isIgnoringBatteryOptimizations(activity.packageName)
+            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            info["batteryUnrestricted"] = pm.isIgnoringBatteryOptimizations(context.packageName)
             info["powerSave"] = pm.isPowerSaveMode
         }
         return info
@@ -172,7 +174,7 @@ class AppsChannel(private val activity: Activity, messenger: BinaryMessenger) : 
     /** PNG of the app icon, [size] px square; null if the app is gone. */
     private fun icon(packageName: String, size: Int): ByteArray? {
         val drawable = try {
-            activity.packageManager.getApplicationIcon(packageName)
+            context.packageManager.getApplicationIcon(packageName)
         } catch (e: Exception) {
             return null
         }
