@@ -262,6 +262,8 @@
   "continueAnyway": "Continue anyway",
   "confirm": "Confirm",
   "connectionErrorDialogTitle": "Connection failed",
+  "vpnBadgeHintBody": "Meow! If the network icon shows \"!\" or your phone says \"No internet\", don't worry. As long as sites open, the tunnel works - Android just couldn't check the VPN by itself. Many phones do this, especially with \"Russian services\" on.",
+  "vpnBadgeHintChip": "\"No internet\"?",
   "gotIt": "Got it",
   "deleteLogs": "Delete logs",
   "share": "Share",

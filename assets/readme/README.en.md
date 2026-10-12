@@ -34,6 +34,7 @@ The "Routing" tab - the "Split tunneling" window opens by itself:
 - **Sites and IPs** - domains and addresses that go directly, around the VPN. Turn on "Russian services" and the Russian networks come automatically from open lists (runetfreedom, ipverse, hydraponique), refreshed about once a day.
 - **Apps** - all through the VPN; the selected ones around it; or only the selected ones through it. "Auto: Russian and Chinese apps bypass the VPN" (on by default) - banks, government services, marketplaces, VK, Yandex, Chinese services and the phone maker's apps go directly; recomputed on every connect. The exception is **Yandex Browser**: it always stays in the VPN, because for many people it is the main browser (Yandex sites still go directly by domain).
 - Changes apply on the next connect.
+- **"No internet" on the network icon.** With "Russian services" on, many phones put "!" on the VPN or say "No internet" although everything works: Android doesn't mark a VPN with a long route list as validated. Marsik says so himself in a bubble on the home screen; after "Got it" a small "No internet?" chip stays there.
 
 ## Updates
 

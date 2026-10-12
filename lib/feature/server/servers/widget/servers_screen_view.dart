@@ -21,6 +21,7 @@ import 'package:trusttunnel/feature/server/servers/widget/server_sort_sheet.dart
 import 'package:trusttunnel/feature/server/servers/widget/servers_card.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
 import 'package:trusttunnel/feature/server/servers/widget/subscription_servers_group.dart';
+import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
@@ -110,7 +111,10 @@ class _ServersScreenViewState extends State<ServersScreenView> {
               // last row is never hidden behind them even fully scrolled.
               : ListView(
                   padding: const EdgeInsets.only(bottom: 140),
-                  children: _buildSections(sortedServers),
+                  children: [
+                    const VpnBadgeHint(padding: EdgeInsets.fromLTRB(16, 12, 16, 4)),
+                    ..._buildSections(sortedServers),
+                  ],
                 ),
           floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
           floatingActionButton: sortedServers.isEmpty

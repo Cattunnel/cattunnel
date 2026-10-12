@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
+import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
+import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_diagnosis_dialog.dart';
+import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
@@ -29,8 +32,12 @@ class ConnectionWatchdog extends StatefulWidget {
 class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   static const _stuckAfter = Duration(seconds: 10);
 
+  /// Android validates a new network within a few seconds.
+  static const _validationCheckAfter = Duration(seconds: 20);
+
   VpnState? _state;
   Timer? _timer;
+  Timer? _validationTimer;
   bool _dialogOpen = false;
 
   @override
@@ -38,6 +45,7 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
     super.initState();
     VpnScope.startDidNotBegin.addListener(_onStartDidNotBegin);
     VpnScope.antiDpiAutoFailed.addListener(_onAntiDpiAutoFailed);
+    VpnBadgeHintState.load(context.dependencyFactory.sharedPreferences);
   }
 
   @override
@@ -138,6 +146,7 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
     VpnScope.startDidNotBegin.removeListener(_onStartDidNotBegin);
     VpnScope.antiDpiAutoFailed.removeListener(_onAntiDpiAutoFailed);
     _timer?.cancel();
+    _validationTimer?.cancel();
     super.dispose();
   }
 
@@ -146,6 +155,12 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
       return;
     }
     _state = state;
+
+    _validationTimer?.cancel();
+    _validationTimer = state == VpnState.connected ? Timer(_validationCheckAfter, _checkValidation) : null;
+    if (state != VpnState.connected) {
+      VpnBadgeHintState.unvalidated.value = false;
+    }
 
     if (state == VpnState.connected || state == VpnState.disconnected) {
       _timer?.cancel();
@@ -181,6 +196,23 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
       );
     } finally {
       _dialogOpen = false;
+    }
+  }
+
+  /// Many firmwares show "!" / "No internet" on the VPN network when Android
+  /// didn't validate it - e.g. with the Russian networks' ~2200 routes -
+  /// although the tunnel works. Asked once per connection, on any phone;
+  /// Marsik then explains it on the home screen (VpnBadgeHint). Desktop has
+  /// no such report, so nothing there.
+  Future<void> _checkValidation() async {
+    _validationTimer = null;
+    if (!mounted || _state != VpnState.connected) {
+      return;
+    }
+
+    final report = await SecurityPlatform.vpnNetworkReport();
+    if (mounted && _state == VpnState.connected) {
+      VpnBadgeHintState.unvalidated.value = report?.vpnValidated == false;
     }
   }
 
