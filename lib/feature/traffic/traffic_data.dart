@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,7 +33,15 @@ abstract final class TrafficSource {
     }
     final text = await _channel.invokeMethod<String>('read') ?? '';
 
-    return parse(text);
+    // Off the UI isolate: months of hours for many servers is megabytes.
+    return compute(parse, text);
+  }
+
+  /// Deletes everything counted so far.
+  static Future<void> clear() async {
+    if (supported) {
+      await _channel.invokeMethod<void>('clear');
+    }
   }
 
   /// `hourEpochSec<TAB>serverId<TAB>rx<TAB>tx` lines, summed per hour and

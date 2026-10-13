@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/traffic/traffic_style.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/secure_screen.dart';
 
 /// Settings -> Traffic statistics: the phone's own counter (TrafficSource)
 /// shown like the panel's «Статистика» page - period and server filters,
@@ -60,6 +61,24 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
     }
   }
 
+  Future<void> _confirmClear(BuildContext context) async {
+    final ln = context.ln;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CustomAlertDialog(
+        title: ln.trafficClearTitle,
+        content: Text(ln.trafficClearBody),
+        actionsBuilder: (spacing) => [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(ln.cancel)),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(ln.trafficClear)),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    await TrafficSource.clear();
+    await _load();
+  }
+
   String _serverName(String id, Map<String, String> names) {
     if (id.isEmpty) return context.ln.trafficNoServer;
 
@@ -86,14 +105,17 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
         ? Center(child: _error == null ? const CircularProgressIndicator() : Text('$_error'))
         : _content(context, rows, style, ru, labelOf, names);
 
-    return ScaffoldWrapper(
-      child: Scaffold(
-        appBar: CustomAppBar(
-          title: ln.trafficStats,
-          centerTitle: true,
-          leadingIconType: AppBarLeadingIconType.back,
+    // No screenshots / Recents thumbnail: when and where the VPN was used.
+    return SecureScreen(
+      child: ScaffoldWrapper(
+        child: Scaffold(
+          appBar: CustomAppBar(
+            title: ln.trafficStats,
+            centerTitle: true,
+            leadingIconType: AppBarLeadingIconType.back,
+          ),
+          body: body,
         ),
-        body: body,
       ),
     );
   }
@@ -235,6 +257,10 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
           ),
           const SizedBox(height: 12),
           Text(ln.trafficPrivacyNote, textAlign: TextAlign.center, style: muted),
+          if (rows.isNotEmpty)
+            Center(
+              child: TextButton(onPressed: () => _confirmClear(context), child: Text(ln.trafficClear)),
+            ),
         ],
       ),
     );
@@ -331,13 +357,26 @@ class _Tiles extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Rows of equal-height tiles (a long server name wraps its note).
         final columns = constraints.maxWidth >= 720 ? 4 : 2;
-        final width = (constraints.maxWidth - 10 * (columns - 1)) / columns;
 
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [for (final t in tiles) SizedBox(width: width, child: t)],
+        return Column(
+          children: [
+            for (var i = 0; i < tiles.length; i += columns) ...[
+              if (i > 0) const SizedBox(height: 10),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var j = i; j < i + columns && j < tiles.length; j++) ...[
+                      if (j > i) const SizedBox(width: 10),
+                      Expanded(child: tiles[j]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ],
         );
       },
     );

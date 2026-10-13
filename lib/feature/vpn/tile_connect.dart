@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:trusttunnel/common/logging/app_logger.dart';
@@ -70,12 +73,18 @@ abstract final class TileConnect {
 /// Entry point of the tile's background engine (called from main.dart's
 /// `tileConnect`, which the native side runs by name).
 Future<void> tileConnectMain() async {
-  AppLogger();
   var connected = false;
-  try {
-    connected = await TileConnect.run();
-  } catch (error, stackTrace) {
-    debugPrint('Tile connect failed: $error\n$stackTrace');
-  }
+  // The app reaches its logger through the zone, like main() sets it up.
+  await runZoned(
+    () async {
+      try {
+        connected = await TileConnect.run();
+      } catch (error) {
+        // The type only: a message could carry configuration text.
+        debugPrint('Tile connect failed: ${error.runtimeType}');
+      }
+    },
+    zoneValues: {Logger.loggerKey: AppLogger()},
+  );
   await TileConnect.channel.invokeMethod<void>('done', connected);
 }

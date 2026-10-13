@@ -681,5 +681,8 @@
   "trafficRemoveLimit": "Убрать",
   "trafficLimitNear": "Мяу, лимит почти исчерпан",
   "trafficLimitOver": "Лимит превышен",
-  "trafficChartTitle": "Трафик"
+  "trafficChartTitle": "Трафик",
+  "trafficClear": "Очистить статистику",
+  "trafficClearTitle": "Очистить статистику?",
+  "trafficClearBody": "Всё, что насчитано на этом телефоне, удалится. Вернуть не получится."
 }
