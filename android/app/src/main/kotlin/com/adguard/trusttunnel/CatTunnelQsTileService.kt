@@ -14,10 +14,12 @@ import android.service.quicksettings.TileService
  * "Connect" reuses the last configuration the vendor VPN service persisted in
  * its own [VpnConfigStorage] (the same storage Always-On VPN relies on). That
  * storage is cleared by the vendor service on every explicit `stop()` call
- * (including ours below), so after a manual disconnect [TileConnector] has
- * Dart build the configuration (in the running app, or in a windowless
- * engine) - no window opens. The app is opened only when the VPN permission
- * isn't granted yet, or that connect failed.
+ * (including ours below), and some firmwares also drop the "prepared" state
+ * on every stop. So otherwise the tap goes to the invisible
+ * [TileConnectActivity]: it re-prepares the VPN (no dialog once consented)
+ * and has [TileConnector] build the configuration in Dart (the running app,
+ * or a windowless engine) - no window opens. The app is opened only for a
+ * first-time consent the person declines, or when that connect failed.
  */
 class CatTunnelQsTileService : TileService() {
 
@@ -36,14 +38,10 @@ class CatTunnelQsTileService : TileService() {
             return
         }
 
-        if (!VpnService.isPrepared(applicationContext)) {
-            openApp()
-
-            return
-        }
-
         val config = VpnConfigStorage(applicationContext).load()
-        if (!config.isNullOrEmpty()) {
+        val prepared = VpnService.isPrepared(applicationContext)
+        TileLog.i(this, "tile click: prepared=$prepared savedConfig=${!config.isNullOrEmpty()} busy=${TileConnector.busy}")
+        if (prepared && !config.isNullOrEmpty()) {
             VpnService.start(applicationContext, config)
             setTileState(Tile.STATE_ACTIVE)
 
@@ -52,12 +50,7 @@ class CatTunnelQsTileService : TileService() {
 
         if (TileConnector.busy) return
         setTileState(Tile.STATE_ACTIVE)
-        TileConnector.connect(applicationContext) { connected ->
-            if (!connected) {
-                runCatching { openApp() }
-            }
-            requestListeningState(applicationContext, ComponentName(applicationContext, CatTunnelQsTileService::class.java))
-        }
+        startActivityAndCollapseCompat(Intent(applicationContext, TileConnectActivity::class.java))
     }
 
     private fun updateTileState() = setTileState(if (isVpnActive()) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE)
@@ -76,11 +69,8 @@ class CatTunnelQsTileService : TileService() {
     private fun isVpnActive(): Boolean = OwnVpn.isActive(applicationContext)
 
     @Suppress("DEPRECATION")
-    private fun openApp() {
-        val intent = Intent(applicationContext, CatTunnelActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(CatTunnelActivity.EXTRA_FROM_TILE, CatTunnelActivity.tileLaunchToken)
-        }
+    private fun startActivityAndCollapseCompat(target: Intent) {
+        val intent = target.apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
 
         if (android.os.Build.VERSION.SDK_INT >= 34) {
             startActivityAndCollapse(

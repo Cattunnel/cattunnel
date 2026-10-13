@@ -401,7 +401,9 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
       var headerEnd = offset + 2;
       if (bodyLength >= 0x80) {
         final count = bodyLength & 0x7f;
-        if (count == 0 || headerEnd + count > der.length) {
+        // At most 4 length bytes: more would wrap the int (a negative or
+        // zero-advance length looped forever on a crafted link).
+        if (count == 0 || count > 4 || headerEnd + count > der.length) {
           throw const FormatException('tt:// link: invalid certificate');
         }
         bodyLength = 0;
@@ -411,7 +413,7 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
         headerEnd += count;
       }
       final end = headerEnd + bodyLength;
-      if (end > der.length) {
+      if (bodyLength <= 0 || end > der.length) {
         throw const FormatException('tt:// link: truncated certificate');
       }
 

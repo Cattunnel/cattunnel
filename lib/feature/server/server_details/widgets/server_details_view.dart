@@ -6,6 +6,7 @@ import 'package:trusttunnel/feature/server/server_details/widgets/server_details
 import 'package:trusttunnel/feature/server/server_details/widgets/server_details_full_screen_view.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/discard_changes_dialog.dart';
+import 'package:trusttunnel/widgets/secure_screen.dart';
 
 class ServerDetailsView extends StatefulWidget {
   const ServerDetailsView({
@@ -31,15 +32,18 @@ class _ServerDetailsViewState extends State<ServerDetailsView> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope(
-    canPop: !hasChanges,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) {
-        _showNotSavedChangesWarning(context);
-      }
-    },
-    child: const ServerDetailsFullScreenView(
-      body: ServerDetailsForm(),
+  // The form can show the password: no screenshots / Recents thumbnail.
+  Widget build(BuildContext context) => SecureScreen(
+    child: PopScope(
+      canPop: !hasChanges,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _showNotSavedChangesWarning(context);
+        }
+      },
+      child: const ServerDetailsFullScreenView(
+        body: ServerDetailsForm(),
+      ),
     ),
   );
 

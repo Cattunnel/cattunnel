@@ -6,6 +6,6 @@ import android.app.Application
 class CatTunnelApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        TrafficRecorder.start(this)
+        runCatching { TrafficRecorder.start(this) }
     }
 }

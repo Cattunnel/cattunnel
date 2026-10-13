@@ -835,5 +835,8 @@
   "trafficRemoveLimit": "Remove",
   "trafficLimitNear": "Meow, the limit is almost used up",
   "trafficLimitOver": "Limit exceeded",
-  "trafficChartTitle": "Traffic"
+  "trafficChartTitle": "Traffic",
+  "trafficClear": "Clear statistics",
+  "trafficClearTitle": "Clear statistics?",
+  "trafficClearBody": "Everything counted on this phone is deleted. This can't be undone."
 }

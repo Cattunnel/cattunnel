@@ -53,10 +53,14 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
 
     _controller.fetch();
 
+    // Answers whether it took the tile's connect (TileConnector.kt falls
+    // back to its own windowless engine otherwise).
     _tileLaunchChannel.setMethodCallHandler((call) async {
-      if (call.method == 'launchedFromTile') {
-        _onTileLaunch();
+      if (call.method != 'launchedFromTile') {
+        return null;
       }
+
+      return _onTileLaunch();
     });
     unawaited(_consumeColdStartTileLaunch());
   }
@@ -72,13 +76,15 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
     }
   }
 
-  void _onTileLaunch() {
+  bool _onTileLaunch() {
     if (!mounted) {
-      return;
+      return false;
     }
 
     _pendingTileConnect = true;
     _scheduleConnectToLastServerIfNeeded();
+
+    return true;
   }
 
   @override

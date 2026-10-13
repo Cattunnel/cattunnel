@@ -56,7 +56,15 @@ abstract final class ProblemReport {
     if (confirmed != true || !context.mounted) return;
 
     final stamp = DateTime.now().toIso8601String().substring(0, 19).replaceAll(':', '-');
-    final file = File('${(await getTemporaryDirectory()).path}/cattunnel-report-$stamp.txt');
+    final temp = await getTemporaryDirectory();
+    // Earlier reports stay in the cache otherwise (the share target may
+    // still be reading the newest one, so only the old ones go).
+    await for (final old in temp.list()) {
+      if (old is File && old.uri.pathSegments.last.startsWith('cattunnel-report-')) {
+        await old.delete().catchError((_) => old);
+      }
+    }
+    final file = File('${temp.path}/cattunnel-report-$stamp.txt');
     await file.writeAsString(full);
     if (!context.mounted) return;
     await const AdgShare().share(

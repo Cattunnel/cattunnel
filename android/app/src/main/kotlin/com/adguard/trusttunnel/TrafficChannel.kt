@@ -5,9 +5,12 @@ import android.os.Looper
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
-import kotlin.concurrent.thread
+import java.util.concurrent.Executors
 
-/** `cattunnel/traffic`: `read` - [TrafficRecorder.snapshot] (lib/feature/traffic). */
+/**
+ * `cattunnel/traffic` (lib/feature/traffic): `read` - [TrafficRecorder.snapshot],
+ * `clear` - [TrafficRecorder.clear].
+ */
 class TrafficChannel(messenger: BinaryMessenger) : MethodChannel.MethodCallHandler {
     private val main = Handler(Looper.getMainLooper())
 
@@ -16,14 +19,26 @@ class TrafficChannel(messenger: BinaryMessenger) : MethodChannel.MethodCallHandl
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when (call.method) {
-            "read" -> thread(name = "cattunnel-traffic-read") {
-                val text = runCatching { TrafficRecorder.snapshot() }
-                main.post {
-                    text.fold({ result.success(it) }, { result.error("traffic_error", it.message, null) })
-                }
+        val work: () -> Any? = when (call.method) {
+            "read" -> TrafficRecorder::snapshot
+            "clear" -> {
+                { TrafficRecorder.clear() }
             }
-            else -> result.notImplemented()
+            else -> {
+                result.notImplemented()
+
+                return
+            }
         }
+        executor.execute {
+            val outcome = runCatching(work)
+            main.post {
+                outcome.fold({ result.success(it) }, { result.error("traffic_error", it.javaClass.simpleName, null) })
+            }
+        }
+    }
+
+    private companion object {
+        val executor = Executors.newSingleThreadExecutor()
     }
 }

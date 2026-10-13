@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/deep_link_payload_codec.dart';
@@ -236,5 +238,15 @@ void main() {
     expect(() => decoder.convert('tt://?AQFh'), throwsFormatException);
     // truncated: hostname claims 5 bytes, has 1
     expect(() => decoder.convert('tt://?AQVh'), throwsFormatException);
+  });
+
+  test('a certificate with a wrapping DER length is rejected, not looped on', () {
+    final payload = const DeepLinkPayloadEncoder().convert(_minimal);
+    final bytes = base64Url.decode(base64Url.normalize(payload));
+    // Tag 0x08 (certificate), 10 bytes: SEQUENCE with an 8-byte length
+    // that wraps to a negative int.
+    final der = [0x30, 0x88, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF6];
+    final crafted = base64Url.encode([...bytes, 0x08, der.length, ...der]).replaceAll('=', '');
+    expect(() => const DeepLinkPayloadDecoder().convert('tt://?$crafted'), throwsFormatException);
   });
 }
