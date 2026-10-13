@@ -28,9 +28,9 @@ class TileConnectActivity : Activity() {
         if (savedInstanceState != null) return
 
         val prepare = android.net.VpnService.prepare(this)
-        TileLog.i(this, "tile connect: prepared=${prepare == null}")
+        TileLog.i(this, "tile ${if (stopping) "stop" else "connect"}: prepared=${prepare == null}")
         if (prepare == null) {
-            connect()
+            proceed()
         } else {
             runCatching { startActivityForResult(prepare, REQ_PREPARE) }
                 .onFailure {
@@ -45,7 +45,24 @@ class TileConnectActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_PREPARE) return
         TileLog.i(this, "tile connect: consent result=$resultCode")
-        if (resultCode == RESULT_OK) connect() else close()
+        if (resultCode == RESULT_OK) proceed() else close()
+    }
+
+    private val stopping: Boolean get() = intent?.action == ACTION_STOP
+
+    private fun proceed() {
+        if (!stopping) {
+            connect()
+
+            return
+        }
+        VpnService.stop(applicationContext)
+        TileLog.i(this, "tile stop: requested")
+        TileService.requestListeningState(
+            applicationContext,
+            ComponentName(applicationContext, CatTunnelQsTileService::class.java),
+        )
+        close()
     }
 
     private fun connect() {
@@ -78,6 +95,8 @@ class TileConnectActivity : Activity() {
     }
 
     companion object {
+        const val ACTION_STOP = "com.adguard.trusttunnel.TILE_STOP"
+
         private const val REQ_PREPARE = 0x7117
         private const val MAX_WAIT_MS = 20_000L
     }

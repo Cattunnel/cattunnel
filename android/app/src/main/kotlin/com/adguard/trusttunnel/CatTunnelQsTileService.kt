@@ -32,7 +32,16 @@ class CatTunnelQsTileService : TileService() {
         super.onClick()
 
         if (isVpnActive()) {
-            VpnService.stop(applicationContext)
+            // The vendor stop() quietly does nothing while the VPN counts as
+            // "not prepared" (Samsung after every stop) - re-prepare first.
+            if (VpnService.isPrepared(applicationContext)) {
+                VpnService.stop(applicationContext)
+            } else {
+                TileLog.i(this, "tile click: stop via TileConnectActivity (not prepared)")
+                startActivityAndCollapseCompat(
+                    Intent(applicationContext, TileConnectActivity::class.java).setAction(TileConnectActivity.ACTION_STOP),
+                )
+            }
             setTileState(Tile.STATE_INACTIVE)
 
             return
