@@ -4,6 +4,7 @@ import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/services.dart';
 import 'package:trusttunnel/common/logging/app_logger.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/di/model/initialization_helper.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
@@ -59,15 +60,45 @@ abstract final class TileConnect {
       data = data.copyWith(antiDpiMode: order.first);
     }
 
-    await repositories.vpnRepository.start(
-      server: server.copyWith(serverData: data),
-      routingProfile: routingProfile,
-      excludedRoutes: await repositories.settingsRepository.getExcludedRoutes(),
-      logLevel: logLevel,
-    );
+    // Report only once the tunnel is up (or clearly isn't): the native side
+    // destroys this engine on 'done', and destroyed right after the start
+    // command the tunnel came up and dropped 2.5 s later (S22, 1.5.5 lab).
+    final vpn = repositories.vpnRepository;
+    final settled = Completer<String?>();
+    var connecting = false;
+    // A failed attempt isn't the end: the engine retries by itself. Keep the
+    // last reason for the log in case it never connects.
+    String? lastFailure;
+    final states = (await vpn.listenToStates()).listen((state) {
+      if (settled.isCompleted) return;
+      switch (state) {
+        case VpnState.connected:
+          settled.complete(null);
+        case VpnState.disconnected:
+          if (connecting) settled.complete('disconnected while connecting (last failure: ${lastFailure ?? 'none'})');
+        case VpnState.connecting || VpnState.recovering || VpnState.waitingForRecovery || VpnState.waitingForNetwork:
+          connecting = true;
+      }
+    });
+    final failures = vpn.connectFailures.listen((failure) => lastFailure = failure.value);
+    try {
+      await vpn.start(
+        server: server.copyWith(serverData: data),
+        routingProfile: routingProfile,
+        excludedRoutes: await repositories.settingsRepository.getExcludedRoutes(),
+        logLevel: logLevel,
+      );
 
-    return null;
+      // Still connecting by then: the engine keeps retrying alone; the native
+      // timeout (45 s) is later than this.
+      return await settled.future.timeout(_settleTimeout, onTimeout: () => null);
+    } finally {
+      await states.cancel();
+      await failures.cancel();
+    }
   }
+
+  static const _settleTimeout = Duration(seconds: 35);
 }
 
 /// Entry point of the tile's background engine (called from main.dart's
