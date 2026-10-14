@@ -692,7 +692,7 @@
     }
   },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• The Android quick settings tile turns the VPN on without opening the app\n• Traffic statistics: Settings → Traffic statistics — charts in every style, by server and by day, a monthly limit. Counted on the phone only and never sent anywhere\n• «No internet» next to the VPN icon: Marsik explains what it means, on any phone\n• Security: a server link or file no longer switches on «Russian exit» by itself — Marsik asks; invisible characters are stripped from server names; passwords with «\\» import correctly from config files",
+  "whatsNewBody": "• The Android quick settings tile turns the VPN on without opening the app\n• Traffic statistics on Android: Settings → Traffic statistics — charts in every style, by server and by day, a monthly limit. Counted on the phone only and never sent anywhere\n• «No internet» next to the VPN icon: Marsik explains what it means, on any phone\n• Security: a server link or file no longer switches on «Russian exit» by itself — Marsik asks; invisible characters are stripped from server names; passwords with «\\» import correctly from config files",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",
