@@ -18,9 +18,10 @@ import io.flutter.plugin.common.MethodChannel
  * - It isn't (or Dart didn't take it): a windowless engine runs the Dart
  *   entry point `tileConnect` (lib/feature/vpn/tile_connect.dart), which
  *   builds the configuration the same way a tap in the app does, starts the
- *   VPN and reports `done`; the engine is destroyed then (or after
- *   [TIMEOUT_MS]). The VPN service and its native engine don't need it -
- *   they keep connecting/retrying alone.
+ *   VPN and reports `done` once the tunnel is up; the engine is destroyed
+ *   then (or after [TIMEOUT_MS]). Destroyed while the tunnel was still
+ *   connecting, it took the VPN down with it; once connected, the VPN
+ *   service and its native engine run alone.
  *
  * Everything here runs on the main thread.
  */
