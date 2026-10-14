@@ -93,7 +93,11 @@ class InitializationHelperIo extends InitializationHelper {
       additionalTags: ['app', 'initialization'],
     );
 
-    await dependenciesFactory.exportLogsLocalSource.clearTempFiles();
+    // file_picker registers its channel only with an activity - the tile's
+    // windowless engine has none (and has no temp files to clear).
+    if (!headless) {
+      await dependenciesFactory.exportLogsLocalSource.clearTempFiles();
+    }
 
     final initialVpnState = await repositoryFactory.vpnRepository.requestState();
 
