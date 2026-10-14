@@ -23,6 +23,8 @@ An Android VPN client for the **TrustTunnel** protocol - a fork of the open-sour
 ## Connecting
 
 - **Quick Settings tile.** Turns the VPN on and off without opening the app - even after a manual disconnect with the app closed: it connects to the last server. The app opens only if Android hasn't allowed CatTunnel to create a VPN yet or the connection failed.
+- **Tray icon (Windows, Linux).** Connect, disconnect, pick a server, open the window. The close button hides the window to the tray and the VPN keeps running; "Quit" in the tray menu disconnects and exits. On Linux the icon shows in KDE, XFCE, Cinnamon, MATE and Ubuntu; plain GNOME needs the AppIndicator extension, without it the close button closes the window as before.
+- **Switching to another server.** If the selected server doesn't connect for 2 minutes while the internet works, CatTunnel moves to the next server of the same subscription (never a reserve or Russian-exit key) and tries to go back after 30 minutes. Off in "Settings → Launch and connection".
 - **Auto-connect on launch**, **Kill switch** (blocks traffic if the tunnel drops), **Russian services directly** (banks, government services etc. bypass the VPN; the list is editable), MTU, server check timeout - in "Settings → Launch and connection".
 - **A single notification** "CatTunnel - connected to …" instead of two.
 - **Anti-DPI** and the other bypass settings are in the server settings, section "Censorship bypass" (each section has a "?" with an explanation). Methods: Basic, 1, 2, 3 (ByeDPI techniques), Auto (tries 1 → 2 → 3 and remembers what worked for the server and network) and a ByeDPI-style Custom string. The TLS fingerprint is there too; size masking and "Turn off QUIC" (UDP to port 443 is refused, browsers go over TCP inside the tunnel) are under "For experts". A subscription can pick all of this itself. Step by step: "Settings → How the connection works".
@@ -38,9 +40,9 @@ The "Routing" tab - the "Split tunneling" window opens by itself:
 
 ## Traffic statistics
 
-"Settings → Traffic statistics" (Android): how much went through the VPN over 24 hours, 7, 30 or 90 days - by server, downloaded and uploaded, the peak hour and day, compared with the previous period. Charts: line, columns, area, ranking, shares and a heat map by hour and weekday, with a table of values below. You can set a **monthly limit** - Marsik warns when it's nearly used up.
+"Settings → Traffic statistics" (Android, Windows, Linux): how much went through the VPN over 24 hours, 7, 30 or 90 days - by server, downloaded and uploaded, the peak hour and day, compared with the previous period. Charts: line, columns, area, ranking, shares and a heat map by hour and weekday, with a table of values below. You can set a **monthly limit** - Marsik warns when it's nearly used up.
 
-Counted on this phone only (tunnel traffic including encryption), kept for 180 days and never sent anywhere. "Clear statistics" wipes it.
+Counted on this device only, kept for 180 days and never sent anywhere. On a phone it's the app's traffic including encryption, on a computer the tunnel's traffic while CatTunnel is open. "Clear statistics" wipes it.
 
 ## Updates
 
@@ -114,7 +116,9 @@ Everything below was added in this fork; the original TrustTunnel client doesn't
 - **A single notification** → the app posts its notification under the id and channel of the native service's mandatory one, and Android replaces it in place → `vpn_connection_notifier.dart`.
 - **Kill switch, auto-connect and Russian services directly are available on phones** (the original screen was macOS-only), an editable rule list, MTU, check timeout.
 
-- **Traffic statistics** → `TrafficRecorder.kt` takes the `TrafficStats` delta for the app's uid every 30 s while our VPN runs and folds it by hour into a file (180 days, no hourly rewrite); the screen mirrors the web panel's charts → `lib/feature/traffic`.
+- **Traffic statistics** → Android: `TrafficRecorder.kt` takes the `TrafficStats` delta for the app's uid every 30 s while our VPN runs; Windows and Linux: `desktop_traffic_recorder.dart` reads the engine's TUN counters (Windows: `GetIfTable2` for the Wintun adapter, Linux: `/sys/class/net/<tun>/statistics`). One file format, hourly, 180 days; the screen mirrors the web panel's charts → `lib/feature/traffic`.
+- **Tray** → Windows: native `packages/tray_manager/windows` (white icon on a dark taskbar); Linux: a StatusNotifierItem and `com.canonical.dbusmenu` menu in Dart over D-Bus, no native code (`linux_sni_tray_api.dart`); hiding to the tray — `desktop_app_window_controller.dart`.
+- **Server failover** → `auto_failover_scope.dart`: listens to the live VPN state (works with the window hidden); 2 minutes without a connection while the internet works — the next key of the same subscription, one try to go back after 30 minutes.
 
 ### Updates and engine
 - **Engine patches (Android)** → the engine's Kotlin part is rebuilt with patches (the native part is our own build with the anti-DPI patch, `tools/engine_native`): `0001` - per-app split (`excluded_apps` / `included_apps`); `0002` - the config reaches the service in memory, not in an Intent (with the Russian lists it exceeds 1 MB, the Binder limit); `0003` - if the app asks to start a VPN that is already running, the engine tells it the real state, so a working VPN isn't shown as broken; `0004` - on Android 13+ the Russian networks are excluded with `excludeRoute` (a few dozen routes instead of hundreds); `0005` - "Disconnect" always closes the service, even if the connection hung; `0006` - if the system refused the VPN interface (e.g. `Cannot set address`) or the start failed otherwise, the engine reports "disconnected" to the app instead of staying silent → `tools/engine_patch`.

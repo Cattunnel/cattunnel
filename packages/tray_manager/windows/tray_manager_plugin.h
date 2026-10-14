@@ -98,8 +98,15 @@ private:
   // Handle menu item click
   void OnMenuItemClicked(const std::string &id);
 
-  // Create HICON from PNG data
-  HICON CreateIconFromPng(const std::vector<uint8_t> &png_data);
+  // Create HICON from PNG data; [white] paints every pixel white, keeping
+  // alpha (a monochrome template icon on a dark taskbar)
+  HICON CreateIconFromPng(const std::vector<uint8_t> &png_data, bool white = false);
+
+  // Taskbar in dark mode (Personalize\SystemUsesLightTheme == 0, or unset)
+  static bool TaskbarIsDark();
+
+  // Re-creates the tray icon when the taskbar theme changed since it was made
+  void RefreshIconForTheme();
 
   // Create HBITMAP from PNG data for menu items
   HBITMAP CreateBitmapFromPng(const std::vector<uint8_t> &png_data);
@@ -146,8 +153,11 @@ private:
   NOTIFYICONDATAW nid_ = {};
   bool tray_icon_added_ = false;
 
-  // Current tray icon
+  // Current tray icon, and what it was made from
   HICON current_icon_ = nullptr;
+  std::vector<uint8_t> icon_png_;
+  bool icon_monochrome_ = false;
+  bool icon_white_ = false;
 
   // Menu items
   std::vector<TrayMenuItem> menu_items_;
