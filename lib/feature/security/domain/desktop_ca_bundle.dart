@@ -3,6 +3,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:cryptography/dart.dart';
 import 'package:ffi/ffi.dart';
 
 /// The endpoint CA bundle on Windows and Linux: the system roots minus the
@@ -16,6 +17,15 @@ abstract final class DesktopCaBundle {
   /// subject and issuer names as plain ASCII.
   static const russianMarkers = ['Russian Trusted Root CA', 'Russian Trusted Sub CA'];
 
+  /// SHA-256 of the subjectPublicKeyInfo (base64) of the Ministry's root and
+  /// both Sub CAs (gu-st.ru, checked 14.10.2026): the key stays the same when
+  /// a CA is re-issued or cross-signed under another name.
+  static const russianSpkiSha256 = {
+    'ArgiDAcHKNt3HZrFnlRSHE7drSGng7smz98ZwdsPrjc=', // Russian Trusted Root CA, till 2032
+    'BEeqSxjEi56NsW6RgJKG3Sfv1qULqA0whOuecLqOHco=', // Russian Trusted Sub CA, till 2027
+    'N7la4XONxMaWYRRHFWaf25yT562zNjQi3rYcDzrPZcE=', // Russian Trusted Sub CA (2024), till 2029
+  };
+
   /// Distro bundles: Debian/Ubuntu, Arch, Fedora, Alpine/others.
   static const linuxBundles = [
     '/etc/ssl/certs/ca-certificates.crt',
@@ -24,22 +34,26 @@ abstract final class DesktopCaBundle {
     '/etc/ssl/cert.pem',
   ];
 
-  /// PEM bundle, or null when the system store can't be read (the engine then
-  /// keeps its own default).
+  /// PEM bundle. When the system store can't be read it's only Let's
+  /// Encrypt's roots (what our servers chain to) - never the engine's default,
+  /// which is the whole system store, Russian roots included.
   static String? build() {
+    if (!Platform.isWindows && !Platform.isLinux) return null;
     try {
-      if (Platform.isWindows) return bundleOf(_windowsRoots());
-      if (Platform.isLinux) {
+      if (Platform.isWindows) {
+        final roots = _windowsRoots();
+        if (roots.isNotEmpty) return bundleOf(roots);
+      } else {
         for (final path in linuxBundles) {
           final file = File(path);
           if (file.existsSync()) return bundleOf(derOfPem(file.readAsStringSync()));
         }
       }
     } on Object {
-      // Unreadable store: leave the engine on its default.
+      // Unreadable store: our roots only, below.
     }
 
-    return null;
+    return bundleOf(const []);
   }
 
   /// [roots] minus the Russian ones, plus Let's Encrypt's roots: Windows
@@ -63,8 +77,46 @@ abstract final class DesktopCaBundle {
 
   static bool isRussian(Uint8List der) {
     final text = latin1.decode(der, allowInvalid: true);
+    if (russianMarkers.any(text.contains)) return true;
+    final spki = spkiOf(der);
 
-    return russianMarkers.any(text.contains);
+    return spki != null && russianSpkiSha256.contains(base64.encode(const DartSha256().hashSync(spki).bytes));
+  }
+
+  /// The subjectPublicKeyInfo of an X.509 certificate [der], null if it
+  /// doesn't parse.
+  static Uint8List? spkiOf(Uint8List der) {
+    try {
+      final tbs = _tlv(der, _tlv(der, 0).start);
+      var pos = tbs.start;
+      if (der[pos] == 0xA0) pos = _tlv(der, pos).end; // [0] version
+      // serialNumber, signature, issuer, validity, subject
+      for (var i = 0; i < 5; i++) {
+        pos = _tlv(der, pos).end;
+      }
+
+      return Uint8List.sublistView(der, pos, _tlv(der, pos).end);
+    } on Object {
+      return null;
+    }
+  }
+
+  /// A DER element at [pos]: where its content starts and where it ends.
+  static ({int start, int end}) _tlv(Uint8List der, int pos) {
+    var length = der[pos + 1];
+    var start = pos + 2;
+    if (length & 0x80 != 0) {
+      final count = length & 0x7F;
+      if (count == 0 || count > 4) throw const FormatException('DER length');
+      length = 0;
+      for (var i = 0; i < count; i++) {
+        length = (length << 8) | der[start++];
+      }
+    }
+    final end = start + length;
+    if (end > der.length) throw const FormatException('DER overrun');
+
+    return (start: start, end: end);
   }
 
   static List<Uint8List> derOfPem(String pem) => [

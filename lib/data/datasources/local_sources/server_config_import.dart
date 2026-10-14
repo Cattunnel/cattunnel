@@ -1,5 +1,4 @@
-import 'dart:convert';
-
+import 'package:trusttunnel/common/utils/display_name.dart';
 import 'package:trusttunnel/data/model/certificate.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/vpn_protocol.dart';
@@ -10,7 +9,7 @@ import 'package:vpn_plugin/models/upstream_protocol.dart';
 
 /// A new (unsaved) server from a decoded `tt://` link or config file.
 ServerData serverDataFromEndpoint(Endpoint endpoint, {required String routingProfileId}) => ServerData.empty(
-  name: endpoint.name,
+  name: sanitizeDisplayName(endpoint.name),
   ipAddress: endpoint.addresses.first,
   domain: endpoint.hostName,
   username: endpoint.username,
@@ -57,16 +56,9 @@ ServerData serverDataFromConfigFile(String config, {required String routingProfi
       endpoint.password.isEmpty) {
     throw const FormatException('The config has no [endpoint] with hostname, addresses, username and password');
   }
-  final decoded = serverDataFromEndpoint(endpoint, routingProfileId: routingProfileId);
-  // tt2conf.py writes TOML basic strings, escaped (`\"`, `\\`, `\uXXXX`);
-  // the app's INI reader keeps them as they are.
-  final server = decoded.copyWith(
-    ipAddress: _unescape(decoded.ipAddress),
-    domain: _unescape(decoded.domain),
-    username: _unescape(decoded.username),
-    password: _unescape(decoded.password),
-    dnsServers: decoded.dnsServers.map(_unescape).toList(),
-  );
+  // The INI reader already turns TOML escapes (`\"`, `\\`) into characters;
+  // unescaping again broke passwords with a backslash (`a\\nb` became a newline).
+  final server = serverDataFromEndpoint(endpoint, routingProfileId: routingProfileId);
   // The CLI config has no name key; tt2conf.py puts the name in the first
   // comment line ("# 🇩🇪 Германия 1"). The decoder's fallback is "Server".
   final commentName = _firstCommentLine(config);
@@ -74,20 +66,12 @@ ServerData serverDataFromConfigFile(String config, {required String routingProfi
   return commentName == null || endpoint.name != 'Server' ? server : server.copyWith(name: commentName);
 }
 
-/// TOML basic-string escapes are JSON's (plus rare `\U`/`\e`, left as they are).
-String _unescape(String value) {
-  if (!value.contains(r'\')) return value;
-  try {
-    return jsonDecode('"$value"') as String;
-  } on FormatException {
-    return value;
-  }
-}
-
 String? _firstCommentLine(String config) {
   final first = config.trimLeft().split('\n').first.trim();
   if (!first.startsWith('#')) return null;
   final text = first.substring(1).trim();
 
-  return text.isEmpty ? null : text;
+  final name = sanitizeDisplayName(text);
+
+  return name.isEmpty ? null : name;
 }

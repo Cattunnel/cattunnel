@@ -18,6 +18,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.net.Inet6Address
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.cert.X509Certificate
 
 /**
@@ -59,7 +60,11 @@ class SecurityChannel(private val context: Context, messenger: BinaryMessenger) 
     private fun caStore(): KeyStore = KeyStore.getInstance("AndroidCAStore").apply { load(null, null) }
 
     private fun isRussianTrusted(cert: X509Certificate): Boolean =
-        RUSSIAN_TRUSTED_MARKERS.any { cert.subjectX500Principal.name.contains(it, ignoreCase = true) }
+        RUSSIAN_TRUSTED_MARKERS.any { cert.subjectX500Principal.name.contains(it, ignoreCase = true) } ||
+            Base64.encodeToString(
+                MessageDigest.getInstance("SHA-256").digest(cert.publicKey.encoded),
+                Base64.NO_WRAP,
+            ) in RUSSIAN_TRUSTED_SPKI_SHA256
 
     /**
      * PEM of every *system* root except the Russian Ministry of Digital
@@ -243,5 +248,12 @@ class SecurityChannel(private val context: Context, messenger: BinaryMessenger) 
 
         /** Subject markers of the Russian Ministry of Digital Development CAs. */
         private val RUSSIAN_TRUSTED_MARKERS = listOf("Russian Trusted Root CA", "Russian Trusted Sub CA")
+
+        /** SHA-256 of their subjectPublicKeyInfo - same list as DesktopCaBundle.russianSpkiSha256. */
+        private val RUSSIAN_TRUSTED_SPKI_SHA256 = setOf(
+            "ArgiDAcHKNt3HZrFnlRSHE7drSGng7smz98ZwdsPrjc=", // Root CA, till 2032
+            "BEeqSxjEi56NsW6RgJKG3Sfv1qULqA0whOuecLqOHco=", // Sub CA, till 2027
+            "N7la4XONxMaWYRRHFWaf25yT562zNjQi3rYcDzrPZcE=", // Sub CA (2024), till 2029
+        )
     }
 }

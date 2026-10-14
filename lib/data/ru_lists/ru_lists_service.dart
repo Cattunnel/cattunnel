@@ -4,8 +4,8 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:adguard_logger/adguard_logger.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/data/ru_lists/cidr_set.dart';
 
 /// Russian networks and domains for "Russian services bypass the VPN", on
@@ -124,11 +124,12 @@ class RuListsService {
   Future<String?> _download(_Source source) async {
     for (final url in source.urls) {
       try {
-        final response = await http.get(Uri.parse(url)).timeout(_timeout);
+        // The biggest list is ~0.5 MB; the cap only stops an endless body.
+        final (status, body) = await getLimited(Uri.parse(url), maxBytes: 16 * 1024 * 1024, timeout: _timeout);
         // A few KB at least: an error page or an empty file must not
         // replace a good cached copy.
-        if (response.statusCode == 200 && response.bodyBytes.length > 1024) {
-          return utf8.decode(response.bodyBytes, allowMalformed: true);
+        if (status == 200 && body.length > 1024) {
+          return utf8.decode(body, allowMalformed: true);
         }
       } on Object {
         // Next mirror.

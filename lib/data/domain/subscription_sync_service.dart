@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:trusttunnel/common/utils/age_armor.dart';
 import 'package:trusttunnel/common/utils/deep_link_uri_normalizer.dart';
+import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
@@ -51,6 +52,9 @@ class SubscriptionSyncService {
 
   /// Reading the body once the mirror has answered.
   static const _bodyTimeout = Duration(seconds: 20);
+
+  /// Ours are a few KB; anything this big isn't a subscription.
+  static const _maxBodyBytes = 4 * 1024 * 1024;
 
   final SubscriptionDataSource _subscriptionDataSource;
   final ServerDataSource _serverDataSource;
@@ -143,9 +147,7 @@ class SubscriptionSyncService {
       // No redirects: a 3xx could otherwise hop the request (and later the
       // credentials) over to plain http or another host.
       final request = http.Request('GET', Uri.parse(url))..followRedirects = false;
-      final response = await http.Response.fromStream(
-        await client.send(request).timeout(_mirrorConnectTimeout),
-      ).timeout(_bodyTimeout);
+      final response = await client.send(request).timeout(_mirrorConnectTimeout);
 
       if (response.statusCode != 200) {
         throw SubscriptionFetchException(
@@ -154,7 +156,7 @@ class SubscriptionSyncService {
         );
       }
 
-      return response.bodyBytes;
+      return await readLimited(response, _maxBodyBytes).timeout(_bodyTimeout);
     } finally {
       client.close();
     }
