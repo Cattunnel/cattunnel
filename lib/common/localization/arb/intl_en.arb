@@ -321,6 +321,8 @@
   "autoConnectNoServersAdded": "No servers added. To apply the setting, add a server",
   "killSwitch": "Kill switch",
   "killSwitchDescription": "Block all network traffic if the VPN connection drops unexpectedly",
+  "autoFailover": "Switch to another server",
+  "autoFailoverDescription": "If the selected server doesn't connect for 2 minutes while the internet works, the next key of the same subscription (except reserve ones); after 30 minutes, one try to go back.",
   "ruServicesBypass": "Russian services",
   "ruServicesBypassDescription": "Route Russian banking and services (Sber, VK, Yandex, etc.) directly so they keep working",
   "ruServicesRulesScreenTitle": "Russian services rules",
@@ -823,7 +825,7 @@
   "trafficTable": "Values table",
   "trafficTotal": "Total",
   "trafficEmpty": "Nothing yet. Traffic is counted while the VPN is on - come back later.",
-  "trafficPrivacyNote": "Counted on this phone only: the tunnel's traffic, encryption included. Never sent anywhere.",
+  "trafficPrivacyNote": "Counted on this device only and never sent anywhere.",
   "trafficThisMonth": "This month",
   "trafficUsedOf": "{used} of {limit}",
   "@trafficUsedOf": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
@@ -838,5 +840,5 @@
   "trafficChartTitle": "Traffic",
   "trafficClear": "Clear statistics",
   "trafficClearTitle": "Clear statistics?",
-  "trafficClearBody": "Everything counted on this phone is deleted. This can't be undone."
+  "trafficClearBody": "Everything counted on this device is deleted. This can't be undone."
 }

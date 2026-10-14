@@ -15,6 +15,10 @@ class TrayCallbackApiSetup {
   /// Message codec for platform channel communication.
   static const MessageCodec<Object?> _codec = StandardMessageCodec();
 
+  /// The handler last set up, for in-process trays (Linux, LinuxSniTrayApi)
+  /// that have no channel to send clicks over.
+  static TrayCallbackApi? current;
+
   /// Sets up the callback channel for receiving menu item clicks.
   ///
   /// Pass `null` for [api] to unregister the handler.
@@ -24,6 +28,7 @@ class TrayCallbackApiSetup {
     BinaryMessenger? binaryMessenger,
     String messageChannelSuffix = '',
   }) {
+    current = api;
     final String suffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
 
     final BasicMessageChannel<Object?> channel = BasicMessageChannel<Object?>(

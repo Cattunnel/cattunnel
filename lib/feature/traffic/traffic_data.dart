@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 
 /// One hour of one server's tunnel traffic, as counted on this phone.
 class TrafficRow {
@@ -20,18 +21,21 @@ class TrafficRow {
   int get total => rx + tx;
 }
 
-/// The phone's own traffic counter (TrafficRecorder.kt on Android): hourly
-/// rows per server, nothing leaves the device. Desktop doesn't count yet.
+/// The device's own traffic counter (TrafficRecorder.kt on Android,
+/// DesktopTrafficRecorder on Windows and Linux): hourly rows per server,
+/// nothing leaves the device.
 abstract final class TrafficSource {
   static const _channel = MethodChannel('cattunnel/traffic');
 
-  static bool get supported => Platform.isAndroid;
+  static bool get supported => !kIsWeb && (Platform.isAndroid || DesktopTrafficRecorder.supported);
 
   static Future<List<TrafficRow>> read() async {
     if (!supported) {
       return const [];
     }
-    final text = await _channel.invokeMethod<String>('read') ?? '';
+    final text = Platform.isAndroid
+        ? await _channel.invokeMethod<String>('read') ?? ''
+        : await DesktopTrafficRecorder.instance.read();
 
     // Off the UI isolate: months of hours for many servers is megabytes.
     return compute(parse, text);
@@ -39,8 +43,10 @@ abstract final class TrafficSource {
 
   /// Deletes everything counted so far.
   static Future<void> clear() async {
-    if (supported) {
+    if (Platform.isAndroid) {
       await _channel.invokeMethod<void>('clear');
+    } else if (DesktopTrafficRecorder.supported) {
+      await DesktopTrafficRecorder.instance.clear();
     }
   }
 

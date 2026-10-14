@@ -21,6 +21,7 @@ import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_loggi
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/auto_connect_on_launch_settings_scope.dart';
 import 'package:trusttunnel/feature/vpn/tile_connect.dart';
+import 'package:trusttunnel/feature/vpn/widgets/auto_failover_scope.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_update_manager.dart';
 
@@ -67,7 +68,10 @@ Future<void> main() async {
             child: RoutingScope(
               child: ExcludedRoutesScope(
                 child: VpnScope(
-                  appWindowController: defaultTargetPlatform == TargetPlatform.macOS
+                  appWindowController:
+                      defaultTargetPlatform == TargetPlatform.macOS ||
+                          defaultTargetPlatform == TargetPlatform.windows ||
+                          defaultTargetPlatform == TargetPlatform.linux
                       ? initializationHelper.dependenciesFactory.appWindowController
                       : null,
                   vpnRepository: initializationHelper.repositoryFactory.vpnRepository,
@@ -75,9 +79,11 @@ Future<void> main() async {
                   child: const ServersScope(
                     child: ServerLatencyScope(
                       child: AutoConnectOnLaunchSettingsScope(
-                        child: VpnUpdateManager(
-                          child: DeepLinkScope(
-                            child: App(),
+                        child: AutoFailoverScope(
+                          child: VpnUpdateManager(
+                            child: DeepLinkScope(
+                              child: App(),
+                            ),
                           ),
                         ),
                       ),

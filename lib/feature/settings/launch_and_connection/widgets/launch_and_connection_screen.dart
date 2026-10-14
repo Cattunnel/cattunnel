@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/settings/launch_and_connection/controller/mt
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope/launch_and_connection_scope.dart';
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope/launch_and_connection_scope_controller.dart';
 import 'package:trusttunnel/feature/settings/ru_services/widgets/ru_services_rules_screen.dart';
+import 'package:trusttunnel/feature/vpn/widgets/auto_failover_scope.dart';
 import 'package:trusttunnel/widgets/common/custom_switch_tile.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/custom_icon.dart';
@@ -39,6 +40,7 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
   late bool _isServersListEmpty;
   bool _isRuServicesBypassEnabled = true;
   bool _isConnectionNotificationsEnabled = true;
+  late bool _isAutoFailoverEnabled = AutoFailoverPreferences.enabled(context.dependencyFactory.sharedPreferences);
   late final TextEditingController _mtuTextController;
   late final TextEditingController _testTimeoutTextController;
 
@@ -158,6 +160,12 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
             onChanged: _isKillSwitchLoading ? null : _setKillSwitchEnabled,
           ),
           CustomSwitchTile(
+            title: context.ln.autoFailover,
+            subtitle: context.ln.autoFailoverDescription,
+            value: _isAutoFailoverEnabled,
+            onChanged: _setAutoFailoverEnabled,
+          ),
+          CustomSwitchTile(
             title: context.ln.ruServicesBypass,
             subtitle: context.ln.ruServicesBypassDescription,
             value: _isRuServicesBypassEnabled,
@@ -268,5 +276,10 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
     }
 
     context.repositoryFactory.serverTestTimeoutRepository.setValueSeconds(seconds);
+  }
+
+  Future<void> _setAutoFailoverEnabled(bool value) async {
+    setState(() => _isAutoFailoverEnabled = value);
+    await AutoFailoverPreferences.setEnabled(context.dependencyFactory.sharedPreferences, value);
   }
 }

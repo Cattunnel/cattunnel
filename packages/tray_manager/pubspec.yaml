@@ -4,13 +4,14 @@ publish_to: 'none'
 
 resolution: workspace
 
-description: "TrustTunnel macOS status bar tray API and menu models."
+description: "TrustTunnel tray API and menu models (macOS status bar, Windows notification area)."
 
 environment:
   sdk: 3.10.1
   flutter: 3.38.3
 
 dependencies:
+  dbus: 0.7.12
   flutter:
     sdk: flutter
 
@@ -22,3 +23,5 @@ flutter:
     platforms:
       macos:
         pluginClass: TrayManagerMacosPlugin
+      windows:
+        pluginClass: TrayManagerPluginCApi

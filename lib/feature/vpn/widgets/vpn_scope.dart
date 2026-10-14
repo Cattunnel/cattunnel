@@ -19,6 +19,7 @@ import 'package:trusttunnel/feature/app/controller/app_window_controller.dart';
 import 'package:trusttunnel/feature/menu_bar/tray_manager/macos/macos_exit_dialog.dart';
 import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.dart';
+import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/services/vpn_connection_notifier.dart';
@@ -261,6 +262,8 @@ class _VpnScopeState extends State<VpnScope> {
   void initState() {
     super.initState();
     _stateNotifier = ValueNotifier(widget.initialState);
+    // The app may come up with the VPN already running (Linux keeps it).
+    DesktopTrafficRecorder.instance.onState(widget.initialState, null);
     _logsNotifier = ValueNotifier(<VpnLog>[]);
     _connectionNotificationsSettingsRepository = context.repositoryFactory.connectionNotificationsSettingsRepository;
     _appLifecycleListener = AppLifecycleListener(
@@ -293,6 +296,7 @@ class _VpnScopeState extends State<VpnScope> {
       logs: _logsNotifier.value,
       state: _stateNotifier.value,
       readLiveState: () => _stateNotifier.value,
+      stateListenable: _stateNotifier,
       onStart: _start,
       onStop: _stop,
       onUpdate: _updateConfiguration,
@@ -549,6 +553,7 @@ class _VpnScopeState extends State<VpnScope> {
     final previousState = _stateNotifier.value;
     _vpnStateRevision++;
     _stateNotifier.value = state;
+    DesktopTrafficRecorder.instance.onState(state, _currentServerId);
 
     if (previousState != state) {
       unawaited(_maybeNotifyStateChange(previousState: previousState, state: state));
@@ -634,6 +639,14 @@ class _VpnScopeState extends State<VpnScope> {
   void _onAppResumed() => unawaited(_refreshState());
 
   Future<AppExitResponse> _onExitRequested() async {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      // Only "Quit" in the tray gets here (the close button hides the
+      // window): stop the tunnel cleanly, then let the window close.
+      await _stopAndWaitUntilDisconnected();
+      await widget.appWindowController?.setPreventClose(false);
+
+      return AppExitResponse.exit;
+    }
     if (defaultTargetPlatform != TargetPlatform.macOS) {
       return AppExitResponse.exit;
     }
@@ -697,6 +710,7 @@ class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnControl
 
   const _InheritedVpnScope({
     required ValueGetter<VpnState> readLiveState,
+    required this.stateListenable,
     required UpdateVpnCallback onStart,
     required UpdateVpnCallback onUpdate,
     required AsyncCallback onStop,
@@ -738,6 +752,9 @@ class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnControl
 
   @override
   VpnState get liveState => _readLiveState();
+
+  @override
+  final ValueListenable<VpnState> stateListenable;
 
   @override
   Future<void> stop() => _onStop();
