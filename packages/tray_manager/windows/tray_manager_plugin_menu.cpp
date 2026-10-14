@@ -224,6 +224,9 @@ HMENU TrayManagerPlugin::BuildPopupMenu(
 }
 
 void TrayManagerPlugin::ShowContextMenu() {
+  // The theme may have changed since the icon was made (no broadcast reaches
+  // the tray's hidden window); the next state change refreshes it too.
+  RefreshIconForTheme();
   if (menu_items_.empty())
     return;
 

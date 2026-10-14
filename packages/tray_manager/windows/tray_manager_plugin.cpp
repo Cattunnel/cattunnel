@@ -21,6 +21,7 @@
 #pragma comment(lib, "shlwapi.lib")
 #pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "advapi32.lib")
 
 namespace tray_manager {
 
@@ -246,7 +247,7 @@ bool TrayManagerPlugin::AddTrayIcon() {
   nid_.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
   nid_.uCallbackMessage = kTrayIconMessage;
   nid_.hIcon = current_icon_ ? current_icon_ : GetDefaultIcon();
-  wcscpy_s(nid_.szTip, L"VPN");
+  wcscpy_s(nid_.szTip, L"CatTunnel");
 
   tray_icon_added_ = Shell_NotifyIconW(NIM_ADD, &nid_) == TRUE;
   return tray_icon_added_;
@@ -329,15 +330,17 @@ void TrayManagerPlugin::DisposeTray(
 void TrayManagerPlugin::SetTrayIcon(
     const std::vector<uint8_t> &icon_png, bool is_monochrome,
     std::function<void(const flutter::EncodableValue &)> reply) {
-  static_cast<void>(is_monochrome);
   // Destroy old icon
   if (current_icon_) {
     DestroyIcon(current_icon_);
     current_icon_ = nullptr;
   }
 
+  icon_png_ = icon_png;
+  icon_monochrome_ = is_monochrome;
+  icon_white_ = is_monochrome && TaskbarIsDark();
   if (!icon_png.empty()) {
-    current_icon_ = CreateIconFromPng(icon_png);
+    current_icon_ = CreateIconFromPng(icon_png, icon_white_);
   }
 
   if (tray_icon_added_) {
@@ -345,6 +348,32 @@ void TrayManagerPlugin::SetTrayIcon(
   }
 
   SendSuccessReply(reply);
+}
+
+// static
+bool TrayManagerPlugin::TaskbarIsDark() {
+  DWORD value = 0;
+  DWORD size = sizeof(value);
+  const LSTATUS status = RegGetValueW(
+      HKEY_CURRENT_USER,
+      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+      L"SystemUsesLightTheme", RRF_RT_REG_DWORD, nullptr, &value, &size);
+  return status != ERROR_SUCCESS || value == 0;
+}
+
+void TrayManagerPlugin::RefreshIconForTheme() {
+  const bool white = icon_monochrome_ && TaskbarIsDark();
+  if (white == icon_white_ || icon_png_.empty())
+    return;
+  HICON icon = CreateIconFromPng(icon_png_, white);
+  if (!icon)
+    return;
+  if (current_icon_)
+    DestroyIcon(current_icon_);
+  current_icon_ = icon;
+  icon_white_ = white;
+  if (tray_icon_added_)
+    UpdateTrayIcon();
 }
 
 } // namespace tray_manager

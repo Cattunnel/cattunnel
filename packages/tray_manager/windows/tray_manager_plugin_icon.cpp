@@ -48,7 +48,7 @@ private:
 } // namespace
 
 HICON TrayManagerPlugin::CreateIconFromPng(
-    const std::vector<uint8_t> &png_data) {
+    const std::vector<uint8_t> &png_data, bool white) {
   if (png_data.empty())
     return nullptr;
 
@@ -137,6 +137,14 @@ HICON TrayManagerPlugin::CreateIconFromPng(
   if (FAILED(hr)) {
     DeleteObject(hBitmap);
     return nullptr;
+  }
+
+  if (white) {
+    // Pre-multiplied BGRA: white at alpha a is (a, a, a, a).
+    auto *px = static_cast<BYTE *>(bits);
+    for (UINT i = 0; i < bufferSize; i += 4) {
+      px[i] = px[i + 1] = px[i + 2] = px[i + 3];
+    }
   }
 
   // Create monochrome mask bitmap
