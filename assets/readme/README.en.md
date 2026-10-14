@@ -22,7 +22,7 @@ An Android VPN client for the **TrustTunnel** protocol - a fork of the open-sour
 
 ## Connecting
 
-- **Quick Settings tile.** Turns the VPN on and off. If the VPN was turned off manually, the tile opens the app, which connects to the last server right away.
+- **Quick Settings tile.** Turns the VPN on and off without opening the app - even after a manual disconnect with the app closed: it connects to the last server. The app opens only if Android hasn't allowed CatTunnel to create a VPN yet or the connection failed.
 - **Auto-connect on launch**, **Kill switch** (blocks traffic if the tunnel drops), **Russian services directly** (banks, government services etc. bypass the VPN; the list is editable), MTU, server check timeout - in "Settings → Launch and connection".
 - **A single notification** "CatTunnel - connected to …" instead of two.
 - **Anti-DPI** and the other bypass settings are in the server settings, section "Censorship bypass" (each section has a "?" with an explanation). Methods: Basic, 1, 2, 3 (ByeDPI techniques), Auto (tries 1 → 2 → 3 and remembers what worked for the server and network) and a ByeDPI-style Custom string. The TLS fingerprint is there too; size masking and "Turn off QUIC" (UDP to port 443 is refused, browsers go over TCP inside the tunnel) are under "For experts". A subscription can pick all of this itself. Step by step: "Settings → How the connection works".
@@ -34,7 +34,13 @@ The "Routing" tab - the "Split tunneling" window opens by itself:
 - **Sites and IPs** - domains and addresses that go directly, around the VPN. Turn on "Russian services" and the Russian networks come automatically from open lists (runetfreedom, ipverse, hydraponique), refreshed about once a day.
 - **Apps** - all through the VPN; the selected ones around it; or only the selected ones through it. "Auto: Russian and Chinese apps bypass the VPN" (on by default) - banks, government services, marketplaces, VK, Yandex, Chinese services and the phone maker's apps go directly; recomputed on every connect. The exception is **Yandex Browser**: it always stays in the VPN, because for many people it is the main browser (Yandex sites still go directly by domain).
 - Changes apply on the next connect.
-- **"No internet" on the network icon.** With "Russian services" on, many phones put "!" on the VPN or say "No internet" although everything works: Android doesn't mark a VPN with a long route list as validated. Marsik says so himself in a bubble on the home screen; after "Got it" a small "No internet?" chip stays there.
+- **"No internet" on the network icon.** Many phones put "!" on the VPN or say "No internet" although everything works (especially with "Russian services": Android doesn't mark a VPN with a long route list as validated). Whenever Android decides so, Marsik says it himself in a bubble on the home screen, in every style; after "Got it" a small "No internet?" chip stays there.
+
+## Traffic statistics
+
+"Settings → Traffic statistics" (Android): how much went through the VPN over 24 hours, 7, 30 or 90 days - by server, downloaded and uploaded, the peak hour and day, compared with the previous period. Charts: line, columns, area, ranking, shares and a heat map by hour and weekday, with a table of values below. You can set a **monthly limit** - Marsik warns when it's nearly used up.
+
+Counted on this phone only (tunnel traffic including encryption), kept for 180 days and never sent anywhere. "Clear statistics" wipes it.
 
 ## Updates
 
@@ -48,6 +54,9 @@ The "Routing" tab - the "Split tunneling" window opens by itself:
 "Settings → Appearance":
 - **"Cozy" style** - a big round button with Marsik on the main screen (asleep when the VPN is off, holding a shield when it's on), with the status, session time, ping and a server card below. Tap the card to open the server list with "Test all".
 - **"Minimal" style** - the familiar server list with power buttons.
+- **"Y2K" style** - the early 2000s: deep navy, electric blue, chrome and a holographic Marsik. Always dark.
+- **"Aero" style** - Frutiger Aero: sky, grass, glass and bubbles; morning, day, evening and night follow the phone's clock, and the scene shifts a little as you tilt the phone.
+- Pick a style by swiping through preview cards.
 - **Theme:** same as the phone, light or dark.
 - After an update the app shows "What's new" once and asks which main screen you like.
 
@@ -78,7 +87,7 @@ Section "Settings → Cyber security".
 
 ## Technical information
 
-- **Version:** 1.5.0. **Android:** 8.0 and newer (minSdk 26, targetSdk 36).
+- **Version:** 1.5.5. **Android:** 8.0 and newer (minSdk 26, targetSdk 36).
 - **"/S-Signed" in the version** (e.g. `1.4.0/S-Signed`) - a build signed and released **after the VirusTotal check**. First the same build with the plain version `1.4.0` is made and scanned on VirusTotal, then the signed one is built from the same code with a link to that report. The link is in "Settings → About". The report covers the "twin" without the suffix and the link: a link can't point at the file it's inside of (it changes the file's hash).
 - **Builds:** `arm64` (main, nearly all phones) and universal `arm64 + armv7` (if the main one won't install).
 - **Protocol:** TrustTunnel - HTTP/2 over TLS (the protocol also supports QUIC). Native engine: TrustTunnelClient 1.3.0-beta.1, built by us with CatTunnel patches (see "How it differs from TrustTunnel").
@@ -101,9 +110,11 @@ Everything below was added in this fork; the original TrustTunnel client doesn't
 - **Servers grouped by subscription**, manual refresh, **subscription QR** (`cattunnel://subscription?url&key&name`) and importing it with the scanner → `subscription_servers_group.dart`, `subscription_share_link.dart`, `qr_scan_screen.dart`.
 
 ### Connecting
-- **Quick Settings tile** → with a saved config it connects without opening the app (the config the native service keeps for Always-On); otherwise it opens the app with a per-process secret and the app connects to the last server; "is it on" is decided by our own service, not any VPN → `CatTunnelQsTileService.kt`, `CatTunnelActivity.kt`, `auto_connect_on_launch_settings_scope.dart`.
+- **Quick Settings tile** → connects without opening the app: through the running app's engine if there is one, otherwise a windowless Dart entry builds the config from the database exactly like the in-app button (`tile_connect.dart`); an invisible `TileConnectActivity` re-grants the VPN permission that firmwares like Samsung's drop after every stop; the app opens only without VPN permission or on failure; "is it on" is decided by our own service, not any VPN → `CatTunnelQsTileService.kt`, `TileConnector.kt`, `TileConnectActivity.kt`.
 - **A single notification** → the app posts its notification under the id and channel of the native service's mandatory one, and Android replaces it in place → `vpn_connection_notifier.dart`.
 - **Kill switch, auto-connect and Russian services directly are available on phones** (the original screen was macOS-only), an editable rule list, MTU, check timeout.
+
+- **Traffic statistics** → `TrafficRecorder.kt` takes the `TrafficStats` delta for the app's uid every 30 s while our VPN runs and folds it by hour into a file (180 days, no hourly rewrite); the screen mirrors the web panel's charts → `lib/feature/traffic`.
 
 ### Updates and engine
 - **Engine patches (Android)** → the engine's Kotlin part is rebuilt with patches (the native part is our own build with the anti-DPI patch, `tools/engine_native`): `0001` - per-app split (`excluded_apps` / `included_apps`); `0002` - the config reaches the service in memory, not in an Intent (with the Russian lists it exceeds 1 MB, the Binder limit); `0003` - if the app asks to start a VPN that is already running, the engine tells it the real state, so a working VPN isn't shown as broken; `0004` - on Android 13+ the Russian networks are excluded with `excludeRoute` (a few dozen routes instead of hundreds); `0005` - "Disconnect" always closes the service, even if the connection hung; `0006` - if the system refused the VPN interface (e.g. `Cannot set address`) or the start failed otherwise, the engine reports "disconnected" to the app instead of staying silent → `tools/engine_patch`.
@@ -111,7 +122,7 @@ Everything below was added in this fork; the original TrustTunnel client doesn't
 - **One engine version for all platforms** → the `ENGINE_VERSION` file, updated with `tools/update_engine.sh <version>` (checks the version is out, writes desktop build hashes to `ENGINE_SHA256`).
 
 ### Appearance
-- **Dark theme and styles** → all theme colors moved into a palette (`theme_palette.dart`: light is the original, dark is derived from the same accent `#3972AA`); style and theme live in `appearance_preferences.dart`; the "Cozy" main screen → `lib/feature/server/servers/widget/cozy/`; both styles connect through the shared `server_connection_actions.dart`. The "What's new" dialog with the style pick → `whats_new_dialog.dart`. Settings are grouped.
+- **Dark theme and styles** → all theme colors moved into a palette (`theme_palette.dart`: light is the original, dark is derived from the same accent `#3972AA`); style and theme live in `appearance_preferences.dart`; the "Cozy" main screen → `lib/feature/server/servers/widget/cozy/`, "Y2K" and "Aero" → `lib/widgets/y2k/`, `lib/widgets/aero/`, the style carousel → `style_carousel.dart`; every style connects through the shared `server_connection_actions.dart`. The "What's new" dialog with the style pick → `whats_new_dialog.dart`. Settings are grouped.
 
 ### Marsik
 - **Stuck-connection diagnostics** → after 10 s: TCP to `ya.ru` / `77.88.8.8`; TCP to the server (timeout vs refused); TLS with the server's SNI and ALPN `h2`/`http/1.1` (a TrustTunnel server silently drops a foreign SNI or an unusable ALPN, so only a TLS alert counts as "answered"); if that dies - the same SNI to `ya.ru` with a control handshake (SNI block vs IP block); then a real `CONNECT` with the credentials (403/404/405/407 = keys rejected, anything else = accepted) - only to a server with a verified certificate; then the subscription (404 = access ended; at most once per 5 minutes). Works mid-connect because the native service excludes the app itself from the tunnel → `lib/feature/vpn/domain/connection_diagnostics.dart`, `connection_watchdog.dart`.
@@ -119,6 +130,7 @@ Everything below was added in this fork; the original TrustTunnel client doesn't
 
 ### Security
 - **Strict server certificate check** → without a certificate in the config, the native engine verifies the server through Android's store, which includes manually installed certificates (the Russian Ministry one too); with a certificate in the config it uses only that. So for servers without their own certificate the app supplies the system roots minus "Russian Trusted" → `endpoint_ca_resolver.dart`, `SecurityChannel.kt`; the same rule for the app's own checks → `server_tls.dart`.
+- **Imports from elsewhere** → a `tt://` link or config file never switches on "Russian exit" by itself (Marsik asks); control characters and bidi marks are stripped from server and subscription names (`display_name.dart`); subscription, update manifest, list and APK downloads are size-capped (`limited_http.dart`). The Ministry CAs are dropped by name and by key fingerprint (SPKI SHA-256), on Android and on desktops (`desktop_ca_bundle.dart`); if a desktop's store can't be read, the engine gets Let's Encrypt's roots only, not the whole store.
 - **Logs** → the subscription address is printed as host only; the sanitizer strips `/api/ct/…` and `AGE-SECRET-KEY-1…` → `trust_tunnel_sensitive_data_sanitizer.dart`.
 - **Backups** → cloud backups and phone-to-phone transfers are disabled → `AndroidManifest.xml`, `res/xml/data_extraction_rules.xml`.
 - **Connection log** → in a folder excluded from backups, wiped on app start and on any VPN disconnect → `plugins/vpn_plugin/.../NativeVpnImpl.kt`.

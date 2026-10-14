@@ -80,3 +80,15 @@ Linux-бандл — нет; там режимы 1–3 пока работают
   туннеля. Тест `TunnelTest.BlockQuic` (core/test/test_tunnel.cpp).
 - Приложение: `ServerData.blockQuic` (БД v12), тег `tt://` 0x45, переключатель
   «Отключить QUIC» в «Для экспертов». AAR patch level 10.
+
+## 1.5.5: 0002-network-monitor-policy-routing.patch (роутеры, `router/`)
+- Монитор сети NativeLibsCommon на Linux смотрит маршрут по умолчанию только в
+  таблице `main`. Где маршруты разложены по своим таблицам правилами `ip rule`
+  (Android, policy routing на роутере), `main` без default, и после любого
+  события адреса/маршрута движок решал «сети нет»
+  (`VPN_SS_WAITING_FOR_NETWORK`) и сам из этого не выходил.
+- `AutoNetworkMonitor` теперь спрашивает ядро (UDP `connect` к 8.8.8.8 /
+  2001:4860:4860::8888 и `getsockname`, правила учитываются): маршрут есть —
+  «сети нет» не сообщается, переподключение — только если сменился адрес
+  выхода. Где `main` с default (обычный OpenWrt, Keenetic, Merlin, Linux), всё
+  как раньше.
