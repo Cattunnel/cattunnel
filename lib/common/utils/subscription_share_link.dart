@@ -1,4 +1,5 @@
 import 'package:dage/dage.dart';
+import 'package:trusttunnel/common/utils/display_name.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 
 /// `cattunnel://subscription?url=...&key=...&name=...` - a whole subscription
@@ -46,7 +47,8 @@ abstract final class SubscriptionShareLink {
       }
     }
 
-    final name = uri.queryParameters['name']?.trim();
+    final rawName = uri.queryParameters['name'];
+    final name = rawName == null ? null : sanitizeDisplayName(rawName);
 
     return SubscriptionData(
       name: name == null || name.isEmpty ? url.host : name,

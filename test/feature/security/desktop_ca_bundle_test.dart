@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:cryptography/dart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trusttunnel/feature/security/domain/desktop_ca_bundle.dart';
 
@@ -60,4 +63,32 @@ void main() {
     expect(DesktopCaBundle.derOfPem(pem).length, greaterThan(50));
     expect(pem.length, lessThan(400 * 1024));
   }, testOn: 'linux');
+
+  String spkiPin(Uint8List der) => base64.encode(const DartSha256().hashSync(DesktopCaBundle.spkiOf(der)!).bytes);
+
+  test("SPKI of Let's Encrypt ISRG Root X1 is its well-known pin", () {
+    final roots = DesktopCaBundle.derOfPem(DesktopCaBundle.bundleOf(const []));
+    expect(roots.map(spkiPin), contains('C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M='));
+  });
+
+  test('the real Ministry root and Sub CA match the SPKI pins', () {
+    for (final name in ['russian_trusted_root_ca.pem', 'russian_trusted_sub_ca_2024.pem']) {
+      final der = DesktopCaBundle.derOfPem(File('test/fixtures/$name').readAsStringSync()).single;
+      expect(DesktopCaBundle.russianSpkiSha256, contains(spkiPin(der)), reason: name);
+      expect(DesktopCaBundle.isRussian(der), isTrue, reason: name);
+    }
+  });
+
+  test('the Ministry key is caught by SPKI even under another name', () {
+    final der = DesktopCaBundle.derOfPem(File('test/fixtures/russian_trusted_root_ca.pem').readAsStringSync()).single;
+    final renamed = Uint8List.fromList(
+      latin1.encode(latin1.decode(der).replaceAll('Russian Trusted Root CA', 'Totally Normal Root CA!')),
+    );
+    expect(DesktopCaBundle.russianMarkers.any(latin1.decode(renamed).contains), isFalse);
+    expect(DesktopCaBundle.isRussian(renamed), isTrue);
+  });
+
+  test('garbage is not a certificate', () {
+    expect(DesktopCaBundle.spkiOf(Uint8List.fromList([0x30, 0x84, 0xff, 0xff, 0xff, 0xff])), isNull);
+  });
 }

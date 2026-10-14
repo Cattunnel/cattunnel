@@ -40,6 +40,7 @@ mtu_size = 1280
 ''';
 
 void main() {
+  _backslashTests();
   test('the bot config becomes a server', () {
     final server = serverDataFromConfigFile(_botConfig, routingProfileId: '1');
 
@@ -76,3 +77,18 @@ void main() {
     expect(() => serverDataFromConfigFile(noPassword, routingProfileId: '1'), throwsFormatException);
   });
 }
+
+void _backslashTests() {
+  String withPassword(String tomlValue) => _botConfig.replaceFirst(r'password = "p@ss \"word\""', 'password = "$tomlValue"');
+
+  test(r'a backslash in the password survives (TOML "a\\b" is a\b)', () {
+    final server = serverDataFromConfigFile(withPassword(r'a\\b'), routingProfileId: '1');
+    expect(server.password, r'a\b');
+  });
+
+  test(r'TOML "a\\nb" is a, backslash, n, b - not a newline', () {
+    final server = serverDataFromConfigFile(withPassword(r'a\\nb'), routingProfileId: '1');
+    expect(server.password, r'a\nb');
+  });
+}
+

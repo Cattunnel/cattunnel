@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/feature/updates/domain/app_update.dart';
 
 /// Where latest.json lives, given at build time only:
@@ -69,15 +70,15 @@ class UpdateService {
   /// format errors - the caller decides whether to say so (manual check) or
   /// stay quiet (automatic one).
   static Future<AppUpdate?> check() async {
-    final (response, signature) = await (
-      http.get(Uri.parse(_manifestUrl)).timeout(_checkTimeout),
-      http.get(Uri.parse('$_manifestUrl.sig')).timeout(_checkTimeout),
+    final ((status, body), (sigStatus, sig)) = await (
+      getLimited(Uri.parse(_manifestUrl), maxBytes: 256 * 1024, timeout: _checkTimeout),
+      getLimited(Uri.parse('$_manifestUrl.sig'), maxBytes: 4 * 1024, timeout: _checkTimeout),
     ).wait;
-    if (response.statusCode != 200) throw HttpException('latest.json: HTTP ${response.statusCode}');
-    if (signature.statusCode != 200) throw HttpException('latest.json.sig: HTTP ${signature.statusCode}');
-    await _verify(response.bodyBytes, signature.body);
+    if (status != 200) throw HttpException('latest.json: HTTP $status');
+    if (sigStatus != 200) throw HttpException('latest.json.sig: HTTP $sigStatus');
+    await _verify(body, utf8.decode(sig, allowMalformed: true));
 
-    final update = AppUpdate.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    final update = AppUpdate.fromJson(jsonDecode(utf8.decode(body)));
     final current = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 0;
 
     final preferences = await SharedPreferences.getInstance();
@@ -127,12 +128,16 @@ class UpdateService {
       if (response.statusCode != 200) throw HttpException('APK: HTTP ${response.statusCode}');
 
       final total = response.contentLength;
+      // Ours are 50-85 MB; past this it's not our APK and would only fill the disk.
+      const maxBytes = 400 * 1024 * 1024;
+      if (total != null && total > maxBytes) throw const ResponseTooLargeException(maxBytes);
       var received = 0;
       final sink = file.openWrite();
       try {
         await for (final chunk in response.stream.timeout(const Duration(seconds: 30))) {
-          sink.add(chunk);
           received += chunk.length;
+          if (received > maxBytes) throw const ResponseTooLargeException(maxBytes);
+          sink.add(chunk);
           onProgress(total == null || total == 0 ? null : received / total);
         }
       } finally {
