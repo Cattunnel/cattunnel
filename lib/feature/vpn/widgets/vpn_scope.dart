@@ -292,6 +292,7 @@ class _VpnScopeState extends State<VpnScope> {
     builder: (_, child) => _InheritedVpnScope(
       logs: _logsNotifier.value,
       state: _stateNotifier.value,
+      readLiveState: () => _stateNotifier.value,
       onStart: _start,
       onStop: _stop,
       onUpdate: _updateConfiguration,
@@ -682,6 +683,7 @@ class _VpnScopeState extends State<VpnScope> {
 }
 
 class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnController, LogController {
+  final ValueGetter<VpnState> _readLiveState;
   final AsyncCallback _onStop;
   final AsyncCallback _onDeleteConfiguration;
   final UpdateVpnCallback _onStart;
@@ -694,6 +696,7 @@ class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnControl
   final VpnState state;
 
   const _InheritedVpnScope({
+    required ValueGetter<VpnState> readLiveState,
     required UpdateVpnCallback onStart,
     required UpdateVpnCallback onUpdate,
     required AsyncCallback onStop,
@@ -701,7 +704,8 @@ class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnControl
     required this.state,
     required this.logs,
     required super.child,
-  }) : _onStart = onStart,
+  }) : _readLiveState = readLiveState,
+       _onStart = onStart,
        _onStop = onStop,
        _onDeleteConfiguration = onDeleteConfiguration,
        _updateConfiguration = onUpdate;
@@ -731,6 +735,9 @@ class _InheritedVpnScope extends InheritedModel<VpnAspect> implements VpnControl
     excludedRoutes: excludedRoutes,
     logLevel: logLevel,
   );
+
+  @override
+  VpnState get liveState => _readLiveState();
 
   @override
   Future<void> stop() => _onStop();

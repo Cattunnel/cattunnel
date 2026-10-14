@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:adguard_logger/adguard_logger.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -77,6 +78,7 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
   }
 
   bool _onTileLaunch() {
+    _tileLog('tile launch: mounted=$mounted');
     if (!mounted) {
       return false;
     }
@@ -104,6 +106,8 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
   /// Starts at most one connection attempt while dependencies update.
   void _scheduleConnectToLastServerIfNeeded() {
     if (_connectToLastServerFuture != null) {
+      if (_pendingTileConnect) _tileLog('tile: an attempt is already in flight');
+
       return;
     }
 
@@ -134,17 +138,27 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
     final state = _controller.state;
     final fromTile = _pendingTileConnect;
     if (state.initial || state.loading || (state.connectOnLaunchHandled && !fromTile)) {
+      if (fromTile) _tileLog('tile: settings not ready (initial=${state.initial}, loading=${state.loading})');
+
       return;
     }
 
     final loggingController = AppLoggingScope.controllerOf(context);
     if (loggingController.loading) {
+      if (fromTile) _tileLog('tile: logging settings loading');
+
       return;
     }
 
     // Wait for servers, or finish when auto-connect has no usable target.
     final serversController = ServersScope.controllerOf(context);
     if (!(state.enabled || fromTile) || state.lastServerId == null || serversController.servers.isEmpty) {
+      if (fromTile) {
+        _tileLog(
+          'tile: no target (lastServer=${state.lastServerId != null}, servers=${serversController.servers.length}, '
+          'loading=${serversController.loading})',
+        );
+      }
       if (!serversController.loading) {
         _markHandled();
       }
@@ -157,6 +171,7 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
       (server) => server.id == state.lastServerId,
     );
     if (server == null) {
+      if (fromTile) _tileLog('tile: last server not in the list');
       _markHandled();
 
       return;
@@ -171,6 +186,7 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
           (profile) => profile.id == server.serverData.routingProfileId,
         );
     if (routingProfile == null) {
+      if (fromTile) _tileLog('tile: routing profile not found');
       _markHandled();
 
       return;
@@ -190,9 +206,12 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
     // old one) finds it up already. The tile only opens the app while
     // disconnected, but the VPN may have come up in between. Either way -
     // don't restart a working connection.
-    if (vpnController.state != VpnState.disconnected) {
+    if (vpnController.liveState != VpnState.disconnected) {
+      if (fromTile) _tileLog('tile: VPN state is ${vpnController.liveState.name}, not starting');
+
       return;
     }
+    if (fromTile) _tileLog('tile: starting');
     await vpnController.start(
       server: server,
       routingProfile: routingProfile,
@@ -206,6 +225,8 @@ class _AutoConnectOnLaunchSettingsScopeState extends State<AutoConnectOnLaunchSe
       },
     );
   }
+
+  void _tileLog(String message) => logger.logInfo(message, additionalTags: ['tile']);
 
   void _markHandled() {
     _pendingTileConnect = false;

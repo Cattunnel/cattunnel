@@ -85,7 +85,9 @@ object TileConnector {
                     MethodChannel(messenger, CHANNEL).setMethodCallHandler { call, result ->
                         if (call.method == "done") {
                             result.success(null)
-                            finish(call.arguments as? Boolean ?: false, "engine reported")
+                            val args = call.arguments as? Map<*, *>
+                            val why = (args?.get("why") as? String).orEmpty()
+                            finish(args?.get("connected") == true, if (why.isEmpty()) "engine reported" else "engine: $why")
                         } else {
                             result.notImplemented()
                         }

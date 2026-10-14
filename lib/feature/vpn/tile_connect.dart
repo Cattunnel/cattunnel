@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:adguard_logger/adguard_logger.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:trusttunnel/common/logging/app_logger.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
@@ -28,22 +27,23 @@ import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 abstract final class TileConnect {
   static const channel = MethodChannel('cattunnel/tile_connect');
 
-  /// Starts the VPN to the last server; false if there is none or it failed.
-  static Future<bool> run() async {
+  /// Starts the VPN to the last server; null when started, otherwise why not
+  /// (no text from the configuration - it goes to the tile log).
+  static Future<String?> run() async {
     final init = await const InitializationHelperIo(headless: true).init();
     final repositories = init.repositoryFactory;
 
     final lastServerId = await repositories.autoConnectOnLaunchSettingsRepository.getLastServerId();
     if (lastServerId == null) {
-      return false;
+      return 'no last server';
     }
     final server = await repositories.serverRepository.getServerById(id: lastServerId);
     if (server == null) {
-      return false;
+      return 'last server not found';
     }
     final routingProfile = await repositories.routingRepository.getProfileById(id: server.serverData.routingProfileId);
     if (routingProfile == null) {
-      return false;
+      return 'routing profile not found';
     }
 
     final logging = repositories.loggingSettingsRepository;
@@ -66,25 +66,26 @@ abstract final class TileConnect {
       logLevel: logLevel,
     );
 
-    return true;
+    return null;
   }
 }
 
 /// Entry point of the tile's background engine (called from main.dart's
 /// `tileConnect`, which the native side runs by name).
 Future<void> tileConnectMain() async {
-  var connected = false;
+  String? failure = 'not run';
   // The app reaches its logger through the zone, like main() sets it up.
   await runZoned(
     () async {
       try {
-        connected = await TileConnect.run();
+        failure = await TileConnect.run();
       } catch (error) {
-        // The type only: a message could carry configuration text.
-        debugPrint('Tile connect failed: ${error.runtimeType}');
+        // The type only: a message could carry configuration text. A missing
+        // plugin's message is just the method and channel name.
+        failure = error is MissingPluginException ? 'MissingPluginException: ${error.message}' : error.runtimeType.toString();
       }
     },
     zoneValues: {Logger.loggerKey: AppLogger()},
   );
-  await TileConnect.channel.invokeMethod<void>('done', connected);
+  await TileConnect.channel.invokeMethod<void>('done', {'connected': failure == null, 'why': failure ?? ''});
 }
