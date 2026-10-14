@@ -71,7 +71,10 @@ class InitializationHelperIo extends InitializationHelper {
       logStorage: logStorage,
     );
 
-    if (!headless && defaultTargetPlatform == TargetPlatform.macOS) {
+    if (!headless &&
+        (defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
       await dependenciesFactory.appWindowController.configureMainWindow(
         minimumWindowSize: const Size(905, 680),
         defaultWindowSize: const Size(1024, 768),

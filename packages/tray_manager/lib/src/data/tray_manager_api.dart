@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:tray_manager/src/model/tray_icon.dart';
 import 'package:tray_manager/src/model/tray_item.dart';
 import 'package:tray_manager/src/model/tray_item_to_map_converter.dart';
+import 'package:tray_manager/src/platform/linux_sni_tray_api.dart';
 import 'package:tray_manager/src/platform/tray_api.dart';
 import 'package:tray_manager/src/platform/tray_callback_api.dart';
 import 'package:tray_manager/src/platform/tray_callback_handler.dart';
@@ -37,7 +40,7 @@ final class TrayManagerApi {
     TrayApi? api,
     void Function(Object, StackTrace)? onError,
   }) : _onError = onError,
-       _api = api ?? TrayApi(_kChannelPrefix),
+       _api = api ?? (Platform.isLinux ? LinuxSniTrayApi() : TrayApi(_kChannelPrefix)),
        _converter = TrayItemConverter() {
     _becomeActive();
   }

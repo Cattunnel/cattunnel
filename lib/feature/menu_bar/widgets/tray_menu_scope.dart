@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show AppExitType;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
@@ -26,7 +27,7 @@ import 'package:trusttunnel/feature/settings/logs_manager/widgets/scope/logs_man
 import 'package:trusttunnel/feature/vpn/models/vpn_controller.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
-/// Keeps the tray menu (currently only macOS) in sync with the app state and handles its actions.
+/// Keeps the tray menu (macOS, Windows, Linux) in sync with the app state and handles its actions.
 class TrayMenuScope extends StatefulWidget {
   final Widget child;
   final Future<void> Function(AppRoute route) onRouteRequested;
@@ -52,7 +53,11 @@ class _TrayMenuScopeState extends State<TrayMenuScope> {
   bool _isDisposed = false;
   String? _lastConnectedServerId;
 
-  bool get _isMacOS => defaultTargetPlatform == TargetPlatform.macOS;
+  // Named for history: the tray runs on macOS, Windows and Linux.
+  bool get _isMacOS =>
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.linux;
 
   @override
   void initState() {
@@ -197,7 +202,15 @@ class _TrayMenuScopeState extends State<TrayMenuScope> {
     );
   }
 
-  Future<void> _onQuitPressed() => SystemNavigator.pop();
+  // Goes through AppLifecycleListener.onExitRequested (VpnScope), which
+  // stops the VPN first on Windows; SystemNavigator.pop doesn't exit on desktops.
+  Future<void> _onQuitPressed() async {
+    if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
+      await ServicesBinding.instance.exitApplication(AppExitType.cancelable);
+    } else {
+      await SystemNavigator.pop();
+    }
+  }
 
   /// Connects to [server] with its routing profile and current exclusions.
   Future<void> _connectToServer(Server server) async {
