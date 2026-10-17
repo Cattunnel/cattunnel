@@ -20,11 +20,14 @@ BASE=${BASE%/}
 [[ $BUILD =~ ^[0-9]+$ ]] || { echo "build must be a number" >&2; exit 1; }
 
 python3 - "$VERSION" "$BUILD" "$NOTES" "$BASE" "$SETUP" <<'PY'
-import hashlib, json, os, sys
+import datetime, hashlib, json, os, sys
 version, build, notes, base, setup = sys.argv[1:]
 print(json.dumps({
     "version": version,
     "build": int(build),
+    # Freshness, see make_latest_json.sh.
+    "issued": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "expires": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "notes": open(notes, encoding="utf-8").read().strip(),
     "apks": {"windows-x64": {
         "url": f"{base}/{os.path.basename(setup)}",

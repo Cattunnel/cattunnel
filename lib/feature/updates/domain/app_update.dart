@@ -33,7 +33,11 @@ class AppUpdate {
   final String notes;
   final Map<String, AppUpdateApk> apks;
 
-  const AppUpdate({required this.version, required this.build, required this.notes, required this.apks});
+  /// When the manifest stops being valid (signed field, absent in manifests
+  /// made before 1.5.6).
+  final DateTime? expires;
+
+  const AppUpdate({required this.version, required this.build, required this.notes, required this.apks, this.expires});
 
   /// Throws [FormatException] on anything unexpected - a half-written or
   /// foreign file must never turn into an update offer.
@@ -43,6 +47,9 @@ class AppUpdate {
     final build = json['build'];
     final notes = json['notes'] ?? '';
     final apks = json['apks'];
+    final expiresRaw = json['expires'];
+    final expires = expiresRaw is String ? DateTime.tryParse(expiresRaw) : null;
+    if (expiresRaw != null && expires == null) throw const FormatException('latest.json: bad expires');
     if (version is! String || build is! int || notes is! String || apks is! Map<String, Object?>) {
       throw const FormatException('latest.json: bad fields');
     }
@@ -51,6 +58,7 @@ class AppUpdate {
       version: version,
       build: build,
       notes: notes,
+      expires: expires,
       apks: apks.map((abi, apk) {
         if (apk is! Map<String, Object?> || apk['url'] is! String || apk['sha256'] is! String) {
           throw FormatException('latest.json: bad apk "$abi"');

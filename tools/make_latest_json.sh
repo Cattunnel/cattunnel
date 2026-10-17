@@ -30,13 +30,17 @@ VERSION=$(badging "$ARM64" | field versionName)
     || { echo "versionCode differs: arm64 $ARM64_CODE, universal $UNIVERSAL_CODE" >&2; exit 1; }
 
 python3 - "$VERSION" "$ARM64_CODE" "$NOTES" "$BASE" "$ARM64" "$UNIVERSAL" <<'EOF'
-import hashlib, json, os, sys
+import datetime, hashlib, json, os, sys
 version, build, notes, base, arm64, universal = sys.argv[1:]
 sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
 apk = lambda p: {"url": f"{base}/{os.path.basename(p)}", "sha256": sha(p)}
 print(json.dumps({
     "version": version,
     "build": int(build),
+    # Freshness (audit 13.10 item 7): the app refuses a manifest past "expires"
+    # and one older than the newest it has seen - re-sign at least every 90 days.
+    "issued": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "expires": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "notes": open(notes, encoding="utf-8").read().strip(),
     "apks": {"arm64-v8a": apk(arm64), "universal": apk(universal)},
 }, ensure_ascii=False, indent=2))
