@@ -131,6 +131,7 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         antiDpi: Value(server.antiDpi),
         antiDpiMode: Value(server.antiDpiMode),
         tlsProfile: Value(server.tlsProfile),
+        clientRandomAuthKey: Value(server.tlsAuthKey),
         antiDpiDesync: Value(server.antiDpiDesync),
         h2PaddingFrames: Value(server.h2PaddingFrames),
         blockQuic: Value(server.blockQuic),
@@ -181,6 +182,8 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         // The subscription decides which key has a Russian exit.
         ruExit: Value(server.ruExit),
         tlsPrefix: Value(server.tlsPrefix),
+        // The key is a credential like the password: the subscription owns it.
+        clientRandomAuthKey: Value(server.tlsAuthKey),
         customSni: Value(server.customSni),
       ),
     );

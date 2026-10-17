@@ -8,7 +8,7 @@ import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 
 /// "Split" in the Routing tab: what goes around the VPN - sites and IPs
 /// (the direct list, same one as "Russian services" in Settings) or apps
-/// (Android only).
+/// (Android; Windows and Linux with the own engine build).
 Future<void> showSplitChoiceDialog(BuildContext context) => showDialog<void>(
   context: context,
   builder: (dialogContext) => CustomAlertDialog(
@@ -26,7 +26,9 @@ Future<void> showSplitChoiceDialog(BuildContext context) => showDialog<void>(
             context.push(const RuServicesRulesScreen());
           },
         ),
-        if (defaultTargetPlatform == TargetPlatform.android)
+        if (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)
           _SplitChoice(
             icon: Icons.apps,
             title: context.ln.appSplitTitle,

@@ -151,6 +151,41 @@ void main() {
     expect(engineConfig(''), isNot(contains('tls_profile')));
   });
 
+  test('client_random_auth_key: tag 0x0F reaches the engine and replaces the prefix; bad keys are dropped', () {
+    const key = '00112233445566778899AABBCCDDEEFF';
+    String engineConfig(String authKey, {String prefix = 'abcdef'}) {
+      final link =
+          'tt://?${const DeepLinkPayloadEncoder().convert(Endpoint(
+            name: 'Server',
+            hostName: 'www.example.org',
+            addresses: const ['198.51.100.7:443'],
+            username: 'bob',
+            password: 'pw',
+            clientRandom: prefix,
+            upStreamProtocol: UpStreamProtocol.http2,
+            hasIpv6: true,
+            clientRandomAuthKey: authKey,
+          ))}';
+
+      return const ConfigurationCodec().encode(
+        const ConfigurationCodec().decode(const DeepLinkPayloadDecoder().convert(link)),
+      );
+    }
+
+    final withKey = engineConfig(key);
+    expect(withKey, contains('client_random_auth_key = "${key.toLowerCase()}"'));
+    // With the key the fixed prefix would only mark the connection again.
+    expect(withKey, contains('client_random = ""'));
+    // No key: the prefix stays as before.
+    expect(engineConfig(''), contains('client_random = "abcdef"'));
+    expect(engineConfig(''), isNot(contains('client_random_auth_key')));
+    // Too short, odd length, not hex: dropped, the prefix stays.
+    for (final bad in ['0011', '${key}0', 'zz112233445566778899aabbccddeeff']) {
+      expect(engineConfig(bad), isNot(contains('client_random_auth_key')), reason: bad);
+      expect(engineConfig(bad), contains('client_random = "abcdef"'), reason: bad);
+    }
+  });
+
   test('anti_dpi_desync: tag 0x43 reaches the engine as mode 5; invalid strings are dropped', () {
     Configuration roundTrip(String desync, {bool antiDpi = true}) => const ConfigurationCodec().decode(
       const DeepLinkPayloadDecoder().convert(

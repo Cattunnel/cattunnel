@@ -14,6 +14,10 @@ class TrustTunnelSensitiveDataSanitizer {
   /// Rules that are masked in all logging modes.
   static const Set<String> _alwaysMaskedKeys = {
     'password',
+    // The TLS auth key is a credential like the password.
+    'clientRandomAuthKey',
+    'client_random_auth_key',
+    'tlsAuthKey',
     'pass',
     'subscription',
     'subscriptionUrl',

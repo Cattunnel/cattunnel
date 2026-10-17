@@ -14,4 +14,5 @@ enum PresentationFieldName {
   rule,
   url,
   antiDpiDesync,
+  tlsAuthKey,
 }

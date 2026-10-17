@@ -40,6 +40,10 @@ abstract final class _DeepLinkPayloadTag {
   static const name = 0x0C;
   static const dnsUpstreams = 0x0D;
 
+  /// Upstream (TrustTunnel 1.3, DEEP_LINK.md): TLS authorization key, UTF-8
+  /// hex (see Endpoint.clientRandomAuthKey).
+  static const clientRandomAuthKey = 0x0F;
+
   /// CatTunnel: Russian-exit key. Far from the upstream range, so a future
   /// upstream tag can't collide; the upstream decoder skips unknown tags.
   static const ruExit = 0x40;
@@ -89,6 +93,8 @@ final class DeepLinkPayloadEncoder extends Converter<Endpoint, String> {
       _tlv(_DeepLinkPayloadTag.upstreamProtocol, [_upstreamProtocolByte(input.upStreamProtocol)]),
       if (input.customSni.isNotEmpty) _tlvString(_DeepLinkPayloadTag.customSni, input.customSni),
       if (input.clientRandom.isNotEmpty) _tlvString(_DeepLinkPayloadTag.clientRandomPrefix, input.clientRandom),
+      if (ConfigurationCodecKeys.isValidAuthKey(input.clientRandomAuthKey))
+        _tlvString(_DeepLinkPayloadTag.clientRandomAuthKey, input.clientRandomAuthKey.toLowerCase()),
       if (!input.hasIpv6) _tlvBool(_DeepLinkPayloadTag.hasIpv6, false),
       if (input.antiDpi) _tlvBool(_DeepLinkPayloadTag.antiDpi, true),
       if (input.ruExit) _tlvBool(_DeepLinkPayloadTag.ruExit, true),
@@ -224,6 +230,7 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
     var ruExit = false;
     var antiDpiMode = 0;
     var tlsProfile = '';
+    var clientRandomAuthKey = '';
     var antiDpiDesync = '';
     var h2PaddingFrames = 0;
     var blockQuic = false;
@@ -281,6 +288,9 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           // Unknown values (a newer generator) leave the app's pick alone.
           final profile = _string(value);
           tlsProfile = ConfigurationCodecKeys.tlsProfiles.contains(profile) ? profile : '';
+        case _DeepLinkPayloadTag.clientRandomAuthKey:
+          final key = _string(value).trim();
+          clientRandomAuthKey = ConfigurationCodecKeys.isValidAuthKey(key) ? key.toLowerCase() : '';
         case _DeepLinkPayloadTag.antiDpiDesync:
           final desync = DesyncString.normalize(_string(value));
           antiDpiDesync = DesyncString.validate(desync) == null ? desync : '';
@@ -326,6 +336,7 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           ..setBool('ru_exit', ruExit)
           ..setInt('anti_dpi_mode', antiDpiMode)
           ..setString('tls_profile', tlsProfile)
+          ..setString('client_random_auth_key', clientRandomAuthKey)
           ..setString('anti_dpi_desync', antiDpiDesync)
           ..setInt('h2_padding_frames', h2PaddingFrames)
           ..setBool('block_quic', blockQuic)

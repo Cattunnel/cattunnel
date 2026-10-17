@@ -51,7 +51,7 @@ class CatTunnelQsTileService : TileService() {
         val prepared = VpnService.isPrepared(applicationContext)
         TileLog.i(this, "tile click: prepared=$prepared savedConfig=${!config.isNullOrEmpty()} busy=${TileConnector.busy}")
         if (prepared && !config.isNullOrEmpty()) {
-            VpnService.start(applicationContext, config)
+            VpnService.start(applicationContext, config, false) // no endless recovery: our own backoff
             setTileState(Tile.STATE_ACTIVE)
 
             return

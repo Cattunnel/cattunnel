@@ -19,9 +19,7 @@ Set<String> suggestRuApps(Iterable<String> installed, {Set<String> downloaded = 
       (package) =>
           !cnAppKeepInVpn.contains(package) &&
           !keptInVpn(package) &&
-          (ruAppPackages.contains(package) ||
-              downloaded.contains(package) ||
-              ruAppPrefixes.any(package.startsWith)),
+          (ruAppPackages.contains(package) || downloaded.contains(package) || ruAppPrefixes.any(package.startsWith)),
     )
     .toSet();
 
@@ -155,6 +153,5 @@ const cnAppPrefixes = <String>[
 const cnAppKeepInVpn = <String>{'com.zhiliaoapp.musically', 'com.ss.android.ugc.trill', 'com.lemon.lvoverseas'};
 
 /// Chinese and vendor packages among [installed].
-Set<String> suggestCnApps(Iterable<String> installed) => installed
-    .where((package) => !cnAppKeepInVpn.contains(package) && cnAppPrefixes.any(package.startsWith))
-    .toSet();
+Set<String> suggestCnApps(Iterable<String> installed) =>
+    installed.where((package) => !cnAppKeepInVpn.contains(package) && cnAppPrefixes.any(package.startsWith)).toSet();

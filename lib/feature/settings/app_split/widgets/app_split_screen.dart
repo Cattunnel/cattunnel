@@ -7,6 +7,7 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/data/datasources/app_split_settings_datasource.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
 import 'package:trusttunnel/feature/settings/app_split/domain/auto_bypass_apps.dart';
+import 'package:trusttunnel/feature/settings/app_split/domain/desktop_programs.dart';
 import 'package:trusttunnel/feature/settings/app_split/domain/installed_apps_platform.dart';
 import 'package:trusttunnel/widgets/common/custom_checkbox_list_tile.dart';
 import 'package:trusttunnel/widgets/common/custom_radio_list_tile.dart';
@@ -24,6 +25,10 @@ import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
 /// vendor, Uzbek apps and local tools bypass it automatically while "Auto"
 /// is on - ticked, and unticking one puts it back into the VPN. Recomputed
 /// on every connect.
+///
+/// Windows and Linux: the same modes over program file names (`chrome.exe`,
+/// `firefox`) - the running programs plus any added by name; no automatic
+/// lists there (they are Android packages).
 class AppSplitScreen extends StatefulWidget {
   const AppSplitScreen({super.key});
 
@@ -32,6 +37,8 @@ class AppSplitScreen extends StatefulWidget {
 }
 
 class _AppSplitScreenState extends State<AppSplitScreen> {
+  static final bool _desktop = DesktopPrograms.supported;
+
   final Map<AppSplitMode, Set<String>> _initialApps = {};
   final Map<AppSplitMode, Set<String>> _apps = {};
   final Map<String, Future<Uint8List?>> _icons = {};
@@ -68,7 +75,8 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
     } on Object {
       installed = const [];
     }
-    final autoApps = await autoBypassApps(ruLists, installed: installed);
+    if (_desktop) installed = _withPicked(installed, {...excluded, ...included});
+    final autoApps = _desktop ? AutoBypassApps.empty : await autoBypassApps(ruLists, installed: installed);
     if (!mounted) return;
 
     setState(() {
@@ -85,6 +93,7 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
       _loading = false;
     });
 
+    if (_desktop) return;
     // Fresh community lists (no-op if recent) - may add auto apps.
     await ruLists.refreshIfDue();
     final refreshed = await autoBypassApps(ruLists, installed: installed);
@@ -92,6 +101,34 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
   }
 
   Set<String> get _picked => _apps[_mode] ?? <String>{};
+
+  /// Desktop: picked programs that aren't running now still get a row, so
+  /// they can be unticked.
+  static List<InstalledApp> _withPicked(List<InstalledApp> running, Set<String> picked) {
+    final names = {for (final app in running) app.packageName};
+
+    return [
+      ...running,
+      for (final name in picked)
+        if (!names.contains(name)) InstalledApp(packageName: name, label: name, isSystem: false),
+    ]..sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+  }
+
+  /// Desktop: the search text as a program name to add, if it isn't listed.
+  String? get _nameToAdd {
+    if (!_desktop) return null;
+    final name = DesktopPrograms.nameOf(_query.trim());
+    if (name.isEmpty || _installed.any((app) => app.packageName == name)) return null;
+
+    return name;
+  }
+
+  void _addProgram(String name) => setState(() {
+    _installed = _withPicked(_installed, {name});
+    if (_mode == AppSplitMode.off) _mode = AppSplitMode.exclude;
+    _apps.putIfAbsent(_mode, () => <String>{}).add(name);
+    _query = '';
+  });
 
   bool get _include => _mode == AppSplitMode.include;
 
@@ -166,18 +203,23 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                               child: Text(
-                                context.ln.appSplitRuNote(_autoApps.ru.length),
+                                _desktop
+                                    ? context.ln.appSplitDesktopNote
+                                    : context.ln.appSplitRuNote(_autoApps.ru.length),
                                 style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
                               ),
                             ),
-                            CustomSwitchTile(
-                              title: context.ln.appSplitAuto,
-                              subtitle: _mode == AppSplitMode.include
-                                  ? context.ln.appSplitAutoInclude
-                                  : context.ln.appSplitAutoDescription(_autoApps.other.length),
-                              value: _auto,
-                              onChanged: _mode == AppSplitMode.include ? null : (value) => setState(() => _auto = value),
-                            ),
+                            if (!_desktop)
+                              CustomSwitchTile(
+                                title: context.ln.appSplitAuto,
+                                subtitle: _mode == AppSplitMode.include
+                                    ? context.ln.appSplitAutoInclude
+                                    : context.ln.appSplitAutoDescription(_autoApps.other.length),
+                                value: _auto,
+                                onChanged: _mode == AppSplitMode.include
+                                    ? null
+                                    : (value) => setState(() => _auto = value),
+                              ),
                             ..._pickerHeader(context),
                           ],
                         ),
@@ -186,7 +228,9 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
                     ),
                   ),
                   Column(
-                    crossAxisAlignment: context.isMobileBreakpoint ? CrossAxisAlignment.stretch : CrossAxisAlignment.end,
+                    crossAxisAlignment: context.isMobileBreakpoint
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.end,
                     children: [
                       const Divider(),
                       Padding(
@@ -230,7 +274,13 @@ class _AppSplitScreenState extends State<AppSplitScreen> {
         child: Text(_showSystem ? context.ln.appSplitHideSystem : context.ln.appSplitShowSystem),
       ),
     ),
-    if (_installed.isEmpty)
+    if (_nameToAdd case final name?)
+      ListTile(
+        leading: Icon(Icons.add, color: context.colors.neutralDark),
+        title: Text(context.ln.appSplitAddProgram(name)),
+        onTap: () => _addProgram(name),
+      ),
+    if (_installed.isEmpty && !_desktop)
       Padding(
         padding: const EdgeInsets.all(16),
         child: Text(context.ln.appSplitNoApps, textAlign: TextAlign.center),
@@ -355,7 +405,9 @@ class _AppIcon extends StatelessWidget {
       future: future,
       builder: (context, snapshot) {
         final bytes = snapshot.data;
-        if (bytes == null) return Icon(Icons.android, color: context.colors.neutralDark);
+        if (bytes == null) {
+          return Icon(DesktopPrograms.supported ? Icons.apps : Icons.android, color: context.colors.neutralDark);
+        }
 
         return Image.memory(bytes, width: _size, height: _size, gaplessPlayback: true);
       },

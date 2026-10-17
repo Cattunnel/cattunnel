@@ -16,9 +16,7 @@ abstract class DeepLinkManager {
 }
 
 class DeepLinkManagerImpl implements DeepLinkManager {
-  DeepLinkManagerImpl()
-    : _codec = const ConfigurationCodec(),
-      _payloadEncoder = const DeepLinkPayloadEncoder();
+  DeepLinkManagerImpl() : _codec = const ConfigurationCodec(), _payloadEncoder = const DeepLinkPayloadEncoder();
 
   final ConfigurationCodec _codec;
   final DeepLinkPayloadEncoder _payloadEncoder;

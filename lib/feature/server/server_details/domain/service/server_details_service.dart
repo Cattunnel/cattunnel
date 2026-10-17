@@ -4,6 +4,7 @@ import 'package:trusttunnel/common/error/model/presentation_field.dart';
 import 'package:trusttunnel/common/utils/validation_utils.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
 
 abstract class ServerDetailsService {
@@ -94,6 +95,12 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
           data.tlsPrefix!,
         ),
       );
+    }
+
+    // The TLS auth key: empty, or at least 16 bytes of even-length hex.
+    final authKey = data.tlsAuthKey.trim();
+    if (authKey.isNotEmpty && !ConfigurationCodecKeys.isValidAuthKey(authKey)) {
+      _addIfNotNull(fields, _getFieldWrongValue(PresentationFieldName.tlsAuthKey));
     }
 
     return fields;

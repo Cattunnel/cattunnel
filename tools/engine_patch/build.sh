@@ -32,7 +32,7 @@ PATCH_LEVEL=$(tr -d "[:space:]" < "$HERE/PATCH_LEVEL")
 OUT_VERSION="$VERSION-cattunnel.$PATCH_LEVEL"
 GROUP_PATH=com/adguard/trusttunnel
 ARTIFACT=trusttunnel-client-android
-SOURCES=(VpnService.kt VpnServiceConfig.kt)
+SOURCES=(VpnService.kt VpnServiceConfig.kt VpnConfigStorage.kt)
 SRC_DIR=platform/android/lib/src/main/java/$GROUP_PATH
 
 CACHE=~/.gradle/caches/modules-2/files-2.1/com.adguard.trusttunnel/$ARTIFACT/$VERSION

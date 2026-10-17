@@ -61,6 +61,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     PresentationFieldName.clientRandom: _Section.expert,
     PresentationFieldName.clientRandomMask: _Section.expert,
     PresentationFieldName.clientRandomValue: _Section.expert,
+    PresentationFieldName.tlsAuthKey: _Section.expert,
   };
 
   @override
@@ -585,6 +586,16 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         PresentationFieldName.clientRandomValue,
       ].map(_error).nonNulls.firstOrNull,
     ),
+    CustomTextField(
+      value: _formData.tlsAuthKey,
+      hint: context.ln.tlsAuthKeyHint,
+      label: context.ln.tlsAuthKeyLabel,
+      helper: context.ln.tlsAuthKeyHelper,
+      counter: const SizedBox.shrink(),
+      maxLength: 128,
+      onChanged: (key) => _onDataChanged(context, tlsAuthKey: key),
+      error: _error(PresentationFieldName.tlsAuthKey),
+    ),
   ];
 
   RoutingProfile _getSelectedRoutingProfile(List<RoutingProfile> availableRoutingProfiles, String routingProfileId) =>
@@ -646,6 +657,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     bool? antiDpi,
     int? antiDpiMode,
     String? tlsProfile,
+    String? tlsAuthKey,
     String? antiDpiDesync,
     int? h2PaddingFrames,
     bool? blockQuic,
@@ -670,6 +682,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         antiDpi: antiDpi,
         antiDpiMode: antiDpiMode,
         tlsProfile: tlsProfile,
+        tlsAuthKey: tlsAuthKey,
         antiDpiDesync: antiDpiDesync,
         h2PaddingFrames: h2PaddingFrames,
         blockQuic: blockQuic,

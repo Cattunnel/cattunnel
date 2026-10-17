@@ -23,6 +23,7 @@ ServerData serverDataFromEndpoint(Endpoint endpoint, {required String routingPro
   antiDpi: endpoint.antiDpi,
   antiDpiMode: endpoint.antiDpiMode,
   tlsProfile: endpoint.tlsProfile,
+  tlsAuthKey: endpoint.clientRandomAuthKey,
   antiDpiDesync: endpoint.antiDpiDesync,
   h2PaddingFrames: endpoint.h2PaddingFrames,
   blockQuic: endpoint.blockQuic,
