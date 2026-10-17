@@ -1,6 +1,10 @@
 package com.adguard.trusttunnel
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.os.PersistableBundle
 import android.app.ActivityManager
 import android.app.KeyguardManager
 import android.content.ComponentName
@@ -37,6 +41,8 @@ class SecurityChannel(private val context: Context, messenger: BinaryMessenger) 
                 "systemCaBundle" -> result.success(systemCaBundle())
                 "certificateReport" -> result.success(certificateReport())
                 "deviceReport" -> result.success(deviceReport())
+                "copySensitive" -> result.success(copySensitive(call.arguments as String))
+                "clearClipboardIf" -> result.success(clearClipboardIf(call.arguments as String))
                 "vpnNetworkReport" -> result.success(vpnNetworkReport())
                 "openSettings" -> result.success(openSettings(call.arguments as String))
                 "isDisguised" -> result.success(isDisguised())
@@ -255,5 +261,26 @@ class SecurityChannel(private val context: Context, messenger: BinaryMessenger) 
             "BEeqSxjEi56NsW6RgJKG3Sfv1qULqA0whOuecLqOHco=", // Sub CA, till 2027
             "N7la4XONxMaWYRRHFWaf25yT562zNjQi3rYcDzrPZcE=", // Sub CA (2024), till 2029
         )
+    }
+
+    /** The clipboard marked sensitive (Android 13+ hides it from the copy
+     * preview and the keyboard's clipboard suggestions). */
+    private fun copySensitive(text: String): Boolean {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("CatTunnel", text)
+        clip.description.extras = PersistableBundle().apply {
+            putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE else "android.content.extra.IS_SENSITIVE", true)
+        }
+        clipboard.setPrimaryClip(clip)
+        return true
+    }
+
+    /** Clears the clipboard if it still holds [text] (nothing copied since). */
+    private fun clearClipboardIf(text: String): Boolean {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val current = clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+        if (current != text) return false
+        if (Build.VERSION.SDK_INT >= 28) clipboard.clearPrimaryClip() else clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+        return true
     }
 }

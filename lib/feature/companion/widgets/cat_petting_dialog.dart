@@ -7,6 +7,7 @@ import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/theme/own_style.dart';
+import 'package:trusttunnel/data/datasources/local_sources/logs_local_source_impl.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_compliments.dart';
 import 'package:trusttunnel/feature/companion/domain/cat_owner_preferences.dart';
 import 'package:trusttunnel/feature/companion/widgets/cat_companion.dart';
@@ -541,7 +542,8 @@ class CatPettingButton extends StatelessWidget {
   /// Panic button (Cyber security section, opt-in): one confirmation - it
   /// has to be quick - then everything the app holds is wiped.
   Future<void> _onLongPress(BuildContext context) async {
-    if (!SecuritySettings(context.dependencyFactory.sharedPreferences).panicButton) {
+    final prefs = context.dependencyFactory.sharedPreferences;
+    if (!SecuritySettings(prefs).panicButton) {
       return;
     }
 
@@ -553,6 +555,8 @@ class CatPettingButton extends StatelessWidget {
       destructive: true,
     );
     if (confirmed) {
+      // Saved log archives live outside the app's data - delete them first.
+      await LogsLocalSourceImpl.deleteExportedArchives(prefs);
       await SecurityPlatform.wipeAllData();
     }
   }

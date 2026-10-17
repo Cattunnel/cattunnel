@@ -1,9 +1,9 @@
 import 'package:adg_share/adg_share.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/utils/sensitive_clipboard.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/secure_screen.dart';
 
@@ -63,7 +63,7 @@ class ServerExportDialog extends StatelessWidget {
   );
 
   Future<void> _copyLink(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: link));
+    await SensitiveClipboard.copy(link);
 
     if (!context.mounted) {
       return;
