@@ -31,6 +31,7 @@ const _updatePublicKey = String.fromEnvironment('UPDATE_PUBKEY');
 /// `latest-windows.json` (same format and key, `apks.windows-x64` = the
 /// installer), so the phones' file stays as it is.
 class UpdateService {
+  static const _newestSeenKey = 'update_newest_build_seen';
   static const _lastCheckKey = 'update_last_check_ms';
   static const _autoCheckEvery = Duration(hours: 20);
   static const _checkTimeout = Duration(seconds: 10);
@@ -42,9 +43,7 @@ class UpdateService {
   const UpdateService._();
 
   static bool get enabled =>
-      (Platform.isAndroid || Platform.isWindows) &&
-      Uri.tryParse(_updateUrl)?.scheme == 'https' &&
-      _publicKey != null;
+      (Platform.isAndroid || Platform.isWindows) && Uri.tryParse(_updateUrl)?.scheme == 'https' && _publicKey != null;
 
   static final List<int>? _publicKey = () {
     try {
@@ -62,8 +61,7 @@ class UpdateService {
     final preferences = await SharedPreferences.getInstance();
     final last = preferences.getInt(_lastCheckKey);
 
-    return last == null ||
-        DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(last)) >= _autoCheckEvery;
+    return last == null || DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(last)) >= _autoCheckEvery;
   }
 
   /// A newer release, or null when we're up to date. Throws on network or
@@ -82,6 +80,18 @@ class UpdateService {
     final current = int.tryParse((await PackageInfo.fromPlatform()).buildNumber) ?? 0;
 
     final preferences = await SharedPreferences.getInstance();
+    // A replayed old manifest (audit 13.10 item 7) - signed, but stale: past
+    // its "expires", or older than the newest one this phone has seen. It
+    // would hide a newer release, so it is an error, not "up to date".
+    final expires = update.expires;
+    if (expires != null && DateTime.now().toUtc().isAfter(expires)) {
+      throw const FormatException('latest.json: expired - the update server serves an old manifest');
+    }
+    final newestSeen = preferences.getInt(_newestSeenKey) ?? 0;
+    if (update.build < newestSeen) {
+      throw const FormatException('latest.json: older than one already seen - an old manifest replayed');
+    }
+    await preferences.setInt(_newestSeenKey, update.build);
     await preferences.setInt(_lastCheckKey, DateTime.now().millisecondsSinceEpoch);
 
     return update.build > current ? update : null;

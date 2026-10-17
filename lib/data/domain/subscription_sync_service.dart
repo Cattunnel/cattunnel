@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -5,6 +6,7 @@ import 'dart:typed_data';
 import 'package:dage/dage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/utils/age_armor.dart';
 import 'package:trusttunnel/common/utils/deep_link_uri_normalizer.dart';
 import 'package:trusttunnel/common/utils/limited_http.dart';
@@ -58,12 +60,19 @@ class SubscriptionSyncService {
 
   final SubscriptionDataSource _subscriptionDataSource;
   final ServerDataSource _serverDataSource;
+  final SharedPreferences? _pins;
+
+  /// "Skip TLS verification" pins: host -> base64 DER of the certificate it
+  /// showed the first time (trust on first use, audit 13.10 item 6).
+  static const _pinsKey = 'subscription_tofu_pins';
 
   SubscriptionSyncService({
     required SubscriptionDataSource subscriptionDataSource,
     required ServerDataSource serverDataSource,
+    SharedPreferences? pinStore,
   }) : _subscriptionDataSource = subscriptionDataSource,
-       _serverDataSource = serverDataSource;
+       _serverDataSource = serverDataSource,
+       _pins = pinStore;
 
   /// {@macro subscription_sync_service}
   Future<void> refresh(SubscriptionData subscription) async {
@@ -170,9 +179,9 @@ class SubscriptionSyncService {
         continue;
       }
 
-      return SubscriptionData.splitUrls(line.substring(_mirrorsDirective.length))
-          .where((url) => Uri.tryParse(url)?.scheme == 'https' && Uri.parse(url).host.isNotEmpty)
-          .toList();
+      return SubscriptionData.splitUrls(
+        line.substring(_mirrorsDirective.length),
+      ).where((url) => Uri.tryParse(url)?.scheme == 'https' && Uri.parse(url).host.isNotEmpty).toList();
     }
 
     return const [];
@@ -211,15 +220,31 @@ class SubscriptionSyncService {
   ///
   /// [skipVerification] only relaxes certificate checks for requests made by
   /// this client instance - it never affects any other subscription or the
-  /// VPN connection's own TLS handling.
+  /// VPN connection's own TLS handling. A certificate that does verify is
+  /// always fine (our mirrors); an unverifiable one is accepted only if it is
+  /// the one this host showed the first time - so a man in the middle later
+  /// on (the TSPU, a hotel Wi-Fi) can't swap the servers or read the token.
   http.Client _buildClient({required bool skipVerification}) {
     if (!skipVerification) {
       return http.Client();
     }
 
-    final httpClient = HttpClient()..badCertificateCallback = (certificate, host, port) => true;
+    final httpClient = HttpClient()
+      ..badCertificateCallback = (certificate, host, port) => _acceptPinned(host, base64.encode(certificate.der));
 
     return IOClient(httpClient);
+  }
+
+  bool _acceptPinned(String host, String der) {
+    final pins = _pins;
+    if (pins == null) return false;
+    final stored = Map<String, String>.from(jsonDecode(pins.getString(_pinsKey) ?? '{}') as Map);
+    final pinned = stored[host];
+    if (pinned != null) return pinned == der;
+    stored[host] = der;
+    unawaited(pins.setString(_pinsKey, jsonEncode(stored)));
+
+    return true;
   }
 
   Future<List<ServerData>> _parse(String body) async {

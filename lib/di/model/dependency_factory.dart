@@ -348,6 +348,7 @@ class DependencyFactoryImpl implements DependencyFactory {
   SubscriptionSyncService get subscriptionSyncService => _subscriptionSyncService ??= SubscriptionSyncService(
     subscriptionDataSource: subscriptionDataSource,
     serverDataSource: serverDataSource,
+    pinStore: sharedPreferences,
   );
 
   @override
