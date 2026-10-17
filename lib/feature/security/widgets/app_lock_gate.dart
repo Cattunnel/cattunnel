@@ -112,7 +112,17 @@ class _AppLockGateState extends State<AppLockGate> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(
+  Widget build(BuildContext context) {
+    final gate = _gate(context);
+
+    // With the app lock on, the whole app is FLAG_SECURE: Android takes the
+    // Recents thumbnail as the app goes to the background, before the lock
+    // screen can cover it (audit 13.10 item 3). Without the lock screenshots
+    // stay allowed - family members send them to ask for help.
+    return _settings.appLock ? SecureScreen(child: gate) : gate;
+  }
+
+  Widget _gate(BuildContext context) => Stack(
     children: [
       // Kept out of the accessibility tree and hit testing while locked.
       ExcludeSemantics(

@@ -5,6 +5,7 @@ import 'package:adguard_logger/adguard_logger.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/common/logging/sanitizer/engine_line_scrubber.dart';
 import 'package:trusttunnel/data/datasources/app_state_logging_datasource.dart';
 import 'package:trusttunnel/data/datasources/logs_local_source.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/model/export_file_type.dart';
@@ -14,6 +15,10 @@ import 'package:vpn_plugin/vpn_plugin.dart';
 
 final class LogsLocalSourceImpl implements LogsLocalSource {
   static const _logTempKey = '_logTempKey';
+
+  /// Archives saved outside the app (Downloads...): the panic button deletes
+  /// them too (deleteExportedArchives), app data alone doesn't cover them.
+  static const _logExportedKey = '_logExportedKey';
 
   final FileLogAppender _logAppender;
   final AppStateLoggingDataSource _appStateLoggingDataSource;
@@ -44,7 +49,7 @@ final class LogsLocalSourceImpl implements LogsLocalSource {
 
       final lines = selectedPaths.isEmpty
           ? <String>[]
-          : (await _vpnPlugin.exportLogsFor(selectedPaths)).map((r) => r.toString()).toList();
+          : (await _vpnPlugin.exportLogsFor(selectedPaths)).map((r) => EngineLineScrubber.scrub(r.toString())).toList();
 
       logFiles['$group.log'] = utf8.encode(lines.join(Platform.lineTerminator));
     }
@@ -72,14 +77,36 @@ final class LogsLocalSourceImpl implements LogsLocalSource {
     ExportFileType type = ExportFileType.any,
     List<String>? allowedExtensions,
     Uint8List? data,
-  }) => _filePicker.saveFile(
-    dialogTitle: dialogTitle,
-    fileName: fileName,
-    initialDirectory: initialDirectory,
-    type: _mapExportFileType(type),
-    allowedExtensions: allowedExtensions,
-    bytes: data,
-  );
+  }) async {
+    final path = await _filePicker.saveFile(
+      dialogTitle: dialogTitle,
+      fileName: fileName,
+      initialDirectory: initialDirectory,
+      type: _mapExportFileType(type),
+      allowedExtensions: allowedExtensions,
+      bytes: data,
+    );
+    if (path != null) {
+      final exported = _sharedPreferences.getStringList(_logExportedKey) ?? const [];
+      await _sharedPreferences.setStringList(_logExportedKey, [...exported, path]);
+    }
+
+    return path;
+  }
+
+  /// Deletes the archives this app saved outside its own data (best effort:
+  /// a file the system no longer lets us touch stays).
+  static Future<void> deleteExportedArchives(SharedPreferences prefs) async {
+    for (final path in prefs.getStringList(_logExportedKey) ?? const <String>[]) {
+      try {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      } on Object {
+        // Moved, or no longer ours to delete.
+      }
+    }
+    await prefs.remove(_logExportedKey);
+  }
 
   @override
   Future<String> saveRawFile({
