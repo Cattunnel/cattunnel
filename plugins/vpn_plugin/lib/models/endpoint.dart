@@ -115,6 +115,11 @@ final class Endpoint {
   /// 0x42) "the app decides". The app resolves its "auto" before connecting.
   final String tlsProfile;
 
+  /// Engine 1.3 `client_random_auth_key` (hex): TLS authorization by a key
+  /// instead of the fixed [clientRandom] prefix. In `tt://` links - tag 0x0F
+  /// (upstream). Empty - not used.
+  final String clientRandomAuthKey;
+
   /// CatTunnel: a custom anti-DPI split (engine `anti_dpi_desync`, byedpi
   /// syntax, see DesyncString), overrides [antiDpiMode]; empty - none.
   final String antiDpiDesync;
@@ -168,6 +173,7 @@ final class Endpoint {
     this.antiDpi = false,
     this.antiDpiMode = 0,
     this.tlsProfile = '',
+    this.clientRandomAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
     this.blockQuic = false,
@@ -183,7 +189,7 @@ final class Endpoint {
 
   @override
   String toString() =>
-      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
+      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
 
   @override
   bool operator ==(covariant Endpoint other) {
@@ -203,6 +209,7 @@ final class Endpoint {
         other.antiDpi == antiDpi &&
         other.antiDpiMode == antiDpiMode &&
         other.tlsProfile == tlsProfile &&
+        other.clientRandomAuthKey == clientRandomAuthKey &&
         other.antiDpiDesync == antiDpiDesync &&
         other.h2PaddingFrames == h2PaddingFrames &&
         other.blockQuic == blockQuic &&
@@ -227,6 +234,7 @@ final class Endpoint {
     antiDpi,
     antiDpiMode,
     tlsProfile,
+    clientRandomAuthKey,
     antiDpiDesync,
     h2PaddingFrames,
     blockQuic,

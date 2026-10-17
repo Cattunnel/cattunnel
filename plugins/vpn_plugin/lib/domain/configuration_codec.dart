@@ -111,6 +111,14 @@ abstract final class ConfigurationCodecKeys {
   /// but those look like no browser at all.
   static const tlsProfiles = {'chrome', 'firefox', 'safari', 'okhttp'};
 
+  /// Engine 1.3 TLS authorization key (see Endpoint.clientRandomAuthKey).
+  static const clientRandomAuthKey = 'client_random_auth_key';
+
+  /// A usable key: even-length hex, at least 16 bytes (the setup wizard
+  /// refuses shorter ones too).
+  static bool isValidAuthKey(String key) =>
+      key.length >= 32 && key.length.isEven && RegExp(r'^[0-9a-fA-F]+$').hasMatch(key);
+
   /// Own engine build: a custom split, see Endpoint.antiDpiDesync.
   static const antiDpiDesync = 'anti_dpi_desync';
 
@@ -207,7 +215,14 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
     endpoint.setBool(ConfigurationCodecKeys.hasIpv6, config.endpoint.hasIpv6);
     endpoint.setString(ConfigurationCodecKeys.username, config.endpoint.username);
     endpoint.setString(ConfigurationCodecKeys.password, config.endpoint.password);
-    endpoint.setString(ConfigurationCodecKeys.clientRandom, config.endpoint.clientRandom);
+    // With an auth key the random is derived from it; a fixed prefix next to
+    // it would only mark the connection again.
+    final authKey = config.endpoint.clientRandomAuthKey.trim();
+    final useAuthKey = ConfigurationCodecKeys.isValidAuthKey(authKey);
+    endpoint.setString(ConfigurationCodecKeys.clientRandom, useAuthKey ? '' : config.endpoint.clientRandom);
+    if (useAuthKey) {
+      endpoint.setString(ConfigurationCodecKeys.clientRandomAuthKey, authKey.toLowerCase());
+    }
     endpoint.setString(ConfigurationCodecKeys.customSni, config.endpoint.customSni);
     endpoint.setBool(ConfigurationCodecKeys.skipVerification, config.endpoint.skipVerification);
     endpoint.setMultilinePem(ConfigurationCodecKeys.certificate, config.endpoint.certificate);
@@ -341,6 +356,9 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
     final int antiDpiMode = antiDpiModeRaw >= 1 && antiDpiModeRaw <= 4 ? antiDpiModeRaw : 0;
     final String tlsProfileRaw = endpoint.getString(ConfigurationCodecKeys.tlsProfile) ?? '';
     final String tlsProfile = ConfigurationCodecKeys.tlsProfiles.contains(tlsProfileRaw) ? tlsProfileRaw : '';
+    final String authKeyRaw = (endpoint.getString(ConfigurationCodecKeys.clientRandomAuthKey) ?? '').trim();
+    final String clientRandomAuthKey =
+        ConfigurationCodecKeys.isValidAuthKey(authKeyRaw) ? authKeyRaw.toLowerCase() : '';
     final String antiDpiDesyncRaw = DesyncString.normalize(
       endpoint.getString(ConfigurationCodecKeys.antiDpiDesync) ?? '',
     );
@@ -404,6 +422,7 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
         // A custom split is mode 5 (ServerData.antiDpiCustom) in the app.
         antiDpiMode: antiDpiDesync.isNotEmpty ? 5 : antiDpiMode,
         tlsProfile: tlsProfile,
+        clientRandomAuthKey: clientRandomAuthKey,
         antiDpiDesync: antiDpiDesync,
         h2PaddingFrames: h2PaddingFrames,
         blockQuic: blockQuic,

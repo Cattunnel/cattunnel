@@ -148,6 +148,7 @@ class VpnDataSourceImpl implements VpnDataSource {
       antiDpi: server.antiDpi,
       antiDpiMode: server.engineAntiDpiMode,
       tlsProfile: await TlsProfileAuto.resolve(server.tlsProfile),
+      clientRandomAuthKey: server.tlsAuthKey,
       antiDpiDesync: server.engineAntiDpiDesync,
       h2PaddingFrames: server.h2PaddingFrames,
       blockQuic: server.blockQuic,
@@ -239,6 +240,7 @@ class VpnDataSourceImpl implements VpnDataSource {
       antiDpi: server.antiDpi,
       antiDpiMode: server.engineAntiDpiMode,
       tlsProfile: await TlsProfileAuto.resolve(server.tlsProfile),
+      clientRandomAuthKey: server.tlsAuthKey,
       antiDpiDesync: server.engineAntiDpiDesync,
       h2PaddingFrames: server.h2PaddingFrames,
       blockQuic: server.blockQuic,
@@ -386,9 +388,19 @@ class VpnDataSourceImpl implements VpnDataSource {
   /// "Auto" is on, except the ones the person put back into the VPN.
   Future<({List<String> excluded, List<String> included})> _getAppSplit() async {
     const none = (excluded: <String>[], included: <String>[]);
-    if (defaultTargetPlatform != TargetPlatform.android) return none;
+    final desktop = defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux;
+    if (defaultTargetPlatform != TargetPlatform.android && !desktop) return none;
     final mode = await _appSplitSettingsDataSource.getMode();
     final picked = await _appSplitSettingsDataSource.getApps(mode);
+    // Windows/Linux: program file names, matched by the engine; the automatic
+    // Russian/Chinese app lists are Android packages, so only the picked ones.
+    if (desktop) {
+      return switch (mode) {
+        AppSplitMode.off => none,
+        AppSplitMode.exclude => (excluded: (picked.toList()..sort()), included: <String>[]),
+        AppSplitMode.include => (excluded: <String>[], included: (picked.toList()..sort())),
+      };
+    }
 
     var auto = AutoBypassApps.empty;
     try {

@@ -1,0 +1,419 @@
+diff --git a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+index f6435ca..c0751c0 100644
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnService.kt
+@@ -5,6 +5,7 @@ import android.app.NotificationChannel
+ import android.app.NotificationManager
+ import android.content.Context
+ import android.content.Intent
++import android.content.pm.PackageManager
+ import android.content.pm.ServiceInfo
+ import android.net.ConnectivityManager
+ import android.net.NetworkCapabilities
+@@ -46,6 +47,18 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+         private const val ACTION_STOP  = "Stop"
+         private const val PARAM_CONFIG = "Config Extra"
+         private const val PARAM_FALL_INTO_RECOVERY = "Fall Into Recovery Extra"
++        // CatTunnel: the config (Russian networks + CA bundle, ~700 KB) is
++        // too big for an Intent extra - Binder caps a transaction at 1 MB
++        // and strings travel as UTF-16. The service runs in the app's
++        // process, so it's handed over in memory; the persisted copy
++        // (VpnConfigStorage) covers a service restarted without it.
++        @Volatile
++        private var pendingConfig: String? = null
++        // CatTunnel: whether the service exists at all. A STOP sent to a
++        // service that isn't running used to create it just to do nothing -
++        // in the foreground, with its notification, until force-stop.
++        @Volatile
++        private var alive = false
+         private const val NOTIFICATION_ID = 1
+         private val IPV4_NON_ROUTABLE = listOf("0.0.0.0/8", "224.0.0.0/3")
+         private val ADGUARD_DNS_SERVERS = listOf("46.243.231.30", "46.243.231.31", "2a10:50c0::2:ff", "2a10:50c0::1:ff")
+@@ -63,7 +76,7 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+                 }
+                 config?.apply {
+                     getConfigStorage(context).save(config)
+-                    intent.putExtra(PARAM_CONFIG, config)
++                    pendingConfig = config
+                 }
+                 intent.putExtra(PARAM_FALL_INTO_RECOVERY, fallIntoRecovery)
+                 context.startForegroundService(intent)
+@@ -74,6 +87,10 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+ 
+         fun stop(context: Context) {
+             getConfigStorage(context).clear()
++            if (!alive) {
++                LOG.info("Stop requested, but the VPN service isn't running")
++                return
++            }
+             start(context, ACTION_STOP, null, false)
+         }
+         fun start(context: Context, config: String?, fallIntoRecovery: Boolean) =
+@@ -194,6 +211,16 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+ 
+     private var state = State.Stopped
+     private val singleThread = ThreadManager.create("vpn-service", 1)
++
++    override fun onCreate() {
++        super.onCreate()
++        alive = true
++    }
++
++    override fun onDestroy() {
++        alive = false
++        super.onDestroy()
++    }
+     @Volatile
+     private var certificateVerificator: CertificateVerificator? = null
+ 
+@@ -218,7 +245,11 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+             try {
+                 currentStartId = startId
+                 val action = intent.action
+-                val config = intent.getStringExtra(PARAM_CONFIG)
++                val config = intent.getStringExtra(PARAM_CONFIG) ?: if (action == ACTION_START) {
++                    (pendingConfig ?: getConfigStorage(applicationContext).load()).also { pendingConfig = null }
++                } else {
++                    null
++                }
+                 LOG.info("Start executing action=$action flags=$flags startId=$startId")
+                 when (action) {
+                     ACTION_START    -> processStarting(config, intent.getBooleanExtra(PARAM_FALL_INTO_RECOVERY, false), startId)
+@@ -227,8 +258,10 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+                         startNetworkManager(applicationContext)
+                         LOG.info("System-triggered start (Always-On VPN), loading persisted config")
+                         val persistedConfig = getConfigStorage(applicationContext).load()
+-                        // Always-On VPN should keep recovering instead of giving up after several attempts.
+-                        processStarting(persistedConfig, true, startId)
++                        // CatTunnel: no endless recovery here either - retrying one address
++                        // forever looks like a flood to the TSPU (the address gets frozen);
++                        // the app keeps its own backoff.
++                        processStarting(persistedConfig, false, startId)
+                     }
+                 }
+ 
+@@ -244,31 +277,32 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+     private fun processStarting(configStr: String?, fallIntoRecovery: Boolean, startId: Int) {
+         if (state == State.Started) {
+             LOG.info("VPN service has already been started, do nothing")
++            // CatTunnel: the app asked to start because it believes the VPN
++            // is down (e.g. it lost track after a stop that didn't close the
++            // service) - tell it the real state, or it waits for an event
++            // that never comes and reports a working VPN as failed.
++            onStateChanged(lastState)
+             return
+         }
+         if (configStr == null) {
+             LOG.error("Failed to get the Vpn Interface config settings")
+-            return
++            return startFailed()
+         }
+         val config = VpnServiceConfig.parseToml(configStr)
+         if (config == null) {
+             LOG.error("Failed to parse Vpn Interface config")
+-            return
++            return startFailed()
+         }
+ 
+         try {
+             certificateVerificator = CertificateVerificator()
+         } catch (e: Exception) {
+             LOG.error("Failed to create certificate verifier: $e")
+-            return run {
+-                close()
+-            }
++            return startFailed()
+         }
+ 
+         LOG.info("VPN is starting...")
+-        val vpnTunInterface = createTunInterface(config) ?: return run {
+-            close()
+-        }
++        val vpnTunInterface = createTunInterface(config) ?: return startFailed()
+         // This is required to save startId and pass it to `closeIfLast` in case of DISCONNECTED state event
+         val service = this
+         val proxyClientListener = object : VpnClientListener by service {
+@@ -290,12 +324,27 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+         vpnClient = VpnClient(configStr, proxyClientListener)
+ 
+         startNetworkNotifications(vpnClient)
++        // CatTunnel: Started before the check, so the close() in startFailed
++        // really tears the client down. It used to run while still Stopped
++        // (a no-op), and the service was marked Started afterwards anyway -
++        // every later start was then "already started" with a stale state.
++        state = State.Started
+         if (vpnClient?.start(vpnTunInterface, fallIntoRecovery) != true) {
+             LOG.error("Failed to start Vpn client");
+-            close();
++            startFailed()
+         }
++    }
+ 
+-        state = State.Started
++    /**
++     * CatTunnel: a start that failed before the tunnel was up (config, TUN
++     * interface refused by the system, client start) used to be only logged:
++     * the app waited for a state event that never came. Report DISCONNECTED
++     * and leave the foreground (close() does, see patch 0005).
++     */
++    private fun startFailed() {
++        LOG.info("VPN start failed, reporting DISCONNECTED")
++        onStateChanged(VpnState.DISCONNECTED.code)
++        close()
+     }
+ 
+     override fun onRevoke() = singleThread.execute {
+@@ -311,7 +360,7 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+                 .setMtu(tunConfig.mtuSize.toInt())
+                 .addAddress("172.20.2.13", 32)
+                 .addAddress("fdfd:29::2", 64)
+-                .addDisallowedApplication(applicationContext.packageName)
++            applyAppSplit(builder, tunConfig)
+             val dnsServers = if (config.endpoint.dnsUpstreams.isEmpty()) {
+                 ADGUARD_DNS_SERVERS
+             } else {
+@@ -321,14 +370,17 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+                 builder.addDnsServer(server)
+             }
+ 
+-            val routes = VpnClient.excludeCidr(tunConfig.includedRoutes, tunConfig.excludedRoutes + IPV4_NON_ROUTABLE)
+-                ?: throw Exception("Failed to process routes")
+-            routes.forEach { route ->
+-                val r = NetworkUtils.convertCidrToAddressPrefixPair(route)
+-                if (r != null) {
+-                    builder.addRoute(r.first, r.second)
+-                } else {
+-                    throw Exception("Wrong syntax for included_routes")
++            val excluded = tunConfig.excludedRoutes + IPV4_NON_ROUTABLE
++            if (!addRoutesNatively(builder, tunConfig.includedRoutes, excluded)) {
++                val routes = VpnClient.excludeCidr(tunConfig.includedRoutes, excluded)
++                    ?: throw Exception("Failed to process routes")
++                routes.forEach { route ->
++                    val r = NetworkUtils.convertCidrToAddressPrefixPair(route)
++                    if (r != null) {
++                        builder.addRoute(r.first, r.second)
++                    } else {
++                        throw Exception("Wrong syntax for included_routes")
++                    }
+                 }
+             }
+ 
+@@ -340,6 +392,74 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+         }
+     }
+ 
++    /**
++     * CatTunnel: on Android 13+ the included routes go in as they are and the
++     * excluded ones through [Builder.excludeRoute], instead of "included minus
++     * excluded" computed here. The complement of N scattered networks is
++     * ~10 routes per network (31 Russian blocks -> ~360 routes, the full
++     * lists -> thousands), all handed to the OS in one Binder call; natively
++     * it's just the N networks. Everything is parsed before the builder is
++     * touched, so on a bad entry the caller falls back to the complement
++     * with a clean builder. Returns false when not used.
++     */
++    private fun addRoutesNatively(builder: Builder, included: List<String>, excluded: List<String>): Boolean {
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return false
++        fun parse(cidrs: List<String>) = cidrs.map {
++            NetworkUtils.convertCidrToIpPrefix(it) ?: throw IllegalArgumentException("Wrong route: $it")
++        }
++        val (include, exclude) = try {
++            parse(included) to parse(excluded)
++        } catch (e: Exception) {
++            LOG.warn("Routes: can't parse for excludeRoute, computing the complement", e)
++            return false
++        }
++        include.forEach { builder.addRoute(it) }
++        exclude.forEach { builder.excludeRoute(it) }
++        LOG.info("Routes: ${include.size} included, ${exclude.size} excluded natively (Android 13+)")
++        return true
++    }
++
++    /**
++     * CatTunnel: which apps the tunnel captures. Android allows either an
++     * allow-list or a deny-list per Builder, not both:
++     * - included_apps set: only those apps use the VPN (our own app can't be
++     *   among them - it would loop through its own tunnel);
++     * - otherwise everything except excluded_apps and our own app.
++     * Packages that aren't installed are skipped.
++     */
++    private fun applyAppSplit(builder: Builder, tunConfig: Tun) {
++        val self = applicationContext.packageName
++        val included = tunConfig.includedApps.filter { it != self }
++        if (included.isNotEmpty()) {
++            var added = 0
++            included.forEach { app ->
++                try {
++                    builder.addAllowedApplication(app)
++                    added++
++                } catch (e: PackageManager.NameNotFoundException) {
++                    LOG.info("Split tunneling: $app is not installed, skipped")
++                }
++            }
++            if (added > 0) {
++                LOG.info("Split tunneling: only $added app(s) use the VPN")
++                return
++            }
++            LOG.info("Split tunneling: none of the included apps is installed, the VPN covers everything")
++        }
++
++        builder.addDisallowedApplication(self)
++        var excluded = 0
++        tunConfig.excludedApps.filter { it != self }.forEach { app ->
++            try {
++                builder.addDisallowedApplication(app)
++                excluded++
++            } catch (e: PackageManager.NameNotFoundException) {
++                LOG.info("Split tunneling: $app is not installed, skipped")
++            }
++        }
++        if (excluded > 0) LOG.info("Split tunneling: $excluded app(s) bypass the VPN")
++    }
++
+     /**
+      * Closes the VPN TUN interface and stops itself only if the called is the only one who
+      * tries to stop the service.
+@@ -362,7 +482,15 @@ class VpnService : android.net.VpnService(), VpnClientListener {
+      *         false if something is wrong with closing or the service has already been closed
+      */
+     private fun close(startId: Int? = null): Boolean {
+-        if (state != State.Started) return false.also { LOG.info("VPN service is not running, do nothing") }
++        if (state != State.Started) {
++            // CatTunnel: nothing to close, but the service is still in the
++            // foreground (a STOP or a start that failed before the tunnel was
++            // up) - leave, or it hangs there. currentStartId: a start that
++            // arrived meanwhile keeps the service alive.
++            LOG.info("VPN service is not running, stopping the service")
++            stopSelf(startId ?: currentStartId)
++            return false
++        }
+ 
+         LOG.info("Closing VPN service")
+ 
+diff --git a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt
+index bf3b06f..4695dd7 100644
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnServiceConfig.kt
+@@ -12,7 +12,13 @@ class Tun (
+     @SerialName("excluded_routes")
+     val excludedRoutes: List<String>,
+     @SerialName("mtu_size")
+-    val mtuSize: Long
++    val mtuSize: Long,
++    // CatTunnel: per-app split tunneling. Package names; unknown to the
++    // upstream engine, which ignores unknown keys, so old builds are fine.
++    @SerialName("excluded_apps")
++    val excludedApps: List<String> = emptyList(),
++    @SerialName("included_apps")
++    val includedApps: List<String> = emptyList()
+ )
+ 
+ @Serializable
+diff --git a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnConfigStorage.kt b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnConfigStorage.kt
+index 11d19af..3eaf830 100644
+--- a/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnConfigStorage.kt
++++ b/platform/android/lib/src/main/java/com/adguard/trusttunnel/VpnConfigStorage.kt
+@@ -2,31 +2,96 @@ package com.adguard.trusttunnel
+ 
+ import android.content.Context
+ import android.content.SharedPreferences
++import android.security.keystore.KeyGenParameterSpec
++import android.security.keystore.KeyProperties
++import android.util.Base64
++import java.security.KeyStore
++import javax.crypto.Cipher
++import javax.crypto.KeyGenerator
++import javax.crypto.SecretKey
++import javax.crypto.spec.GCMParameterSpec
+ 
++/**
++ * CatTunnel: the persisted config (it carries the server's login and password) is
++ * encrypted with an AES-GCM key that lives in the Android Keystore and never leaves it.
++ * Upstream kept it as plain text in SharedPreferences for as long as the VPN was on.
++ * A plain-text value left by an older version is still read once; the next save
++ * replaces it with the encrypted one.
++ */
+ class VpnConfigStorage(context: Context) {
+ 
+     companion object {
+         private val LOG = Logger("VpnConfigStorage")
+         private const val PREFS_NAME = "trusttunnel_vpn"
+         private const val KEY_CONFIG = "vpn_config"
++        private const val KEYSTORE = "AndroidKeyStore"
++        private const val KEY_ALIAS = "cattunnel_vpn_config"
++        private const val PREFIX = "gcm1:"
++        private const val TAG_BITS = 128
+     }
+ 
+     private val prefs: SharedPreferences =
+         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+ 
++    private fun key(): SecretKey {
++        val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
++        (ks.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
++        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
++        generator.init(
++            KeyGenParameterSpec.Builder(KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
++                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
++                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
++                .setKeySize(256)
++                .build()
++        )
++        return generator.generateKey()
++    }
++
++    private fun encrypt(plain: String): String {
++        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
++        cipher.init(Cipher.ENCRYPT_MODE, key())
++        val body = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
++        return PREFIX + Base64.encodeToString(cipher.iv + body, Base64.NO_WRAP)
++    }
++
++    private fun decrypt(stored: String): String {
++        val raw = Base64.decode(stored.removePrefix(PREFIX), Base64.NO_WRAP)
++        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
++        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(TAG_BITS, raw, 0, 12))
++        return String(cipher.doFinal(raw, 12, raw.size - 12), Charsets.UTF_8)
++    }
++
+     fun save(config: String) {
+-        LOG.debug("Persisting VPN config")
+-        prefs.edit().putString(KEY_CONFIG, config).apply()
++        LOG.debug("Persisting VPN config (encrypted)")
++        val value = try {
++            encrypt(config)
++        } catch (e: Exception) {
++            // Without a working Keystore, keep nothing rather than the password in clear text:
++            // only a system-triggered restart (Always-On) needs the persisted copy.
++            LOG.error("Keystore encryption failed, the config is not persisted", e)
++            prefs.edit().remove(KEY_CONFIG).apply()
++            return
++        }
++        prefs.edit().putString(KEY_CONFIG, value).apply()
+     }
+ 
+     fun load(): String? {
+-        val config = prefs.getString(KEY_CONFIG, null)
+-        if (config != null) {
+-            LOG.debug("Loaded persisted VPN config")
+-        } else {
++        val stored = prefs.getString(KEY_CONFIG, null)
++        if (stored == null) {
+             LOG.debug("No persisted VPN config found")
++            return null
++        }
++        if (!stored.startsWith(PREFIX)) {
++            LOG.debug("Loaded a plain-text VPN config left by an older version")
++            return stored
++        }
++        return try {
++            decrypt(stored).also { LOG.debug("Loaded persisted VPN config") }
++        } catch (e: Exception) {
++            LOG.error("Can't decrypt the persisted VPN config, dropping it", e)
++            prefs.edit().remove(KEY_CONFIG).apply()
++            null
+         }
+-        return config
+     }
+ 
+     fun clear() {

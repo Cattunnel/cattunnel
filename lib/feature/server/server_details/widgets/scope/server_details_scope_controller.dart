@@ -17,6 +17,7 @@ typedef DataChangedCallback =
       bool? antiDpi,
       int? antiDpiMode,
       String? tlsProfile,
+      String? tlsAuthKey,
       String? antiDpiDesync,
       int? h2PaddingFrames,
       bool? blockQuic,

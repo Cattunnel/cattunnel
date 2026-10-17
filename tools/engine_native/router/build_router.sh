@@ -42,7 +42,7 @@ for ARCH in "${@:-aarch64 mipsel armv7}"; do
     echo "== $A"
     [ -f "$D/CMakeCache.txt" ] || cmake --preset "musl-cross-$A-relwithdebinfo" -B "$D" \
         -DCONAN_HOST_PROFILE="zigbase;auto-cmake" >"$B/router_$A.log" 2>&1
-    cmake --build "$D" --target trusttunnel_client -j6 >>"$B/router_$A.log" 2>&1
+    cmake --build "$D" --target trusttunnel_client -j${TT_JOBS:-6} >>"$B/router_$A.log" 2>&1
     grep -qa "Anti-DPI mode" "$D/trusttunnel/trusttunnel_client" || { echo "$A: no anti-DPI patch inside" >&2; exit 1; }
     "$STRIP" -o "$OUT/trusttunnel_client-$A" "$D/trusttunnel/trusttunnel_client"
     ls -la "$OUT/trusttunnel_client-$A"

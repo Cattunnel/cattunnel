@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS servers(
   anti_dpi BOOLEAN NOT NULL DEFAULT false,
   anti_dpi_mode INTEGER NOT NULL DEFAULT 0,
   tls_profile TEXT NOT NULL DEFAULT '',
+  client_random_auth_key TEXT NOT NULL DEFAULT '',
   anti_dpi_desync TEXT NOT NULL DEFAULT '',
   h2_padding_frames INTEGER NOT NULL DEFAULT 0,
   block_quic BOOLEAN NOT NULL DEFAULT false,

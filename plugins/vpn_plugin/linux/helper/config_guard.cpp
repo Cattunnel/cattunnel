@@ -27,7 +27,7 @@ const Schema kEndpointKeys = {
         {"username", Kind::kString}, {"password", Kind::kString}, {"client_random", Kind::kString},
         {"custom_sni", Kind::kString}, {"skip_verification", Kind::kBool}, {"certificate", Kind::kString},
         {"upstream_protocol", Kind::kString}, {"upstream_fallback_protocol", Kind::kString},
-        {"anti_dpi", Kind::kBool}, {"anti_dpi_mode", Kind::kInt}, {"tls_profile", Kind::kString}, {"anti_dpi_desync", Kind::kString}, {"h2_padding_frames", Kind::kInt}, {"block_quic", Kind::kBool}, {"dns_upstreams", Kind::kStrings},
+        {"anti_dpi", Kind::kBool}, {"anti_dpi_mode", Kind::kInt}, {"tls_profile", Kind::kString}, {"client_random_auth_key", Kind::kString}, {"anti_dpi_desync", Kind::kString}, {"h2_padding_frames", Kind::kInt}, {"block_quic", Kind::kBool}, {"dns_upstreams", Kind::kStrings},
         {"name", Kind::kString},
 };
 const Schema kListenerKeys = {{"tun", Kind::kTable}, {"socks", Kind::kTable}};

@@ -12,7 +12,8 @@ export PATH=$B/conan/bin:$HOME/.cargo/bin:$HOME/development/jdk-17/bin:$PATH
 export CONAN_HOME=$B/conan-home JAVA_HOME=$HOME/development/jdk-17
 export ANDROID_HOME=$HOME/Android/Sdk ANDROID_NDK_HOME=$HOME/Android/Sdk/ndk/29.0.14206865
 export TT_ABIS=${TT_ABIS:-arm64-v8a}
-cd $B/TrustTunnelClient/platform/android
+# TT_SRC: the clean tree (tag + our commit), not ~/tt-build/TrustTunnelClient (unfinished WIP there)
+cd ${TT_SRC:-$B/TTC-clean}/platform/android
 printf 'sdk.dir=%s\ncmake.dir=/usr\n' "$ANDROID_HOME" > local.properties
 # Upstream builds every ABI; TT_ABIS narrows it (one ABI ~25 min cold).
 grep -q TT_ABIS lib/build.gradle.kts || sed -i \

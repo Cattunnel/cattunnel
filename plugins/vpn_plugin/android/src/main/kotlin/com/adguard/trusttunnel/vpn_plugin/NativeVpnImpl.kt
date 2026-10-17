@@ -46,7 +46,9 @@ class NativeVpnImpl(
 
     fun startPrepared(ctx: Context, config: String) {
         log.info("startPrepared()")
-        VpnService.start(ctx, config)
+        // false: no endless recovery after a failed first connect - retrying one
+        // address forever looks like a flood to the TSPU; the app keeps its own backoff.
+        VpnService.start(ctx, config, false)
     }
 
     fun stop() {

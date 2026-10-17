@@ -79,6 +79,12 @@ class ServerData {
 
   static const tlsProfiles = ['chrome', 'firefox', 'safari', 'okhttp'];
 
+  /// TLS authorization key (engine 1.3 `client_random_auth_key`, hex): part of
+  /// the ClientHello random is derived from it and the SNI, so the server
+  /// recognizes the client without a fixed prefix on the wire. Empty - off
+  /// (then [tlsPrefix], if any, is used).
+  final String tlsAuthKey;
+
   /// The mode the engine gets: 0 without [antiDpi] or for an unknown value.
   int get engineAntiDpiMode => antiDpi && antiDpiMode >= 1 && antiDpiMode <= 3 ? antiDpiMode : 0;
 
@@ -129,6 +135,7 @@ class ServerData {
     this.antiDpi = false,
     this.antiDpiMode = 0,
     this.tlsProfile = tlsProfileAuto,
+    this.tlsAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
     this.blockQuic = false,
@@ -153,6 +160,7 @@ class ServerData {
     this.antiDpi = false,
     this.antiDpiMode = 0,
     this.tlsProfile = tlsProfileAuto,
+    this.tlsAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
     this.blockQuic = false,
@@ -180,6 +188,7 @@ class ServerData {
     antiDpi,
     antiDpiMode,
     tlsProfile,
+    tlsAuthKey,
     antiDpiDesync,
     h2PaddingFrames,
     blockQuic,
@@ -205,6 +214,7 @@ class ServerData {
       'antiDpi: $antiDpi,'
       'antiDpiMode: $antiDpiMode,'
       'tlsProfile: $tlsProfile,'
+      'tlsAuthKey: ${tlsAuthKey.isEmpty ? '' : '***'},'
       'antiDpiDesync: $antiDpiDesync,'
       'h2PaddingFrames: $h2PaddingFrames,'
       'blockQuic: $blockQuic,'
@@ -232,6 +242,7 @@ class ServerData {
         other.antiDpi == antiDpi &&
         other.antiDpiMode == antiDpiMode &&
         other.tlsProfile == tlsProfile &&
+        other.tlsAuthKey == tlsAuthKey &&
         other.antiDpiDesync == antiDpiDesync &&
         other.h2PaddingFrames == h2PaddingFrames &&
         other.blockQuic == blockQuic &&
@@ -259,6 +270,7 @@ class ServerData {
     bool? antiDpi,
     int? antiDpiMode,
     String? tlsProfile,
+    String? tlsAuthKey,
     String? antiDpiDesync,
     int? h2PaddingFrames,
     bool? blockQuic,
@@ -280,6 +292,7 @@ class ServerData {
     antiDpi: antiDpi ?? this.antiDpi,
     antiDpiMode: antiDpiMode ?? this.antiDpiMode,
     tlsProfile: tlsProfile ?? this.tlsProfile,
+    tlsAuthKey: tlsAuthKey ?? this.tlsAuthKey,
     antiDpiDesync: antiDpiDesync ?? this.antiDpiDesync,
     h2PaddingFrames: h2PaddingFrames ?? this.h2PaddingFrames,
     blockQuic: blockQuic ?? this.blockQuic,
