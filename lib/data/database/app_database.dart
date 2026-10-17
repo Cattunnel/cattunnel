@@ -5,6 +5,7 @@ import 'package:trusttunnel/data/database/migrations/migrations_v10.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v11.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v12.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v13.dart';
+import 'package:trusttunnel/data/database/migrations/migrations_v14.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v2.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v3.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v4.dart';
@@ -13,6 +14,7 @@ import 'package:trusttunnel/data/database/migrations/migrations_v6.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v7.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v8.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v9.dart';
+import 'package:trusttunnel/data/database/secret_column.dart';
 
 import 'connection.dart' as impl;
 
@@ -37,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.inMemory(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -167,6 +169,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 13) {
         await _runMigrationStep('v13', () => const MigrationsV13().migrate(this, m));
+      }
+      if (from < 14) {
+        await _runMigrationStep('v14', () => const MigrationsV14().migrate(this, m));
       }
     },
   );

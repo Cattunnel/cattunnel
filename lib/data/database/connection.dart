@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+import 'package:trusttunnel/data/database/db_key_store.dart';
 import 'package:trusttunnel/data/database/interceptors/db_log_interceptor.dart';
+import 'package:trusttunnel/data/database/secret_column.dart';
 
 Future<File> get databaseFile async {
   final dbFolder = await _getDbContainmentFolder();
@@ -29,9 +31,14 @@ DatabaseConnection connect() => DatabaseConnection.delayed(
       sqlite3.tempDirectory = cacheBase;
     }
 
-    final connection = NativeDatabase.createBackgroundConnection(
-      await databaseFile,
-    );
+    final file = await databaseFile;
+    // The key of the secret columns, before the first query (migration v14
+    // seals what older versions left in plain text).
+    if (!SecretColumn.ready) {
+      SecretColumn.useKey(await DbKeyStore.load(File('${file.path}.key')));
+    }
+
+    final connection = NativeDatabase.createBackgroundConnection(file);
 
     return connection.interceptWith(DBLogInterceptor());
   }),

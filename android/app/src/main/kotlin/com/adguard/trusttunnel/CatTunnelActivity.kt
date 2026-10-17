@@ -66,6 +66,7 @@ class CatTunnelActivity : FlutterFragmentActivity() {
         UpdateChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         AppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         TrafficChannel(flutterEngine.dartExecutor.binaryMessenger)
+        KeystoreChannel(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {

@@ -83,6 +83,7 @@ object TileConnector {
                     // The configuration needs these (system CA bundle, app split).
                     SecurityChannel(appContext, messenger)
                     AppsChannel(appContext, messenger)
+                    KeystoreChannel(messenger)
                     MethodChannel(messenger, CHANNEL).setMethodCallHandler { call, result ->
                         if (call.method == "done") {
                             result.success(null)

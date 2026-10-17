@@ -1,3 +1,4 @@
+import '../secret_column.dart';
 import 'protocols_table.drift';
 import 'routing_profiles_table.drift';
 import 'subscriptions_table.drift';
@@ -7,8 +8,8 @@ CREATE TABLE IF NOT EXISTS servers(
   ip_address TEXT NOT NULL,
   name TEXT NOT NULL,
   domain TEXT NOT NULL,
-  login TEXT NOT NULL,
-  password TEXT NOT NULL,
+  login TEXT NOT NULL MAPPED BY `const SecretColumn()`,
+  password TEXT NOT NULL MAPPED BY `const SecretColumn()`,
   vpn_protocol_id INTEGER NOT NULL,
   routing_profile_id INTEGER NOT NULL,
   selected BOOLEAN NOT NULL DEFAULT false,
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS servers(
   anti_dpi BOOLEAN NOT NULL DEFAULT false,
   anti_dpi_mode INTEGER NOT NULL DEFAULT 0,
   tls_profile TEXT NOT NULL DEFAULT '',
-  client_random_auth_key TEXT NOT NULL DEFAULT '',
+  client_random_auth_key TEXT NOT NULL DEFAULT '' MAPPED BY `const SecretColumn()`,
   anti_dpi_desync TEXT NOT NULL DEFAULT '',
   h2_padding_frames INTEGER NOT NULL DEFAULT 0,
   block_quic BOOLEAN NOT NULL DEFAULT false,
