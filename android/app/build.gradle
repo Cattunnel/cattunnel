@@ -101,6 +101,17 @@ android {
         }
     }
 
+    // A release build without the real key used to be signed with the dev key
+    // silently (audit 13.10 item 11). Lab/test builds say so explicitly:
+    // -PallowDevSigning=true or CATTUNNEL_DEV_SIGNING=1.
+    gradle.taskGraph.whenReady { graph ->
+        def releaseTask = graph.allTasks.any { it.project == project && it.name ==~ /(assemble|bundle|package)Release/ }
+        def allowed = project.findProperty("allowDevSigning") == "true" || System.getenv("CATTUNNEL_DEV_SIGNING") == "1"
+        if (releaseTask && !hasReleaseKey && !allowed) {
+            throw new GradleException("No android/key.properties: refusing to sign a release with the dev key (-PallowDevSigning=true for a test build)")
+        }
+    }
+
     // CatTunnel ships for real phones only (arm64 main APK + arm64/armv7
     // universal fallback). `--target-platform` only trims Flutter's own
     // libs - x86/x86_64 .so files from AARs (TrustTunnel core, ML Kit

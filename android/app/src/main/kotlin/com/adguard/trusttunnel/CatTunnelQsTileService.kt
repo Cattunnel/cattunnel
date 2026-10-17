@@ -32,6 +32,13 @@ class CatTunnelQsTileService : TileService() {
         super.onClick()
 
         if (isVpnActive()) {
+            // Turning the VPN off from the lock screen needs the phone unlocked
+            // first (audit 13.10 item 9) - a stranger holding the phone mustn't
+            // be able to drop the protection. Turning it on stays one tap.
+            if (isLocked) {
+                unlockAndRun { onClick() }
+                return
+            }
             // The vendor stop() quietly does nothing while the VPN counts as
             // "not prepared" (Samsung after every stop) - re-prepare first.
             if (VpnService.isPrepared(applicationContext)) {

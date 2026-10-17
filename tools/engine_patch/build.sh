@@ -53,6 +53,19 @@ if [[ ! -f $AAR || ! -f $POM ]]; then
     POM="$DL/$ARTIFACT-$VERSION.pom"
 fi
 
+# The official AAR/POM and upstream sources are pinned by hash
+# (UPSTREAM-<version>.sha256): a moved tag or a swapped package fails here.
+PINS="$HERE/UPSTREAM-$VERSION.sha256"
+[[ -f $PINS ]] || { echo "No $PINS - pin the upstream files of $VERSION first" >&2; exit 1; }
+pin_check() {  # <file> <name in PINS>
+    local want got
+    want=$(awk -v n="$2" '$2 == n {print $1}' "$PINS")
+    got=$(sha256sum "$1" | cut -d' ' -f1)
+    [[ -n $want && $want == "$got" ]] || { echo "$2: sha256 $got, pinned ${want:-nothing}" >&2; exit 1; }
+}
+pin_check "$AAR" "$ARTIFACT-$VERSION.aar"
+pin_check "$POM" "$ARTIFACT-$VERSION.pom"
+
 WORK="$HERE/build"
 rm -rf "$WORK/upstream" "$WORK/patched-src" "$WORK/aar" "$WORK/out" "$WORK/classes"
 mkdir -p "$WORK/upstream/$SRC_DIR" "$WORK/patched-src/$GROUP_PATH" "$WORK/aar" "$WORK/out"
@@ -61,6 +74,9 @@ echo "Upstream sources v$VERSION..."
 for f in "${SOURCES[@]}"; do
     gh api "repos/TrustTunnel/TrustTunnelClient/contents/$SRC_DIR/$f?ref=v$VERSION" --jq .content \
         | base64 -d > "$WORK/upstream/$SRC_DIR/$f"
+done
+for f in "${SOURCES[@]}"; do
+    pin_check "$WORK/upstream/$SRC_DIR/$f" "$f"
 done
 for p in "$HERE"/0*.patch; do
     patch -d "$WORK/upstream" -p1 --no-backup-if-mismatch < "$p"

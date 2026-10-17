@@ -32,6 +32,8 @@ allprojects {
         mavenCentral()
         maven {
             url = uri("https://maven.pkg.github.com/TrustTunnel/TrustTunnelClient")
+            // Only the TrustTunnel engine comes from here, nothing else can be swapped in.
+            content { includeGroup("com.adguard.trusttunnel") }
             credentials {
                 username = ""
                 password = getGprProp("gpr.key")
