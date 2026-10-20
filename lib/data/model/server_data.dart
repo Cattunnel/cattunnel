@@ -88,13 +88,15 @@ class ServerData {
   /// The mode the engine gets: 0 without [antiDpi] or for an unknown value.
   int get engineAntiDpiMode => antiDpi && antiDpiMode >= 1 && antiDpiMode <= 3 ? antiDpiMode : 0;
 
-  /// HTTP/2 padding: the first this many frames of a connection carry
+  /// HTTP/2 padding: the first this many frames of every stream carry
   /// 0-255 random bytes (engine `h2_padding_frames`, own build); 0 - off.
   /// Hides the sizes of the tunnel's first requests.
   final int h2PaddingFrames;
 
-  /// What "on" means in the form.
-  static const h2PaddingDefaultFrames = 8;
+  /// What "on" means in the form. The engine draws the number of the frames
+  /// of a stream at random from 2 to this value, and the size of every frame
+  /// at random from 1 to 256 bytes.
+  static const h2PaddingDefaultFrames = 4;
 
   /// QUIC off: the engine refuses UDP to port 443 (`block_quic`, own build),
   /// browsers and apps fall back to TCP inside the tunnel.
