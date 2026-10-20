@@ -29,6 +29,7 @@ import 'package:vpn_plugin/models/configuration.dart';
 import 'package:vpn_plugin/models/configuration_log_level.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
 import 'package:vpn_plugin/models/endpoint.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 import 'package:vpn_plugin/models/query_log_row.dart';
 import 'package:vpn_plugin/models/socks.dart';
 import 'package:vpn_plugin/models/tun.dart';
@@ -119,6 +120,9 @@ class VpnDataSourceImpl implements VpnDataSource {
 
   @override
   Stream<ConnectFailure> get connectFailures => _platformApi.connectFailures;
+
+  @override
+  Stream<NetDiagnostic> get netDiagnostics => _platformApi.netDiagnostics;
 
   /// {@macro vpn_data_source_start}
   ///

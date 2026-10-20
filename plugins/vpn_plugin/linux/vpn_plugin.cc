@@ -110,12 +110,17 @@ class Plugin : public std::enable_shared_from_this<Plugin> {
         // Why the server couldn't be reached (helper event "failure"); live only, nothing is queued.
         failure_channel_ = fl_event_channel_new(messenger, "vpn_plugin_event_channel_failures", FL_METHOD_CODEC(codec));
         fl_event_channel_set_stream_handlers(failure_channel_, OnFailureListen, OnFailureCancel, this, nullptr);
+        // What the engine saw in the last session to the endpoint (helper event "diagnostic").
+        diagnostic_channel_ =
+                fl_event_channel_new(messenger, "vpn_plugin_event_channel_diagnostics", FL_METHOD_CODEC(codec));
+        fl_event_channel_set_stream_handlers(diagnostic_channel_, OnDiagnosticListen, OnDiagnosticCancel, this, nullptr);
     }
 
     ~Plugin() {
         g_clear_object(&state_channel_);
         g_clear_object(&query_log_channel_);
         g_clear_object(&failure_channel_);
+        g_clear_object(&diagnostic_channel_);
     }
 
     /** After construction (needs weak_from_this): the helper connection and the first state. */
@@ -129,6 +134,8 @@ class Plugin : public std::enable_shared_from_this<Plugin> {
                         self->Notify(StateFromName(event.value("state", "")));
                     } else if (self && event.value("event", "") == "failure") {
                         self->NotifyFailure(event.value("failure", ""));
+                    } else if (self && event.value("event", "") == "diagnostic") {
+                        self->NotifyDiagnostic(event.value("diagnostic", ""));
                     }
                 },
                 [weak]() {
@@ -281,6 +288,36 @@ class Plugin : public std::enable_shared_from_this<Plugin> {
                 [](gpointer data) { delete static_cast<Update*>(data); });
     }
 
+    /** Any thread: the engine's verdict about the last session goes to Dart on the main loop. */
+    void NotifyDiagnostic(std::string diagnostic) {
+        struct Update {
+            std::shared_ptr<Plugin> plugin;
+            std::string diagnostic;
+        };
+        g_main_context_invoke_full(
+                nullptr, G_PRIORITY_DEFAULT,
+                [](gpointer data) -> gboolean {
+                    auto* update = static_cast<Update*>(data);
+                    if (update->plugin->diagnostic_listening_) {
+                        g_autoptr(FlValue) value = fl_value_new_string(update->diagnostic.c_str());
+                        fl_event_channel_send(update->plugin->diagnostic_channel_, value, nullptr, nullptr);
+                    }
+                    return G_SOURCE_REMOVE;
+                },
+                new Update{shared_from_this(), std::move(diagnostic)},
+                [](gpointer data) { delete static_cast<Update*>(data); });
+    }
+
+    static FlMethodErrorResponse* OnDiagnosticListen(FlEventChannel*, FlValue*, gpointer user_data) {
+        static_cast<Plugin*>(user_data)->diagnostic_listening_ = true;
+        return nullptr;
+    }
+
+    static FlMethodErrorResponse* OnDiagnosticCancel(FlEventChannel*, FlValue*, gpointer user_data) {
+        static_cast<Plugin*>(user_data)->diagnostic_listening_ = false;
+        return nullptr;
+    }
+
     static FlMethodErrorResponse* OnFailureListen(FlEventChannel*, FlValue*, gpointer user_data) {
         static_cast<Plugin*>(user_data)->failure_listening_ = true;
         return nullptr;
@@ -325,8 +362,10 @@ class Plugin : public std::enable_shared_from_this<Plugin> {
     FlEventChannel* state_channel_ = nullptr;
     FlEventChannel* query_log_channel_ = nullptr;
     FlEventChannel* failure_channel_ = nullptr;
+    FlEventChannel* diagnostic_channel_ = nullptr;
     bool listening_ = false;
     bool failure_listening_ = false;
+    bool diagnostic_listening_ = false;
     std::deque<VpnPluginVpnManagerState> pending_;
     VpnPluginVpnManagerState state_ = VPN_PLUGIN_VPN_MANAGER_STATE_DISCONNECTED;
 

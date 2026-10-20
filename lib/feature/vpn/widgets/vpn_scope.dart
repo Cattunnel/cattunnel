@@ -22,11 +22,13 @@ import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.
 import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
+import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/services/vpn_connection_notifier.dart';
 import 'package:trusttunnel/feature/vpn/models/log_controller.dart';
 import 'package:trusttunnel/feature/vpn/models/vpn_aspect.dart';
 import 'package:trusttunnel/feature/vpn/models/vpn_controller.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 /// {@template vpn_scope_on_start_callback}
 /// Signature of the "start VPN" operation used by [VpnScope].
@@ -224,6 +226,7 @@ class _VpnScopeState extends State<VpnScope> {
   StreamSubscription<VpnLog>? _logStreamSub;
   StreamSubscription<VpnState>? _vpnStreamSub;
   StreamSubscription<ConnectFailure>? _failureSub;
+  StreamSubscription<NetDiagnostic>? _diagnosticSub;
 
   /// The engine's failures for the server being started, for anti-DPI
   /// "auto" (they are also kept in ConnectFailures).
@@ -273,6 +276,7 @@ class _VpnScopeState extends State<VpnScope> {
     unawaited(_listenToVpnStates());
     unawaited(_listenToLogs());
     _failureSub = widget.vpnRepository.connectFailures.listen(_onConnectFailure);
+    _diagnosticSub = widget.vpnRepository.netDiagnostics.listen(_onNetDiagnostic);
   }
 
   void _onConnectFailure(ConnectFailure failure) {
@@ -282,6 +286,17 @@ class _VpnScopeState extends State<VpnScope> {
     }
     ConnectFailures.record(serverId, failure);
     _failures.add(failure);
+  }
+
+  /// What the engine saw in the last session to the endpoint (our engine
+  /// build): a cut after a fixed number of bytes, a silent session, an error
+  /// from the endpoint. Kept per server, like the failures.
+  void _onNetDiagnostic(NetDiagnostic diagnostic) {
+    final serverId = _currentServerId;
+    if (serverId == null) {
+      return;
+    }
+    NetDiagnostics.record(serverId, diagnostic);
   }
 
   @override
@@ -549,6 +564,7 @@ class _VpnScopeState extends State<VpnScope> {
     }
     if (state == VpnState.connected && _currentServerId != null) {
       ConnectFailures.clear(_currentServerId!);
+      NetDiagnostics.clear(_currentServerId!);
     }
     final previousState = _stateNotifier.value;
     _vpnStateRevision++;
@@ -688,6 +704,7 @@ class _VpnScopeState extends State<VpnScope> {
     _logStreamSub?.cancel().ignore();
     _vpnStreamSub?.cancel().ignore();
     _failureSub?.cancel().ignore();
+    _diagnosticSub?.cancel().ignore();
     _failures.close().ignore();
     _stateNotifier.dispose();
     _logsNotifier.dispose();

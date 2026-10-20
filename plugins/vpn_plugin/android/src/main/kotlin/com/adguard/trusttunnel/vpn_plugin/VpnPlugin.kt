@@ -23,6 +23,7 @@ class VpnPlugin :
         private const val STATE_CHANNEL_NAME = "vpn_plugin_event_channel"
         private const val QUERY_LOG_CHANNEL_NAME = "vpn_plugin_event_channel_query_log"
         private const val FAILURE_CHANNEL_NAME = "vpn_plugin_event_channel_failures"
+        private const val DIAGNOSTIC_CHANNEL_NAME = "vpn_plugin_event_channel_diagnostics"
     }
 
     private lateinit var appContext: Context
@@ -31,6 +32,7 @@ class VpnPlugin :
     private var stateChannel: EventChannel? = null
     private var queryLogChannel: EventChannel? = null
     private var failureChannel: EventChannel? = null
+    private var diagnosticChannel: EventChannel? = null
     
     private lateinit var vpnImpl: NativeVpnImpl
 
@@ -61,15 +63,21 @@ class VpnPlugin :
         failureChannel = EventChannel(messenger, FAILURE_CHANNEL_NAME).apply {
             setStreamHandler(vpnImpl.failureHandler)
         }
+
+        diagnosticChannel = EventChannel(messenger, DIAGNOSTIC_CHANNEL_NAME).apply {
+            setStreamHandler(vpnImpl.diagnosticHandler)
+        }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         stateChannel?.setStreamHandler(null)
         queryLogChannel?.setStreamHandler(null)
         failureChannel?.setStreamHandler(null)
+        diagnosticChannel?.setStreamHandler(null)
         stateChannel = null
         queryLogChannel = null
         failureChannel = null
+        diagnosticChannel = null
     }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {

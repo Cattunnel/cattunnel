@@ -4,6 +4,7 @@ import 'package:trusttunnel/data/model/vpn_configuration_log_level.dart';
 import 'package:trusttunnel/data/model/vpn_log.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 /// {@template vpn_data_source}
 /// Low-level abstraction over the VPN platform/backend.
@@ -40,6 +41,10 @@ abstract class VpnDataSource {
 
   /// Why the server couldn't be reached, see VpnPlugin.connectFailures.
   Stream<ConnectFailure> get connectFailures;
+
+  /// What the engine saw in the last session to the endpoint, see
+  /// VpnPlugin.netDiagnostics.
+  Stream<NetDiagnostic> get netDiagnostics;
 
   /// {@template vpn_data_source_start}
   /// Starts the VPN session using the provided configuration inputs.

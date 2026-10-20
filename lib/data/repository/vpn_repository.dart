@@ -7,6 +7,7 @@ import 'package:trusttunnel/data/model/vpn_configuration_log_level.dart';
 import 'package:trusttunnel/data/model/vpn_log.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 abstract class VpnRepository {
   Future<void> start({
@@ -31,6 +32,10 @@ abstract class VpnRepository {
 
   /// Why the server couldn't be reached (our engine build; Android, Linux).
   Stream<ConnectFailure> get connectFailures;
+
+  /// What the engine saw in the last session to the endpoint (our engine
+  /// build; Android, Linux).
+  Stream<NetDiagnostic> get netDiagnostics;
 
   Future<VpnState> requestState();
 
@@ -68,6 +73,9 @@ class VpnRepositoryImpl implements VpnRepository {
 
   @override
   Stream<ConnectFailure> get connectFailures => _vpnDataSource.connectFailures;
+
+  @override
+  Stream<NetDiagnostic> get netDiagnostics => _vpnDataSource.netDiagnostics;
 
   @override
   Future<VpnState> requestState() => _vpnDataSource.requestState();

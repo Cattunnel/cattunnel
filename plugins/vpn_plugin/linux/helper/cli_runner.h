@@ -66,6 +66,9 @@ class CliRunner {
     /** Why the server couldn't be reached, as tagged by the engine, since the last call. */
     std::vector<std::string> TakeFailures() { return std::exchange(failures_, {}); }
 
+    /** What the engine said about the last session to the endpoint, since the last call. */
+    std::vector<std::string> TakeDiagnostics() { return std::exchange(diagnostics_, {}); }
+
     /** Feeds one line of CLI output (public for tests). */
     std::optional<CliState> OnLine(const std::string& line);
 
@@ -80,6 +83,7 @@ class CliRunner {
     CliState state_ = CliState::kDisconnected;
     std::deque<std::string> records_;
     std::vector<std::string> failures_;
+    std::vector<std::string> diagnostics_;
     size_t records_bytes_ = 0;
 };
 

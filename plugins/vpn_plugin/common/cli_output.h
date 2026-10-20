@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -62,6 +64,74 @@ inline std::optional<std::string> ParseFailure(std::string_view line) {
         if (name == known) return std::string(name);
     }
     return std::nullopt;
+}
+
+/**
+ * "19.10.2026 21:06:15.073812 INFO  [10099] NETDIAG symptom=cut_after_bytes proto=h2 up=8200 down=8100
+ * dur_ms=1000 idle_ms=500 repeat=2 cut=16342" - our engine build (see net_diagnostics.h in the engine)
+ * says what the session to the endpoint died of. The tail after the marker is the payload the app gets.
+ */
+inline constexpr std::string_view kNetDiagMarker = "NETDIAG ";
+
+/** What the engine said about the last session to the endpoint. */
+struct NetDiag {
+    std::string symptom;
+    std::string protocol;
+    uint64_t bytes_up = 0;
+    uint64_t bytes_down = 0;
+    uint32_t duration_ms = 0;
+    uint32_t idle_ms = 0;
+    uint32_t repeat = 0;
+    uint64_t cut_bytes = 0;
+
+    /** The engine's line as it is, without the marker: "symptom=... up=... down=...". */
+    std::string raw;
+};
+
+inline std::optional<uint64_t> ParseUint(std::string_view text) {
+    uint64_t value = 0;
+    auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (ec != std::errc{} || end != text.data() + text.size()) return std::nullopt;
+    return value;
+}
+
+inline std::optional<NetDiag> ParseNetDiag(std::string_view line) {
+    const size_t marker = line.find(kNetDiagMarker);
+    if (marker == std::string_view::npos) return std::nullopt;
+    const std::string_view rest = line.substr(marker + kNetDiagMarker.size());
+
+    NetDiag diag;
+    diag.raw = std::string(rest);
+    for (size_t i = 0; i < rest.size();) {
+        const size_t space = rest.find(' ', i);
+        const std::string_view token = rest.substr(i, space == std::string_view::npos ? rest.size() : space - i);
+        i = (space == std::string_view::npos) ? rest.size() : space + 1;
+
+        const size_t eq = token.find('=');
+        if (eq == std::string_view::npos) continue;
+        const std::string_view key = token.substr(0, eq);
+        const std::string_view value = token.substr(eq + 1);
+        if (key == "symptom") {
+            diag.symptom = value;
+        } else if (key == "proto") {
+            diag.protocol = value;
+        } else if (key == "up") {
+            diag.bytes_up = ParseUint(value).value_or(0);
+        } else if (key == "down") {
+            diag.bytes_down = ParseUint(value).value_or(0);
+        } else if (key == "dur_ms") {
+            diag.duration_ms = static_cast<uint32_t>(ParseUint(value).value_or(0));
+        } else if (key == "idle_ms") {
+            diag.idle_ms = static_cast<uint32_t>(ParseUint(value).value_or(0));
+        } else if (key == "repeat") {
+            diag.repeat = static_cast<uint32_t>(ParseUint(value).value_or(0));
+        } else if (key == "cut") {
+            diag.cut_bytes = ParseUint(value).value_or(0);
+        }
+    }
+
+    if (diag.symptom.empty()) return std::nullopt;
+    return diag;
 }
 
 /** Invalid UTF-8 (a system message in the ANSI code page) becomes '?', so the

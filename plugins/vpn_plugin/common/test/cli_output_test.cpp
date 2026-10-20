@@ -35,6 +35,28 @@ TEST(ParseFailure, ReadsTheEngineTag) {
     EXPECT_EQ(ParseFailure("raise_state: [0] VPN_SS_CONNECTING"), std::nullopt);
 }
 
+TEST(ParseNetDiag, ReadsTheEngineVerdict) {
+    auto diag = ParseNetDiag("19.10.2026 21:06:15.073812 INFO  [10099] NETDIAG symptom=cut_after_bytes proto=h2 "
+                             "up=8200 down=8100 dur_ms=1000 idle_ms=500 repeat=2 cut=16342");
+    ASSERT_TRUE(diag.has_value());
+    EXPECT_EQ(diag->symptom, "cut_after_bytes");
+    EXPECT_EQ(diag->protocol, "h2");
+    EXPECT_EQ(diag->bytes_up, 8200u);
+    EXPECT_EQ(diag->bytes_down, 8100u);
+    EXPECT_EQ(diag->duration_ms, 1000u);
+    EXPECT_EQ(diag->idle_ms, 500u);
+    EXPECT_EQ(diag->repeat, 2u);
+    EXPECT_EQ(diag->cut_bytes, 16342u);
+    EXPECT_EQ(diag->raw,
+              "symptom=cut_after_bytes proto=h2 up=8200 down=8100 dur_ms=1000 idle_ms=500 repeat=2 cut=16342");
+}
+
+TEST(ParseNetDiag, IgnoresOtherLines) {
+    EXPECT_FALSE(ParseNetDiag("25.09.2026 22:45:23.887787 INFO  [22430] VPNCORE raise_state: [0] VPN_SS_CONNECTING"));
+    EXPECT_FALSE(ParseNetDiag("x NETDIAG up=10 down=20"));
+    EXPECT_FALSE(ParseNetDiag(""));
+}
+
 TEST(ToRecord, ConvertsCliLine) {
     EXPECT_EQ(ToRecord("25.09.2026 22:45:23.887787 INFO  [22430] VPNCORE raise_state: [0] VPN_SS_CONNECTING", kNow),
             "2026-09-25T22:45:23.887787 [info] [22430] VPNCORE raise_state: [0] VPN_SS_CONNECTING");

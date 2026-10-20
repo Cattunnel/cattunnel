@@ -26,6 +26,9 @@ class NativeVpnImpl(
     /** Why the server couldn't be reached, see [onConnectionInfo]. */
     val failureHandler: FailureStreamHandler = FailureStreamHandler()
 
+    /** What the engine saw in the last session to the endpoint, see [onConnectionInfo]. */
+    val diagnosticHandler: DiagnosticStreamHandler = DiagnosticStreamHandler()
+
     /**
      * The query log is a per-connection record (domain, destination, time) -
      * effectively browsing history. Keep it session-scoped: outside backups
@@ -102,6 +105,10 @@ class NativeVpnImpl(
             failureHandler.onFailure(it.groupValues[1])
             return
         }
+        DIAGNOSTIC_RECORD.matchEntire(info)?.let {
+            diagnosticHandler.onDiagnostic(it.groupValues[1])
+            return
+        }
         queryLogHandler.onQueryLog(info)
     }
 
@@ -118,6 +125,9 @@ private const val QUERY_LOG_FILE_NAME = "query_log.dat"
 
 private val FAILURE_RECORD = Regex("""\{"cattunnel_failure":"([a-z_]+)"\}""")
 
+/** The engine's verdict about the last session: {"cattunnel_diagnostic":"symptom=... up=..."}. */
+private val DIAGNOSTIC_RECORD = Regex("""\{"cattunnel_diagnostic":"([a-z0-9_= ]+)"\}""")
+
 /** Live only: a failure nobody listened to is stale by the next listen. */
 class FailureStreamHandler : EventChannel.StreamHandler {
     private var events: EventChannel.EventSink? = null
@@ -133,6 +143,24 @@ class FailureStreamHandler : EventChannel.StreamHandler {
 
     fun onFailure(failure: String) {
         main.post { events?.success(failure) }
+    }
+}
+
+/** Live only: a verdict nobody listened to is stale by the next listen. */
+class DiagnosticStreamHandler : EventChannel.StreamHandler {
+    private var events: EventChannel.EventSink? = null
+    private val main = Handler(Looper.getMainLooper())
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        this.events = events
+    }
+
+    override fun onCancel(arguments: Any?) {
+        events = null
+    }
+
+    fun onDiagnostic(diagnostic: String) {
+        main.post { events?.success(diagnostic) }
     }
 }
 

@@ -9,6 +9,7 @@ import 'package:vpn_plugin/domain/query_log_encoder.dart';
 import 'package:vpn_plugin/models/configuration.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
 import 'package:vpn_plugin/models/logs/log_record.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 import 'package:vpn_plugin/models/query_log_row.dart';
 import 'package:vpn_plugin/platform_api.g.dart';
 
@@ -83,6 +84,11 @@ abstract class VpnPlugin {
   /// change it explains.
   abstract final Stream<ConnectFailure> connectFailures;
 
+  /// What the engine saw in the last session to the endpoint, from our engine
+  /// build (Android, Linux); empty elsewhere. Live only: emitted when a
+  /// session to the endpoint dies of something the engine can name.
+  abstract final Stream<NetDiagnostic> netDiagnostics;
+
   Future<List<LogRecord>> exportLogsFor(List<String> paths);
 
   Future<List<String>> fetchLogsPath();
@@ -110,13 +116,15 @@ class VpnPluginImpl implements VpnPlugin {
        _codec = const ConfigurationCodec(),
        _vpnChannel = channel ?? const EventChannel('vpn_plugin_event_channel'),
        _queryLogChannel = logChannel ?? const EventChannel('vpn_plugin_event_channel_query_log'),
-       _failureChannel = const EventChannel('vpn_plugin_event_channel_failures');
+       _failureChannel = const EventChannel('vpn_plugin_event_channel_failures'),
+       _diagnosticChannel = const EventChannel('vpn_plugin_event_channel_diagnostics');
 
   final ConfigurationCodec _codec;
   final IVpnManager _api;
   final EventChannel _vpnChannel;
   final EventChannel _queryLogChannel;
   final EventChannel _failureChannel;
+  final EventChannel _diagnosticChannel;
   final LogsReader _logsReader;
   SharedPreferences? _storage;
 
@@ -167,6 +175,16 @@ class VpnPluginImpl implements VpnPlugin {
           .map(ConnectFailure.fromValue)
           .where((f) => f != null)
           .cast<ConnectFailure>();
+
+  @override
+  late final Stream<NetDiagnostic> netDiagnostics =
+      _diagnosticChannel
+          .receiveBroadcastStream()
+          // No handler on this platform (MissingPluginException): no diagnostics.
+          .handleError((Object _) {})
+          .map((dynamic raw) => NetDiagnostic.parse(raw as String?))
+          .where((d) => d != null)
+          .cast<NetDiagnostic>();
 
   /// Converts raw platform-specific state values to [VpnManagerState] enum values.
   static VpnManagerState _mapNativeToState(dynamic raw) {

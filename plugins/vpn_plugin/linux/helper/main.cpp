@@ -195,6 +195,9 @@ class Server {
                     for (const auto& failure : cli_.TakeFailures()) {
                         if (control_ >= 0) SendLine(control_, {{"event", "failure"}, {"failure", failure}});
                     }
+                    for (const auto& diagnostic : cli_.TakeDiagnostics()) {
+                        if (control_ >= 0) SendLine(control_, {{"event", "diagnostic"}, {"diagnostic", diagnostic}});
+                    }
                     Notify(changes);
                 }
             }
