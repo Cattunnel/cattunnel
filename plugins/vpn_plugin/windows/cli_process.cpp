@@ -57,8 +57,8 @@ bool SendCtrlC(DWORD pid) {
 
 }  // namespace
 
-CliProcess::CliProcess(std::filesystem::path log_path, StateCallback on_state)
-    : m_log_path(std::move(log_path)), m_on_state(std::move(on_state)) {}
+CliProcess::CliProcess(std::filesystem::path log_path, StateCallback on_state, DiagnosticCallback on_diagnostic)
+    : m_log_path(std::move(log_path)), m_on_state(std::move(on_state)), m_on_diagnostic(std::move(on_diagnostic)) {}
 
 CliProcess::~CliProcess() { Stop(); }
 
@@ -205,6 +205,13 @@ void CliProcess::ReadOutput(HANDLE pipe, HANDLE process, std::filesystem::path c
 
 void CliProcess::HandleLine(const std::string& line, bool& config_deleted, const std::filesystem::path& config_path) {
     AppendLog(line);
+
+    if (m_on_diagnostic) {
+        if (auto diagnostic = cli_output::ParseNetDiag(line)) {
+            m_on_diagnostic(diagnostic->raw);
+        }
+    }
+
     std::optional<State> state = ParseState(line);
     if (!state) return;
 

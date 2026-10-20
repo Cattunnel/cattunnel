@@ -40,12 +40,16 @@ public:
 
     using StateCallback = std::function<void(State)>;
 
+    /** The engine's verdict about the last session to the endpoint. */
+    using DiagnosticCallback = std::function<void(std::string)>;
+
     /**
      * @param log_path  Where the CLI output goes (rotated at kMaxLogBytes).
      * @param on_state  Called from the reader thread on every state line and
      *                  with kDisconnected once the process has exited.
+     * @param on_diagnostic  Called from the reader thread on every NETDIAG line.
      */
-    CliProcess(std::filesystem::path log_path, StateCallback on_state);
+    CliProcess(std::filesystem::path log_path, StateCallback on_state, DiagnosticCallback on_diagnostic = {});
     ~CliProcess();
 
     CliProcess(const CliProcess&) = delete;
@@ -80,6 +84,7 @@ private:
 
     std::filesystem::path m_log_path;
     StateCallback m_on_state;
+    DiagnosticCallback m_on_diagnostic;
 
     std::mutex m_mutex;  // guards the handles below
     HANDLE m_job = nullptr;

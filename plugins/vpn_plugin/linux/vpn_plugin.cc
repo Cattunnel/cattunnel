@@ -113,7 +113,8 @@ class Plugin : public std::enable_shared_from_this<Plugin> {
         // What the engine saw in the last session to the endpoint (helper event "diagnostic").
         diagnostic_channel_ =
                 fl_event_channel_new(messenger, "vpn_plugin_event_channel_diagnostics", FL_METHOD_CODEC(codec));
-        fl_event_channel_set_stream_handlers(diagnostic_channel_, OnDiagnosticListen, OnDiagnosticCancel, this, nullptr);
+        fl_event_channel_set_stream_handlers(
+                diagnostic_channel_, OnDiagnosticListen, OnDiagnosticCancel, this, nullptr);
     }
 
     ~Plugin() {

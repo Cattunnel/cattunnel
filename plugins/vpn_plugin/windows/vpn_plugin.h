@@ -93,6 +93,9 @@ private:
     /** Any thread: forwards a CLI state to Dart on the UI thread. */
     void NotifyStateChanged(VpnManagerState state);
 
+    /** Any thread: forwards the engine's verdict to Dart on the UI thread. */
+    void NotifyNetDiagnostic(std::string diagnostic);
+
     flutter::PluginRegistrarWindows* m_registrar;
     UIThreadDispatcher m_dispatcher;
     BackgroundWorker m_worker;
@@ -103,8 +106,12 @@ private:
     // the Dart side subscribes to it on every platform.
     std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
             m_query_log_channel;
+    // What the engine saw in the last session to the endpoint.
+    std::unique_ptr<flutter::EventChannel<flutter::EncodableValue>>
+            m_diagnostic_channel;
 
     VpnEventStreamHandler* m_state_handler = nullptr;
+    VpnEventStreamHandler* m_diagnostic_handler = nullptr;
 
     std::filesystem::path m_data_dir;
     std::unique_ptr<CliProcess> m_cli;

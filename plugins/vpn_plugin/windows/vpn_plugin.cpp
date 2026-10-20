@@ -136,6 +136,16 @@ VpnPlugin::VpnPlugin(flutter::PluginRegistrarWindows* registrar)
                     &flutter::StandardMethodCodec::GetInstance());
     m_query_log_channel->SetStreamHandler(std::make_unique<VpnEventStreamHandler>());
 
+    // What the engine saw in the last session to the endpoint.
+    auto diagnostic_handler = std::make_unique<VpnEventStreamHandler>();
+    m_diagnostic_handler = diagnostic_handler.get();
+    m_diagnostic_channel =
+            std::make_unique<flutter::EventChannel<flutter::EncodableValue>>(
+                    registrar->messenger(),
+                    "vpn_plugin_event_channel_diagnostics",
+                    &flutter::StandardMethodCodec::GetInstance());
+    m_diagnostic_channel->SetStreamHandler(std::move(diagnostic_handler));
+
     m_physical_net_channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
             registrar->messenger(), "cattunnel/physical_net",
             &flutter::StandardMethodCodec::GetInstance());
@@ -147,7 +157,8 @@ VpnPlugin::VpnPlugin(flutter::PluginRegistrarWindows* registrar)
             [this](CliProcess::State state) {
                 // Same order as VpnManagerState (cli_output.h).
                 NotifyStateChanged(static_cast<VpnManagerState>(state));
-            });
+            },
+            [this](std::string diagnostic) { NotifyNetDiagnostic(std::move(diagnostic)); });
 }
 
 /**
@@ -255,6 +266,14 @@ void VpnPlugin::NotifyStateChanged(VpnManagerState state) {
         if (m_state_handler) {
             m_state_handler->SendEvent(
                     flutter::EncodableValue(static_cast<int64_t>(state)));
+        }
+    });
+}
+
+void VpnPlugin::NotifyNetDiagnostic(std::string diagnostic) {
+    m_dispatcher.RunOnUIThread([this, diagnostic = std::move(diagnostic)]() {
+        if (m_diagnostic_handler) {
+            m_diagnostic_handler->SendEvent(flutter::EncodableValue(diagnostic));
         }
     });
 }

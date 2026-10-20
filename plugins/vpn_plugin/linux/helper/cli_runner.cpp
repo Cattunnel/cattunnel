@@ -153,7 +153,9 @@ std::optional<CliState> CliRunner::OnLine(const std::string& raw) {
     if (line.empty()) return std::nullopt;
     AddRecord(vpn_plugin::cli_output::ToRecord(line, Now()));
     if (auto failure = vpn_plugin::cli_output::ParseFailure(line)) failures_.push_back(std::move(*failure));
-    if (auto diagnostic = vpn_plugin::cli_output::ParseNetDiag(line)) diagnostics_.push_back(std::move(diagnostic->raw));
+    if (auto diagnostic = vpn_plugin::cli_output::ParseNetDiag(line)) {
+        diagnostics_.push_back(std::move(diagnostic->raw));
+    }
     auto state = vpn_plugin::cli_output::ParseState(line);
     if (!state || *state == state_) return std::nullopt;
     state_ = *state;
