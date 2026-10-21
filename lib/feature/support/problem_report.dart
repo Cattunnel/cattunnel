@@ -91,6 +91,9 @@ abstract final class ProblemReport {
   }) async {
     final repositories = context.repositoryFactory;
     final dependencies = context.dependencyFactory;
+    // The localization is taken before the first await: the context must
+    // not be used across an async gap.
+    final ln = context.ln;
     final vpnState = VpnScope.vpnControllerOf(context, listen: false).state;
     final selected = ServersScope.controllerOf(context, listen: false).selectedServer;
     final server = selected?.serverData;
@@ -120,7 +123,7 @@ abstract final class ProblemReport {
     // report.
     final kind = await AntiDpiAuto.networkKind();
     final fingerprint = await NetworkFingerprints.current(kind: kind);
-    final network = networkName(context, dependencies.sharedPreferences, fingerprint);
+    final network = networkName(ln, dependencies.sharedPreferences, fingerprint);
 
     String? d(String key) => device[key]?.toString();
     final android = defaultTargetPlatform == TargetPlatform.android;

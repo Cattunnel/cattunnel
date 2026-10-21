@@ -434,13 +434,14 @@ class _VpnScopeState extends State<VpnScope> {
     required VpnConfigurationLogLevel logLevel,
     required bool directFirst,
   }) async {
-    final auto = AntiDpiAuto(context.dependencyFactory.sharedPreferences);
+    final preferences = context.dependencyFactory.sharedPreferences;
+    final auto = AntiDpiAuto(preferences);
     _autoServerId = server.id;
     final kind = await AntiDpiAuto.networkKind();
     final fingerprint = await NetworkFingerprints.current(kind: kind);
     final network = fingerprint.key;
     // The list of the networks shows what kind each of them is.
-    await NetworkFingerprint.rememberKind(context.dependencyFactory.sharedPreferences, fingerprint);
+    await NetworkFingerprint.rememberKind(preferences, fingerprint);
     final directFails = auto.directFails(serverId: server.id, network: network);
     final techniques = <int>[
       if (directFirst && !directFails) 0,

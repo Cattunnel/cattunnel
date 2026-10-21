@@ -104,6 +104,7 @@ class _NetworksScreenState extends State<NetworksScreen> {
   }
 
   Future<void> _forget(RememberedNetwork network) async {
+    final preferences = context.dependencyFactory.sharedPreferences;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => CustomAlertDialog(
@@ -116,11 +117,12 @@ class _NetworksScreenState extends State<NetworksScreen> {
       ),
     );
     if (confirmed != true) return;
-    await NetworksMemory.forget(context.dependencyFactory.sharedPreferences, network.key);
+    await NetworksMemory.forget(preferences, network.key);
     await _load();
   }
 
   Future<void> _forgetAll() async {
+    final preferences = context.dependencyFactory.sharedPreferences;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => CustomAlertDialog(
@@ -136,7 +138,7 @@ class _NetworksScreenState extends State<NetworksScreen> {
       ),
     );
     if (confirmed != true) return;
-    await NetworksMemory.forgetAll(context.dependencyFactory.sharedPreferences);
+    await NetworksMemory.forgetAll(preferences);
     await _load();
   }
 }
@@ -158,7 +160,7 @@ class _NetworkTile extends StatelessWidget {
     final preferences = context.dependencyFactory.sharedPreferences;
 
     return ListTile(
-      title: Text(networkNameByKey(context, preferences, network.key, network.kind)),
+      title: Text(networkNameByKey(context.ln, preferences, network.key, network.kind)),
       subtitle: Text(_facts(context)),
       trailing: PopupMenuButton<String>(
         onSelected: (action) => switch (action) {
@@ -186,7 +188,7 @@ class _NetworkTile extends StatelessWidget {
       facts.add(context.ln.networksModes(network.modes.join(', ')));
     }
     if (facts.isEmpty) {
-      return networkKindName(context, network.kind);
+      return networkKindName(context.ln, network.kind);
     }
 
     return facts.join('\n');

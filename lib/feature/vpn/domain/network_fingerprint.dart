@@ -168,7 +168,9 @@ abstract final class NetworkFingerprints {
 
   /// The gateway of the default route and the DNS servers of the system.
   static ({String gateway, List<String> dns, List<String> domains}) _linux() {
-    return (gateway: _linuxGateway(), dns: _linuxDns().dns, domains: _linuxDns().domains);
+    final dns = _linuxDns();
+
+    return (gateway: _linuxGateway(), dns: dns.dns, domains: dns.domains);
   }
 
   /// The gateway of the default route, from /proc/net/route. The address

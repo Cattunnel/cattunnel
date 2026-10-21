@@ -17,12 +17,12 @@ import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
+import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
-import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
@@ -310,7 +310,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
             const SizedBox(height: 16),
             if (_fingerprint != null) ...[
               _NetworkRow(
-                name: networkName(context, context.dependencyFactory.sharedPreferences, _fingerprint!),
+                name: networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
                 onOpen: _openNetworks,
               ),
               const SizedBox(height: 8),
