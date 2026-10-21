@@ -10,6 +10,7 @@ import 'package:trusttunnel/feature/settings/excluded_routes/widgets/excluded_ro
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/launch_and_connection_screen.dart';
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope/launch_and_connection_scope.dart';
 import 'package:trusttunnel/feature/settings/logs/widgets/logs_screen.dart';
+import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.dart';
 import 'package:trusttunnel/feature/settings/readme/readme_screen.dart';
 import 'package:trusttunnel/feature/settings/settings_about/about_screen.dart';
 import 'package:trusttunnel/feature/traffic/traffic_data.dart';
@@ -49,6 +50,11 @@ class SettingsScreen extends StatelessWidget {
             CustomArrowListTile(
               title: context.ln.excludedRoutes,
               onTap: () => _pushExcludedRoutesScreen(context),
+            ),
+            const Divider(),
+            CustomArrowListTile(
+              title: context.ln.networksTitle,
+              onTap: () => context.push(const NetworksScreen()),
             ),
             if (TrafficSource.supported) ...[
               const Divider(),

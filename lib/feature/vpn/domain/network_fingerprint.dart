@@ -57,12 +57,13 @@ class NetworkFingerprint {
     return _hash(parts.join('|'));
   }
 
-  /// A short piece of the key, for the automatic name of a network.
-  String get shortId => key.length <= 4 ? key : key.substring(0, 4);
+  /// A short piece of the key, for the automatic name of a network. Empty
+  /// when there was nothing to hash: the key is then the kind itself.
+  String get shortId => isEmpty || key.length <= 4 ? '' : key.substring(0, 4);
 
   /// The name the person gave this network, if they did.
   static String? customName(SharedPreferences preferences, String key) {
-    final name = preferences.getString('network_name.$key');
+    final name = preferences.getString(nameKey(key));
 
     return name == null || name.trim().isEmpty ? null : name.trim();
   }
@@ -71,11 +72,24 @@ class NetworkFingerprint {
   static Future<void> rename(SharedPreferences preferences, String key, String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {
-      await preferences.remove('network_name.$key');
+      await preferences.remove(nameKey(key));
 
       return;
     }
-    await preferences.setString('network_name.$key', trimmed);
+    await preferences.setString(nameKey(key), trimmed);
+  }
+
+  /// The key of the kind of the network, so the list of the networks knows
+  /// what each of them is.
+  static String kindKey(String key) => 'network_kind.$key';
+
+  /// The key of the name of the network.
+  static String nameKey(String key) => 'network_name.$key';
+
+  /// Remembers the kind of the network.
+  static Future<void> rememberKind(SharedPreferences preferences, NetworkFingerprint fingerprint) async {
+    if (preferences.getString(kindKey(fingerprint.key)) == fingerprint.kind) return;
+    await preferences.setString(kindKey(fingerprint.key), fingerprint.kind);
   }
 
   /// A short, stable hash. Not a secret: the fingerprint stays on the

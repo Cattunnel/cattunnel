@@ -33,9 +33,20 @@ class AntiDpiAuto {
   /// Between stopping one technique and starting the next.
   static const switchPause = Duration(milliseconds: 1500);
 
-  static const _keyPrefix = 'anti_dpi_auto';
-  static const _cursorPrefix = 'anti_dpi_cursor';
-  static const _directPrefix = 'anti_dpi_direct';
+  /// The keys of the memory. The key of a network is a hash, so these keys
+  /// say nothing about the network itself.
+  static const modeKeyPrefix = 'anti_dpi_auto';
+  static const cursorKeyPrefix = 'anti_dpi_cursor';
+  static const directKeyPrefix = 'anti_dpi_direct';
+
+  /// The technique that worked in the network, for the server.
+  static String modeKey(String serverId, String network) => '$modeKeyPrefix.$serverId.$network';
+
+  /// Where the round starts the next time.
+  static String cursorKey(String serverId, String network) => '$cursorKeyPrefix.$serverId.$network';
+
+  /// The plain connection does not work in the network, for the server.
+  static String directKey(String serverId, String network) => '$directKeyPrefix.$serverId.$network';
 
   /// Whether the round is going on right now.
   ///
@@ -114,9 +125,9 @@ class AntiDpiAuto {
   Future<void> forgetDirectFailure({required String serverId, required String network}) =>
       _preferences.remove(_directKey(serverId, network));
 
-  String _hintKey(String serverId, String network) => '$_keyPrefix.$serverId.$network';
+  String _hintKey(String serverId, String network) => modeKey(serverId, network);
 
-  String _cursorKey(String serverId, String network) => '$_cursorPrefix.$serverId.$network';
+  String _cursorKey(String serverId, String network) => cursorKey(serverId, network);
 
-  String _directKey(String serverId, String network) => '$_directPrefix.$serverId.$network';
+  String _directKey(String serverId, String network) => directKey(serverId, network);
 }

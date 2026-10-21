@@ -552,6 +552,39 @@
   "networkKindMobile": "Mobile network",
   "networkKindEthernet": "Ethernet",
   "networkKindOther": "Network",
+  "networksTitle": "Networks",
+  "networksEmpty": "The networks where the plain connection does not work will show up here.",
+  "networksRename": "Rename",
+  "networksForget": "Forget the network",
+  "networksForgetTitle": "Forget the network?",
+  "networksForgetDescription": "The app will try the plain connection here again, as in any other network.",
+  "networksForgetAll": "Forget all the networks",
+  "networksForgetAllTitle": "Forget all the networks?",
+  "networksForgetAllDescription": "The app will forget where it needs the bypass and try the plain connection everywhere.",
+  "networksDirectUntil": "The plain connection does not work here until {date}",
+  "@networksDirectUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "networksMode": "The technique {mode} worked",
+  "@networksMode": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "networksModes": "The techniques {modes} worked",
+  "@networksModes": {
+    "placeholders": {
+      "modes": {
+        "type": "String"
+      }
+    }
+  },
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
   "shareSubscriptionTitle": "Scan with CatTunnel",

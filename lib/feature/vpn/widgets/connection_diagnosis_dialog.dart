@@ -22,8 +22,8 @@ import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
+import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
-import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik's "why won't it connect" report (see [ConnectionDiagnostics]):
@@ -77,46 +77,15 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     unawaited(_loadNetwork());
   }
 
+  /// The list of the networks: there the name is changed and a network can
+  /// be forgotten.
+  void _openNetworks() => context.push(const NetworksScreen());
+
   Future<void> _loadNetwork() async {
     final kind = await AntiDpiAuto.networkKind();
     final fingerprint = await NetworkFingerprints.current(kind: kind);
     if (!mounted) return;
     setState(() => _fingerprint = fingerprint);
-  }
-
-  /// The name of the network: the person gives it a name, and the name goes
-  /// into the report (the gateway and the DNS servers stay on the phone).
-  Future<void> _renameNetwork() async {
-    final fingerprint = _fingerprint;
-    if (fingerprint == null) return;
-    final preferences = context.dependencyFactory.sharedPreferences;
-    final field = TextEditingController(
-      text: NetworkFingerprint.customName(preferences, fingerprint.key) ?? '',
-    );
-    final name = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => CustomAlertDialog(
-        title: dialogContext.ln.diagNetworkRenameTitle,
-        content: TextField(
-          controller: field,
-          autofocus: true,
-          decoration: InputDecoration(hintText: dialogContext.ln.diagNetworkRenameHint),
-          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
-        ),
-        actionsBuilder: (_) => [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.ln.cancel)),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(field.text),
-            child: Text(dialogContext.ln.diagNetworkRenameSave),
-          ),
-        ],
-      ),
-    );
-    field.dispose();
-    if (name == null) return;
-    await NetworkFingerprint.rename(preferences, fingerprint.key, name);
-    if (!mounted) return;
-    setState(() {});
   }
 
   @override
@@ -342,7 +311,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
             if (_fingerprint != null) ...[
               _NetworkRow(
                 name: networkName(context, context.dependencyFactory.sharedPreferences, _fingerprint!),
-                onRename: _renameNetwork,
+                onOpen: _openNetworks,
               ),
               const SizedBox(height: 8),
             ],
@@ -386,21 +355,26 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   }
 }
 
-/// The name of the network, and a way to change it: the report says the
-/// name, and the name is what the person calls the network.
+/// The name of the network, and a way to open the list of the networks:
+/// there the name is changed and the network can be forgotten.
 class _NetworkRow extends StatelessWidget {
   final String name;
-  final VoidCallback onRename;
+  final VoidCallback onOpen;
 
-  const _NetworkRow({required this.name, required this.onRename});
+  const _NetworkRow({required this.name, required this.onOpen});
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      Expanded(child: Text(context.ln.diagNetwork(name))),
-      TextButton(onPressed: onRename, child: Text(context.ln.diagNetworkRename)),
-    ],
+  Widget build(BuildContext context) => InkWell(
+    onTap: onOpen,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(context.ln.diagNetwork(name))),
+          Icon(Icons.navigate_next, color: context.colors.neutralDark),
+        ],
+      ),
+    ),
   );
 }
 

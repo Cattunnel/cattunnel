@@ -398,6 +398,39 @@
   "networkKindMobile": "Мобильная сеть",
   "networkKindEthernet": "Ethernet",
   "networkKindOther": "Сеть",
+  "networksTitle": "Сети",
+  "networksEmpty": "Здесь появятся сети, в которых обычное соединение не работает.",
+  "networksRename": "Переименовать",
+  "networksForget": "Забыть сеть",
+  "networksForgetTitle": "Забыть сеть?",
+  "networksForgetDescription": "Приложение снова попробует обычное соединение в этой сети, как в любой другой.",
+  "networksForgetAll": "Забыть все сети",
+  "networksForgetAllTitle": "Забыть все сети?",
+  "networksForgetAllDescription": "Приложение забудет, где ему нужен обход, и попробует обычное соединение везде.",
+  "networksDirectUntil": "Обычное соединение здесь не работает до {date}",
+  "@networksDirectUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "networksMode": "Сработал режим {mode}",
+  "@networksMode": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "networksModes": "Сработали режимы {modes}",
+  "@networksModes": {
+    "placeholders": {
+      "modes": {
+        "type": "String"
+      }
+    }
+  },
   "subscriptionHttpsOnlyError": "Разрешены только ссылки https:// — в подписке твои ключи",
   "shareSubscription": "Поделиться через QR",
   "shareSubscriptionTitle": "Отсканируй в CatTunnel",

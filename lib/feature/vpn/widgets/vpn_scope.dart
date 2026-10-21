@@ -439,6 +439,8 @@ class _VpnScopeState extends State<VpnScope> {
     final kind = await AntiDpiAuto.networkKind();
     final fingerprint = await NetworkFingerprints.current(kind: kind);
     final network = fingerprint.key;
+    // The list of the networks shows what kind each of them is.
+    await NetworkFingerprint.rememberKind(context.dependencyFactory.sharedPreferences, fingerprint);
     final directFails = auto.directFails(serverId: server.id, network: network);
     final techniques = <int>[
       if (directFirst && !directFails) 0,
