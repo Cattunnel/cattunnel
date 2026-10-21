@@ -742,6 +742,8 @@
   "reportProblem": "Report a problem",
   "reportTitle": "Problem report",
   "reportDescription": "This goes to the chat you pick, together with the last lines of the connection log. Logins, passwords and keys are cut out.",
+  "reportDetailedLog": "Detailed log for 10 minutes",
+  "reportDetailedLogDescription": "The engine log writes everything, the connection attempts included. The setting goes back on its own in 10 minutes.",
   "splitTitle": "Split tunneling",
   "splitSitesTitle": "Sites and IPs",
   "splitSitesDescription": "Domains and addresses that go direct, around the VPN",

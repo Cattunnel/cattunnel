@@ -18,6 +18,7 @@ import 'package:trusttunnel/data/repository/logging_settings_repository.dart';
 import 'package:trusttunnel/di/model/dependency_factory.dart';
 import 'package:trusttunnel/di/model/initialization_result.dart';
 import 'package:trusttunnel/di/model/repository_factory.dart';
+import 'package:trusttunnel/feature/support/detailed_log.dart';
 
 abstract class InitializationHelper {
   const InitializationHelper();
@@ -89,6 +90,7 @@ class InitializationHelperIo extends InitializationHelper {
     await _configureLogging(
       repositoryFactory.loggingSettingsRepository,
       dependenciesFactory,
+      sharedPreferences,
     );
 
     logger.logInfo(
@@ -123,7 +125,14 @@ class InitializationHelperIo extends InitializationHelper {
   Future<void> _configureLogging(
     LoggingSettingsRepository loggingSettingsRepository,
     DependencyFactoryImpl dependenciesFactory,
+    SharedPreferences sharedPreferences,
   ) async {
+    // The detailed log was on when the app was closed: its time is up, and
+    // the setting it replaced goes back now.
+    if (!DetailedLog.isOn(sharedPreferences)) {
+      await DetailedLog.restore(sharedPreferences, loggingSettingsRepository);
+    }
+
     final loggingSettings = await Future.wait([
       loggingSettingsRepository.getLoggingLevel(),
       loggingSettingsRepository.getSecurityType(),

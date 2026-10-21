@@ -6,12 +6,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/utils/address_cut.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
+import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
+import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope_controller.dart';
+import 'package:trusttunnel/feature/support/detailed_log.dart';
+import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 import 'package:vpn_plugin/vpn_plugin.dart';
 
 /// "Report a problem": what an admin needs to understand why the VPN
@@ -21,39 +28,34 @@ import 'package:vpn_plugin/vpn_plugin.dart';
 /// through the share sheet. Nothing is sent anywhere by the app itself (no
 /// secrets in the code, works in any build); the person picks the chat.
 ///
-/// Logins, passwords, age keys, tt:// links and subscription tokens are cut
-/// out ([sanitize]); the person sees the summary before sharing.
+/// Logins, passwords, age keys, tt:// links, subscription tokens and every IP
+/// address are cut out ([sanitize]); the person sees the summary before
+/// sharing.
 abstract final class ProblemReport {
   static const _channel = MethodChannel('cattunnel/apps');
   static const _logLines = 300;
 
+  /// With the detailed log on there is more to look at: the lines about the
+  /// attempts are there, so the tail is longer.
+  static const _detailedLogLines = 2000;
+
   /// Builds the report, shows the summary and opens the share sheet.
   /// [diagnosis]: Marsik's verdict, when opened from his dialog.
   static Future<void> share(BuildContext context, {String? diagnosis}) async {
-    final (summary, full) = await _build(context, diagnosis: diagnosis);
-    if (!context.mounted) return;
+    final preferences = context.dependencyFactory.sharedPreferences;
+    final logging = AppLoggingScope.controllerOf(context, listen: false);
 
-    final confirmed = await showDialog<bool>(
+    final report = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => CustomAlertDialog(
-        title: dialogContext.ln.reportTitle,
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(dialogContext.ln.reportDescription),
-              const SizedBox(height: 12),
-              SelectableText(summary, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-            ],
-          ),
-        ),
-        actionsBuilder: (_) => [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(dialogContext.ln.cancel)),
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(dialogContext.ln.share)),
-        ],
+      builder: (dialogContext) => _ReportDialog(
+        diagnosis: diagnosis,
+        preferences: preferences,
+        logging: logging,
       ),
     );
-    if (confirmed != true || !context.mounted) return;
+    if (report == null || !context.mounted) {
+      return;
+    }
 
     final stamp = DateTime.now().toIso8601String().substring(0, 19).replaceAll(':', '-');
     final temp = await getTemporaryDirectory();
@@ -65,12 +67,12 @@ abstract final class ProblemReport {
       }
     }
     final file = File('${temp.path}/cattunnel-report-$stamp.txt');
-    await file.writeAsString(full);
+    await file.writeAsString(report);
     if (!context.mounted) return;
     await const AdgShare().share(
       ShareRequest(
         content: [
-          ShareText(summary),
+          ShareText(report),
           ShareFile(path: file.path, mimeType: 'text/plain'),
         ],
         subject: context.ln.reportTitle,
@@ -79,11 +81,16 @@ abstract final class ProblemReport {
     );
   }
 
-  static Future<(String, String)> _build(BuildContext context, {String? diagnosis}) async {
+  static Future<(String, String)> _build(
+    BuildContext context, {
+    String? diagnosis,
+    bool detailed = false,
+  }) async {
     final repositories = context.repositoryFactory;
     final dependencies = context.dependencyFactory;
     final vpnState = VpnScope.vpnControllerOf(context, listen: false).state;
-    final server = ServersScope.controllerOf(context, listen: false).selectedServer?.serverData;
+    final selected = ServersScope.controllerOf(context, listen: false).selectedServer;
+    final server = selected?.serverData;
 
     final package = await PackageInfo.fromPlatform();
     final device = await _deviceInfo();
@@ -97,6 +104,13 @@ abstract final class ProblemReport {
     final killSwitch = await _orNull(repositories.killSwitchSettingsRepository.isEnabled);
     final mtu = await _orNull(repositories.mtuSettingsRepository.getValue);
     final engineVersion = await _orNull(() => rootBundle.loadString('ENGINE_VERSION'));
+
+    // What the engine saw in the last session to this server: the cut, the
+    // freeze or the silence. The admin asks about it first, and the report
+    // used to say nothing.
+    final verdict = selected == null
+        ? null
+        : NetDiagnostics.recent(selected.id, within: NetDiagnostics.freshWindow);
 
     String? d(String key) => device[key]?.toString();
     final android = defaultTargetPlatform == TargetPlatform.android;
@@ -119,6 +133,7 @@ abstract final class ProblemReport {
         'Adapters: ${adapters == null || adapters.isEmpty ? '?' : adapters.join(', ')}',
       ],
       'VPN: ${vpnState.name}${diagnosis == null ? '' : ', Marsik: $diagnosis'}',
+      if (verdict != null) 'Engine verdict: ${_verdictText(verdict)}',
       if (server != null)
         'Server: ${server.name} - ${server.domain} / ${server.ipAddress}, ${server.vpnProtocol.name}'
             '${server.antiDpi ? ', anti-DPI ${switch (server.antiDpiMode) {
@@ -131,14 +146,38 @@ abstract final class ProblemReport {
           '${ruLists == null || ruLists.updatedAt == null ? '' : ', lists ${ruLists.networkCount} nets from ${_date(ruLists.updatedAt!)}'}',
       'App split: ${splitMode?.name ?? '?'}${splitApps == null ? '' : ' (${splitApps.length})'}, auto RU/CN: ${_onOff(splitAuto)}',
       'Kill switch: ${_onOff(killSwitch)}, MTU: ${mtu ?? '?'}',
+      'Detailed log: ${detailed ? 'on' : 'off'}',
       'Time: ${now.toIso8601String().substring(0, 19)} ${now.timeZoneName}, ${Platform.localeName}',
     ];
     final summary = sanitize(lines.join('\n'));
 
-    final log = await _engineLog(dependencies.vpnPlugin);
-    final full = '$summary\n\n--- engine log, last $_logLines lines ---\n${sanitize(log)}\n';
+    final logLines = detailed ? _detailedLogLines : _logLines;
+    final log = await _engineLog(dependencies.vpnPlugin, logLines);
+    final full = '$summary\n\n--- engine log, last $logLines lines ---\n${sanitize(log)}\n';
 
     return (summary, full);
+  }
+
+  /// The engine's verdict in a line an admin can read.
+  static String _verdictText(NetDiagnostic verdict) {
+    final parts = <String>[verdict.symptom];
+    if (verdict.protocol.isNotEmpty) {
+      parts.add(verdict.protocol);
+    }
+    if (verdict.isCut) {
+      parts.add('cut after ${verdict.cutBytes} bytes');
+    }
+    if (verdict.totalBytes > 0) {
+      parts.add('${verdict.totalBytes} bytes passed');
+    }
+    if (verdict.repeat > 1) {
+      parts.add('${verdict.repeat} times in a row');
+    }
+    if (verdict.durationMs > 0) {
+      parts.add('${verdict.durationMs} ms');
+    }
+
+    return parts.join(', ');
   }
 
   /// Up network adapters (not loopback), desktop only.
@@ -157,10 +196,10 @@ abstract final class ProblemReport {
     }
   }
 
-  static Future<String> _engineLog(VpnPlugin vpnPlugin) async {
+  static Future<String> _engineLog(VpnPlugin vpnPlugin, int logLines) async {
     try {
       final records = await vpnPlugin.exportLogsFor(await vpnPlugin.fetchLogsPath());
-      final tail = records.length > _logLines ? records.sublist(records.length - _logLines) : records;
+      final tail = records.length > logLines ? records.sublist(records.length - logLines) : records;
 
       return tail.map((r) => '${r.dateTime.toIso8601String()} ${r.level.name} ${r.message}').join('\n');
     } on Object catch (e) {
@@ -170,20 +209,22 @@ abstract final class ProblemReport {
 
   /// Cuts out what must never leave the phone.
   @visibleForTesting
-  static String sanitize(String text) => text
-      .replaceAll(RegExp(r'AGE-SECRET-KEY-1[0-9A-Z]+'), 'AGE-SECRET-KEY-<cut>')
-      .replaceAll(RegExp(r'tt://\S+'), 'tt://<cut>')
-      .replaceAll(
-        RegExp(
-          r'''((?:password|passwd|username|user|login|token|secret|key)["']?\s*[:=]\s*["']?)[^\s"',}]+''',
-          caseSensitive: false,
+  static String sanitize(String text) => AddressCut.cut(
+    text
+        .replaceAll(RegExp(r'AGE-SECRET-KEY-1[0-9A-Z]+'), 'AGE-SECRET-KEY-<cut>')
+        .replaceAll(RegExp(r'tt://\S+'), 'tt://<cut>')
+        .replaceAll(
+          RegExp(
+            r'''((?:password|passwd|username|user|login|token|secret|key)["']?\s*[:=]\s*["']?)[^\s"',}]+''',
+            caseSensitive: false,
+          ),
+          r'$1<cut>',
+        )
+        .replaceAllMapped(
+          RegExp(r'(https?://[^\s/]+)(/[^\s]*)'),
+          (m) => '${m[1]}${m[2]!.length > 1 ? '/<path cut>' : ''}',
         ),
-        r'$1<cut>',
-      )
-      .replaceAllMapped(
-        RegExp(r'(https?://[^\s/]+)(/[^\s]*)'),
-        (m) => '${m[1]}${m[2]!.length > 1 ? '/<path cut>' : ''}',
-      );
+  );
 
   static Future<T?> _orNull<T>(Future<T> Function() read) async {
     try {
@@ -198,4 +239,103 @@ abstract final class ProblemReport {
   static String _onOff(bool? value) => value == null ? '?' : (value ? 'on' : 'off');
 
   static String _date(DateTime t) => '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}';
+}
+
+/// The report dialog: the summary, the switch for the detailed log and the
+/// share button. The detailed log is switched on from here, so the person
+/// can reproduce the problem and send the report without hunting for the
+/// settings.
+class _ReportDialog extends StatefulWidget {
+  final String? diagnosis;
+  final SharedPreferences preferences;
+  final AppLoggingScopeController logging;
+
+  const _ReportDialog({
+    required this.diagnosis,
+    required this.preferences,
+    required this.logging,
+  });
+
+  @override
+  State<_ReportDialog> createState() => _ReportDialogState();
+}
+
+class _ReportDialogState extends State<_ReportDialog> {
+  late Future<(String, String)> _report;
+  late bool _detailed;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailed = DetailedLog.isOn(widget.preferences);
+    _report = _build();
+  }
+
+  Future<(String, String)> _build() => ProblemReport._build(
+    context,
+    diagnosis: widget.diagnosis,
+    detailed: _detailed,
+  );
+
+  Future<void> _toggleDetailed(bool value) async {
+    if (value) {
+      await DetailedLog.enable(widget.preferences, widget.logging);
+    } else {
+      await DetailedLog.disable(widget.preferences, widget.logging);
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _detailed = value;
+      _report = _build();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => CustomAlertDialog(
+    title: context.ln.reportTitle,
+    scrollable: true,
+    content: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(context.ln.reportDescription),
+        const SizedBox(height: 12),
+        FutureBuilder<(String, String)>(
+          future: _report,
+          builder: (context, snapshot) {
+            final summary = snapshot.data?.$1;
+
+            return summary == null
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : SelectableText(summary, style: const TextStyle(fontFamily: 'monospace', fontSize: 12));
+          },
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          value: _detailed,
+          title: Text(context.ln.reportDetailedLog),
+          subtitle: Text(context.ln.reportDetailedLogDescription),
+          contentPadding: EdgeInsets.zero,
+          onChanged: _toggleDetailed,
+        ),
+      ],
+    ),
+    actionsBuilder: (_) => [
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.ln.cancel)),
+      TextButton(
+        onPressed: () async {
+          final report = await _report;
+          if (!context.mounted) {
+            return;
+          }
+          Navigator.of(context).pop(report.$2);
+        },
+        child: Text(context.ln.share),
+      ),
+    ],
+  );
 }

@@ -17,6 +17,18 @@ void main() {
     expect(out, isNot(contains('abcDEF123')));
     expect(out, isNot(contains('9f8e7d6c')));
     expect(out, contains('https://sub.example.org/<path cut>'));
-    expect(out, contains('203.0.113.96:443'));
+    // The domain of the server stays, the address does not: the report goes
+    // to a chat, and the address of the server is not the admin's business.
+    expect(out, contains('vpn.example.org'));
+    expect(out, isNot(contains('203.0.113.96')));
+  });
+
+  test('report sanitizer cuts every address, v4 and v6', () {
+    final out = ProblemReport.sanitize(
+      'client 198.51.100.7:44300, gateway 2001:db8::1, link 2a00:1450:4009:80f::200e\n',
+    );
+    expect(out, isNot(contains('198.51.100.7')));
+    expect(out, isNot(contains('2001:db8::1')));
+    expect(out, isNot(contains('2a00:1450:4009:80f::200e')));
   });
 }
