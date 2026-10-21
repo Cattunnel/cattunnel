@@ -1,4 +1,5 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Anti-DPI "auto" (ServerData.antiDpiAuto): VpnScope tries the DPI2
@@ -15,6 +16,14 @@ class AntiDpiAuto {
   static const switchPause = Duration(milliseconds: 1500);
 
   static const _keyPrefix = 'anti_dpi_auto';
+
+  /// Whether the round is going on right now.
+  ///
+  /// Nothing else may knock on the server's name while it does: the
+  /// connection diagnostics and the auto would send handshakes to one SNI
+  /// together, and a burst of them is what a filter's "freeze" keys on
+  /// (three handshakes to the same name, close to each other).
+  static final running = ValueNotifier<bool>(false);
 
   final SharedPreferences _preferences;
 

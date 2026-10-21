@@ -401,50 +401,57 @@ class _VpnScopeState extends State<VpnScope> {
     final fullOrder = auto.order(serverId: server.id, network: network);
     final order = ConnectFailures.isFrozen(server.id) ? fullOrder.take(1).toList() : fullOrder;
 
-    for (final (index, mode) in order.indexed) {
-      if (!mounted || attempt != _startAttempt) {
-        return;
-      }
-      if (index > 0) {
-        _autoSwitching = true;
-        try {
-          await widget.vpnRepository.stop();
-          await _waitForState(VpnState.disconnected, attempt, const Duration(seconds: 3));
-          // Not right after the previous ClientHello: handshakes milliseconds
-          // apart are one of the freeze triggers.
-          await Future<void>.delayed(AntiDpiAuto.switchPause);
-        } finally {
-          _autoSwitching = false;
-        }
+    // Nothing else may knock on the server's name while the round goes on
+    // (the connection diagnostics wait for it).
+    AntiDpiAuto.running.value = true;
+    try {
+      for (final (index, mode) in order.indexed) {
         if (!mounted || attempt != _startAttempt) {
           return;
         }
-      }
+        if (index > 0) {
+          _autoSwitching = true;
+          try {
+            await widget.vpnRepository.stop();
+            await _waitForState(VpnState.disconnected, attempt, const Duration(seconds: 3));
+            // Not right after the previous ClientHello: handshakes milliseconds
+            // apart are one of the freeze triggers.
+            await Future<void>.delayed(AntiDpiAuto.switchPause);
+          } finally {
+            _autoSwitching = false;
+          }
+          if (!mounted || attempt != _startAttempt) {
+            return;
+          }
+        }
 
-      _autoAntiDpiMode = mode;
-      final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
-      await widget.vpnRepository.start(
-        server: server.copyWith(serverData: server.serverData.copyWith(antiDpiMode: mode)),
-        routingProfile: routingProfile,
-        excludedRoutes: excludedRoutes,
-        logLevel: logLevel,
-      );
-      if (index == 0) {
-        _watchStartBegins(attempt);
-      }
+        _autoAntiDpiMode = mode;
+        final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
+        await widget.vpnRepository.start(
+          server: server.copyWith(serverData: server.serverData.copyWith(antiDpiMode: mode)),
+          routingProfile: routingProfile,
+          excludedRoutes: excludedRoutes,
+          logLevel: logLevel,
+        );
+        if (index == 0) {
+          _watchStartBegins(attempt);
+        }
 
-      final outcome = await Future.any<Object?>([
-        _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
-        failure,
-      ]);
-      if (outcome == true) {
-        await auto.remember(serverId: server.id, network: network, mode: mode);
+        final outcome = await Future.any<Object?>([
+          _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
+          failure,
+        ]);
+        if (outcome == true) {
+          await auto.remember(serverId: server.id, network: network, mode: mode);
 
-        return;
+          return;
+        }
+        if (outcome == ConnectFailure.helloNoAnswer || outcome == ConnectFailure.connect) {
+          return; // the engine goes on with this technique
+        }
       }
-      if (outcome == ConnectFailure.helloNoAnswer || outcome == ConnectFailure.connect) {
-        return; // the engine goes on with this technique
-      }
+    } finally {
+      AntiDpiAuto.running.value = false;
     }
 
     if (!mounted || attempt != _startAttempt || order.length < fullOrder.length) {

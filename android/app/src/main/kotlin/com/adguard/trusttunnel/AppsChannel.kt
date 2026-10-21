@@ -39,6 +39,7 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
             "defaultBrowser" -> background(result) { defaultBrowser() }
             "browsers" -> background(result) { browsers() }
             "deviceInfo" -> background(result) { deviceInfo() }
+            "networkState" -> background(result) { networkState() }
             "icon" -> {
                 val packageName = call.argument<String>("package")!!
                 val size = call.argument<Int>("size") ?: 96
@@ -168,6 +169,31 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
             info["powerSave"] = pm.isPowerSaveMode
         }
         return info
+    }
+
+    /**
+     * What the system says about the network the device is on: "none" (no
+     * network), "validated" (the system checked that it reaches the
+     * internet), "unvalidated" (the network is there, the check did not
+     * pass) or "captivePortal" (the network is a login page). Nothing here
+     * needs a permission, and it costs no handshake to the server's name.
+     */
+    private fun networkState(): String {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        var state = "none"
+        for (network in cm.allNetworks) {
+            val caps = cm.getNetworkCapabilities(network) ?: continue
+            // Our own VPN is not the network the person is on.
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+            if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue
+            state = when {
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_CAPTIVE_PORTAL) -> "captivePortal"
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> "validated"
+                else -> "unvalidated"
+            }
+            if (state == "validated" || state == "captivePortal") break
+        }
+        return state
     }
 
     /** PNG of the app icon, [size] px square; null if the app is gone. */

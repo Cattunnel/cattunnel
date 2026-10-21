@@ -491,6 +491,8 @@
   "diagStepTls": "Secure connection (TLS)",
   "diagStepAccess": "Access and keys",
   "diagVerdictNoInternet": "Mrrr... Your internet is gone - even Yandex doesn't answer. Check Wi-Fi or mobile data.",
+  "diagVerdictCaptivePortal": "The network is there, but the internet is behind a login, as in a hotel wifi. Sign in in the browser and I'll try again.",
+  "diagVerdictNetworkCuts": "The network is there and the internet works, but the path to the server is cut. The engine saw the connection freeze or die at the same place.",
   "diagVerdictServerTimeout": "The server is silent - the wires got tangled somewhere along the way. Its IP is probably blocked, or the server is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
   "diagVerdictSniBlocked": "Found it! Your provider cuts the connection by the server name (SNI) - that's DPI. With another name the same server answers fine.",
@@ -521,6 +523,19 @@
   "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
   "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",
   "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
+  "diagEngineHandshakeFreeze": "The engine: the handshake went out and nothing came back. The server's address looks frozen by the filter.",
+  "diagEngineCutAfterBytes": "The engine: the connection died at {bytes} bytes, {repeat} times in a row.",
+  "@diagEngineCutAfterBytes": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      },
+      "repeat": {
+        "type": "int"
+      }
+    }
+  },
+  "diagEngineStall": "The engine: the connection came up, but the traffic stopped.",
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
   "shareSubscriptionTitle": "Scan with CatTunnel",

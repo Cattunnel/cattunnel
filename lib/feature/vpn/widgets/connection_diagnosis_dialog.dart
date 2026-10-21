@@ -185,6 +185,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
     return switch (result.verdict) {
       DiagnosisVerdict.noInternet => AssetImages.catSleeping,
+      DiagnosisVerdict.captivePortal => AssetImages.catSleeping,
+      DiagnosisVerdict.networkCuts => AssetImages.catWires,
       DiagnosisVerdict.serverTimeout ||
       DiagnosisVerdict.tlsBlocked ||
       DiagnosisVerdict.trafficBlocked => AssetImages.catWires,
@@ -200,6 +202,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
   String _verdictText(DiagnosisVerdict verdict) => switch (verdict) {
     DiagnosisVerdict.noInternet => context.ln.diagVerdictNoInternet,
+    DiagnosisVerdict.captivePortal => context.ln.diagVerdictCaptivePortal,
+    DiagnosisVerdict.networkCuts => context.ln.diagVerdictNetworkCuts,
     DiagnosisVerdict.serverTimeout => context.ln.diagVerdictServerTimeout,
     DiagnosisVerdict.serverRefused => context.ln.diagVerdictServerRefused,
     DiagnosisVerdict.sniBlocked => context.ln.diagVerdictSniBlocked,
@@ -212,6 +216,17 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.addressFrozen => context.ln.diagVerdictAddressFrozen,
     DiagnosisVerdict.clockWrong => context.ln.diagVerdictClockWrong,
   };
+
+  /// What the engine saw, in the person's words.
+  String? _engineText(ConnectionDiagnosis? result) {
+    final engine = result?.engine;
+    if (engine == null) return null;
+    if (engine.isHandshakeFreeze) return context.ln.diagEngineHandshakeFreeze;
+    if (engine.isCut) return context.ln.diagEngineCutAfterBytes(engine.cutBytes, engine.repeat);
+    if (engine.isStall) return context.ln.diagEngineStall;
+
+    return null;
+  }
 
   String _stepLabel(DiagnosisStep step) => switch (step) {
     DiagnosisStep.internet => context.ln.diagStepInternet,
@@ -268,6 +283,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                         extra: !_connectedMeanwhile && result?.alternative != null
                             ? context.ln.diagAlternative(result!.alternative!.serverData.name)
                             : null,
+                        engine: _connectedMeanwhile ? null : _engineText(result),
                       ),
                     )
                   : const SizedBox(width: double.infinity),
@@ -375,7 +391,10 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final String? extra;
 
-  const _SpeechBubble({required this.text, this.extra});
+  /// What the engine saw, under the verdict.
+  final String? engine;
+
+  const _SpeechBubble({required this.text, this.extra, this.engine});
 
   @override
   Widget build(BuildContext context) {
@@ -400,6 +419,13 @@ class _SpeechBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(text, style: context.textTheme.bodyMedium),
+              if (engine != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  engine!,
+                  style: context.textTheme.bodySmall,
+                ),
+              ],
               if (extra != null) ...[
                 const SizedBox(height: 8),
                 Text(
