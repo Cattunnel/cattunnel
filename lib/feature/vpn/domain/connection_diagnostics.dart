@@ -293,16 +293,25 @@ class ConnectionDiagnostics {
       );
     }
 
-    // 1. Internet at all. The system checks the network itself (Android
-    // knows whether it reaches the internet and whether it is a login
-    // page), so on a phone there is no probe of our own. The desktop has no
-    // such signal: there the reference host is asked.
+    // 1. Internet at all.
+    //
+    // The system checks the network itself (Android knows whether it
+    // reaches the internet and whether it is a login page), and its word is
+    // worth more than our probe: it tells "no network" from "the network
+    // needs a login" apart, and it costs no handshake. Where the system
+    // has not checked (or could not), the reference host is asked, as on
+    // the desktop.
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.running);
     final network = await NetworkStates.current();
     final internet = switch (network) {
+      // There is no network, or the network is a login page.
       NetworkState.none || NetworkState.captivePortal => false,
-      NetworkState.validated || NetworkState.unvalidated => true,
-      NetworkState.unknown =>
+      // The system checked the network and it reaches the internet.
+      NetworkState.validated => true,
+      // The system has not checked (or could not): the reference host is
+      // the control group, without it a dead uplink would look like a
+      // blocked server.
+      NetworkState.unvalidated || NetworkState.unknown =>
         await _tcp(_referenceHost, _referencePort) == _ProbeOutcome.ok ||
             await _tcp(_referenceDnsIp, 53) == _ProbeOutcome.ok,
     };
