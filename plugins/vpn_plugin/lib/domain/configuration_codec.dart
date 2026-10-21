@@ -128,6 +128,63 @@ abstract final class ConfigurationCodecKeys {
   /// The engine clamps to this too.
   static const h2PaddingFramesMax = 64;
 
+  /// Own engine build: the lower bound of the number of the padded frames of
+  /// a stream, see Endpoint.h2PaddingFramesMin.
+  static const h2PaddingFramesMin = 'h2_padding_frames_min';
+
+  /// The engine clamps to this too.
+  static const h2PaddingFramesMinMax = 64;
+
+  /// Own engine build: count the padded frames per stream, see
+  /// Endpoint.h2PaddingPerStream.
+  static const h2PaddingPerStream = 'h2_padding_per_stream';
+
+  /// Own engine build: the lower bound of the junk of a frame, see
+  /// Endpoint.h2PaddingMinBytes.
+  static const h2PaddingMinBytes = 'h2_padding_min_bytes';
+
+  /// Own engine build: the upper bound of the junk of a frame, see
+  /// Endpoint.h2PaddingMaxBytes.
+  static const h2PaddingMaxBytes = 'h2_padding_max_bytes';
+
+  /// The engine clamps to this too (the Pad Length field is one byte).
+  static const h2PaddingBytesMax = 256;
+
+  /// Own engine build: the junk budget of a stream, see
+  /// Endpoint.h2PaddingStreamBytes.
+  static const h2PaddingStreamBytes = 'h2_padding_stream_bytes';
+
+  /// Own engine build: the junk budget of a session, see
+  /// Endpoint.h2PaddingSessionBytes.
+  static const h2PaddingSessionBytes = 'h2_padding_session_bytes';
+
+  /// The engine clamps the budgets to this too.
+  static const h2PaddingBytesBudgetMax = 1048576;
+
+  /// Own engine build: the base of the interval between the keepalive
+  /// signals of an idle session, see Endpoint.keepaliveIntervalSecs.
+  static const keepaliveIntervalSecs = 'keepalive_interval_secs';
+
+  /// The engine clamps to this too.
+  static const keepaliveIntervalSecsMax = 3600;
+
+  /// Own engine build: the keepalive signal, see Endpoint.keepaliveSignal.
+  static const keepaliveSignal = 'keepalive_signal';
+
+  /// Own engine build: the lifetime of a session, see
+  /// Endpoint.sessionLifetimeSecs.
+  static const sessionLifetimeSecs = 'session_lifetime_secs';
+
+  /// The engine clamps to this too.
+  static const sessionLifetimeSecsMax = 86400;
+
+  /// Own engine build: the XHTTP transport, see Endpoint.xhttpEnabled.
+  static const xhttpEnable = 'xhttp_enable';
+
+  /// Own engine build: the path prefix of the XHTTP requests, see
+  /// Endpoint.xhttpPath.
+  static const xhttpPath = 'xhttp_path';
+
   /// Own engine build: refuse QUIC, see Endpoint.blockQuic.
   static const blockQuic = 'block_quic';
 
@@ -251,6 +308,50 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
         ConfigurationCodecKeys.h2PaddingFrames,
         config.endpoint.h2PaddingFrames.clamp(1, ConfigurationCodecKeys.h2PaddingFramesMax),
       );
+      // The shaper settings only matter while the padding is on.
+      endpoint.setInt(
+        ConfigurationCodecKeys.h2PaddingFramesMin,
+        config.endpoint.h2PaddingFramesMin.clamp(0, ConfigurationCodecKeys.h2PaddingFramesMinMax),
+      );
+      endpoint.setBool(ConfigurationCodecKeys.h2PaddingPerStream, config.endpoint.h2PaddingPerStream);
+      endpoint.setInt(
+        ConfigurationCodecKeys.h2PaddingMinBytes,
+        config.endpoint.h2PaddingMinBytes.clamp(0, ConfigurationCodecKeys.h2PaddingBytesMax),
+      );
+      endpoint.setInt(
+        ConfigurationCodecKeys.h2PaddingMaxBytes,
+        config.endpoint.h2PaddingMaxBytes.clamp(0, ConfigurationCodecKeys.h2PaddingBytesMax),
+      );
+      endpoint.setInt(
+        ConfigurationCodecKeys.h2PaddingStreamBytes,
+        config.endpoint.h2PaddingStreamBytes.clamp(0, ConfigurationCodecKeys.h2PaddingBytesBudgetMax),
+      );
+      endpoint.setInt(
+        ConfigurationCodecKeys.h2PaddingSessionBytes,
+        config.endpoint.h2PaddingSessionBytes.clamp(0, ConfigurationCodecKeys.h2PaddingBytesBudgetMax),
+      );
+    }
+    if (config.endpoint.keepaliveIntervalSecs > 0) {
+      endpoint.setInt(
+        ConfigurationCodecKeys.keepaliveIntervalSecs,
+        config.endpoint.keepaliveIntervalSecs.clamp(1, ConfigurationCodecKeys.keepaliveIntervalSecsMax),
+      );
+      if (Endpoint.keepaliveSignals.contains(config.endpoint.keepaliveSignal)) {
+        endpoint.setString(ConfigurationCodecKeys.keepaliveSignal, config.endpoint.keepaliveSignal);
+      }
+    }
+    if (config.endpoint.sessionLifetimeSecs > 0) {
+      endpoint.setInt(
+        ConfigurationCodecKeys.sessionLifetimeSecs,
+        config.endpoint.sessionLifetimeSecs.clamp(1, ConfigurationCodecKeys.sessionLifetimeSecsMax),
+      );
+    }
+    if (config.endpoint.xhttpEnabled) {
+      endpoint.setBool(ConfigurationCodecKeys.xhttpEnable, true);
+      final path = config.endpoint.xhttpPath;
+      if (path.isNotEmpty && path.startsWith('/')) {
+        endpoint.setString(ConfigurationCodecKeys.xhttpPath, path);
+      }
     }
     if (config.endpoint.blockQuic) {
       endpoint.setBool(ConfigurationCodecKeys.blockQuic, true);
@@ -367,6 +468,47 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
       0,
       ConfigurationCodecKeys.h2PaddingFramesMax,
     );
+    final int h2PaddingFramesMin =
+        (endpoint.getInt(ConfigurationCodecKeys.h2PaddingFramesMin) ?? Endpoint.h2PaddingFramesMinDefault).clamp(
+          0,
+          ConfigurationCodecKeys.h2PaddingFramesMinMax,
+        );
+    final bool h2PaddingPerStream = endpoint.getBool(ConfigurationCodecKeys.h2PaddingPerStream) ?? true;
+    final int h2PaddingMinBytes =
+        (endpoint.getInt(ConfigurationCodecKeys.h2PaddingMinBytes) ?? Endpoint.h2PaddingMinBytesDefault).clamp(
+          0,
+          ConfigurationCodecKeys.h2PaddingBytesMax,
+        );
+    final int h2PaddingMaxBytes =
+        (endpoint.getInt(ConfigurationCodecKeys.h2PaddingMaxBytes) ?? Endpoint.h2PaddingMaxBytesDefault).clamp(
+          0,
+          ConfigurationCodecKeys.h2PaddingBytesMax,
+        );
+    final int h2PaddingStreamBytes =
+        (endpoint.getInt(ConfigurationCodecKeys.h2PaddingStreamBytes) ?? Endpoint.h2PaddingStreamBytesDefault).clamp(
+          0,
+          ConfigurationCodecKeys.h2PaddingBytesBudgetMax,
+        );
+    final int h2PaddingSessionBytes =
+        (endpoint.getInt(ConfigurationCodecKeys.h2PaddingSessionBytes) ?? Endpoint.h2PaddingSessionBytesDefault).clamp(
+          0,
+          ConfigurationCodecKeys.h2PaddingBytesBudgetMax,
+        );
+    final int keepaliveIntervalSecs =
+        (endpoint.getInt(ConfigurationCodecKeys.keepaliveIntervalSecs) ?? 0).clamp(
+          0,
+          ConfigurationCodecKeys.keepaliveIntervalSecsMax,
+        );
+    final String keepaliveSignalRaw = endpoint.getString(ConfigurationCodecKeys.keepaliveSignal) ?? '';
+    final String keepaliveSignal =
+        Endpoint.keepaliveSignals.contains(keepaliveSignalRaw) ? keepaliveSignalRaw : '';
+    final int sessionLifetimeSecs = (endpoint.getInt(ConfigurationCodecKeys.sessionLifetimeSecs) ?? 0).clamp(
+      0,
+      ConfigurationCodecKeys.sessionLifetimeSecsMax,
+    );
+    final bool xhttpEnabled = endpoint.getBool(ConfigurationCodecKeys.xhttpEnable) ?? false;
+    final String xhttpPathRaw = (endpoint.getString(ConfigurationCodecKeys.xhttpPath) ?? '').trim();
+    final String xhttpPath = xhttpPathRaw.startsWith('/') ? xhttpPathRaw : '';
     final bool blockQuic = endpoint.getBool(ConfigurationCodecKeys.blockQuic) ?? false;
 
     final List<String> includedRoutes =
@@ -425,6 +567,17 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
         clientRandomAuthKey: clientRandomAuthKey,
         antiDpiDesync: antiDpiDesync,
         h2PaddingFrames: h2PaddingFrames,
+        h2PaddingFramesMin: h2PaddingFramesMin,
+        h2PaddingPerStream: h2PaddingPerStream,
+        h2PaddingMinBytes: h2PaddingMinBytes,
+        h2PaddingMaxBytes: h2PaddingMaxBytes,
+        h2PaddingStreamBytes: h2PaddingStreamBytes,
+        h2PaddingSessionBytes: h2PaddingSessionBytes,
+        keepaliveIntervalSecs: keepaliveIntervalSecs,
+        keepaliveSignal: keepaliveSignal,
+        sessionLifetimeSecs: sessionLifetimeSecs,
+        xhttpEnabled: xhttpEnabled,
+        xhttpPath: xhttpPath,
         blockQuic: blockQuic,
         ruExit: ruExit,
       ),

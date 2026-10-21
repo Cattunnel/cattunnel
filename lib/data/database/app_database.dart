@@ -6,6 +6,7 @@ import 'package:trusttunnel/data/database/migrations/migrations_v11.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v12.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v13.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v14.dart';
+import 'package:trusttunnel/data/database/migrations/migrations_v15.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v2.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v3.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v4.dart';
@@ -39,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.inMemory(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -172,6 +173,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 14) {
         await _runMigrationStep('v14', () => const MigrationsV14().migrate(this, m));
+      }
+      if (from < 15) {
+        await _runMigrationStep('v15', () => const MigrationsV15().migrate(this, m));
       }
     },
   );

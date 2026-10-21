@@ -3,6 +3,7 @@ import 'package:trusttunnel/common/models/value_data.dart';
 import 'package:trusttunnel/data/model/certificate.dart';
 import 'package:trusttunnel/data/model/vpn_protocol.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/models/endpoint.dart';
 
 /// {@template server}
 /// A fully resolved VPN server configuration used by the app.
@@ -98,6 +99,55 @@ class ServerData {
   /// at random from 1 to 256 bytes.
   static const h2PaddingDefaultFrames = 4;
 
+  /// HTTP/2 padding: the lower bound of the number of the padded frames of a
+  /// stream (engine `h2_padding_frames_min`). The engine draws the number at
+  /// random between this value and [h2PaddingFrames].
+  final int h2PaddingFramesMin;
+
+  /// HTTP/2 padding: count the padded frames per stream, not per session
+  /// (engine `h2_padding_per_stream`).
+  final bool h2PaddingPerStream;
+
+  /// HTTP/2 padding: the lower bound of the junk of a frame, in bytes
+  /// (engine `h2_padding_min_bytes`).
+  final int h2PaddingMinBytes;
+
+  /// HTTP/2 padding: the upper bound of the junk of a frame, in bytes
+  /// (engine `h2_padding_max_bytes`).
+  final int h2PaddingMaxBytes;
+
+  /// HTTP/2 padding: the junk budget of a stream, in bytes
+  /// (engine `h2_padding_stream_bytes`).
+  final int h2PaddingStreamBytes;
+
+  /// HTTP/2 padding: the junk budget of a session, in bytes
+  /// (engine `h2_padding_session_bytes`).
+  final int h2PaddingSessionBytes;
+
+  /// Keepalive: the base of the interval between the keepalive signals of an
+  /// idle session, in seconds (engine `keepalive_interval_secs`); 0 - off.
+  /// The engine draws the real interval at random from this value to four
+  /// times this value.
+  final int keepaliveIntervalSecs;
+
+  /// Keepalive: the signal the client sends on an idle session
+  /// (engine `keepalive_signal`): `check` or `ping`; empty - the engine
+  /// default (`check`).
+  final String keepaliveSignal;
+
+  /// The lifetime of a session, in seconds (engine `session_lifetime_secs`);
+  /// 0 - as long as the server keeps it.
+  final int sessionLifetimeSecs;
+
+  /// XHTTP: carry the TCP connections of the apps in a pair of HTTP/2 streams
+  /// instead of the CONNECT requests (engine `xhttp_enable`); off - the
+  /// CONNECT requests.
+  final bool xhttpEnabled;
+
+  /// XHTTP: the path prefix of the requests (engine `xhttp_path`); empty -
+  /// the engine default (`/api/v2/`).
+  final String xhttpPath;
+
   /// QUIC off: the engine refuses UDP to port 443 (`block_quic`, own build),
   /// browsers and apps fall back to TCP inside the tunnel.
   final bool blockQuic;
@@ -140,6 +190,17 @@ class ServerData {
     this.tlsAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
+    this.h2PaddingFramesMin = Endpoint.h2PaddingFramesMinDefault,
+    this.h2PaddingPerStream = true,
+    this.h2PaddingMinBytes = Endpoint.h2PaddingMinBytesDefault,
+    this.h2PaddingMaxBytes = Endpoint.h2PaddingMaxBytesDefault,
+    this.h2PaddingStreamBytes = Endpoint.h2PaddingStreamBytesDefault,
+    this.h2PaddingSessionBytes = Endpoint.h2PaddingSessionBytesDefault,
+    this.keepaliveIntervalSecs = 0,
+    this.keepaliveSignal = '',
+    this.sessionLifetimeSecs = 0,
+    this.xhttpEnabled = false,
+    this.xhttpPath = '',
     this.blockQuic = false,
     this.ruExit = false,
     this.certificate,
@@ -165,6 +226,17 @@ class ServerData {
     this.tlsAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
+    this.h2PaddingFramesMin = Endpoint.h2PaddingFramesMinDefault,
+    this.h2PaddingPerStream = true,
+    this.h2PaddingMinBytes = Endpoint.h2PaddingMinBytesDefault,
+    this.h2PaddingMaxBytes = Endpoint.h2PaddingMaxBytesDefault,
+    this.h2PaddingStreamBytes = Endpoint.h2PaddingStreamBytesDefault,
+    this.h2PaddingSessionBytes = Endpoint.h2PaddingSessionBytesDefault,
+    this.keepaliveIntervalSecs = 0,
+    this.keepaliveSignal = '',
+    this.sessionLifetimeSecs = 0,
+    this.xhttpEnabled = false,
+    this.xhttpPath = '',
     this.blockQuic = false,
     this.ruExit = false,
     this.certificate,
@@ -193,6 +265,17 @@ class ServerData {
     tlsAuthKey,
     antiDpiDesync,
     h2PaddingFrames,
+    h2PaddingFramesMin,
+    h2PaddingPerStream,
+    h2PaddingMinBytes,
+    h2PaddingMaxBytes,
+    h2PaddingStreamBytes,
+    h2PaddingSessionBytes,
+    keepaliveIntervalSecs,
+    keepaliveSignal,
+    sessionLifetimeSecs,
+    xhttpEnabled,
+    xhttpPath,
     blockQuic,
     ruExit,
     tlsPrefix,
@@ -219,6 +302,17 @@ class ServerData {
       'tlsAuthKey: ${tlsAuthKey.isEmpty ? '' : '***'},'
       'antiDpiDesync: $antiDpiDesync,'
       'h2PaddingFrames: $h2PaddingFrames,'
+      'h2PaddingFramesMin: $h2PaddingFramesMin,'
+      'h2PaddingPerStream: $h2PaddingPerStream,'
+      'h2PaddingMinBytes: $h2PaddingMinBytes,'
+      'h2PaddingMaxBytes: $h2PaddingMaxBytes,'
+      'h2PaddingStreamBytes: $h2PaddingStreamBytes,'
+      'h2PaddingSessionBytes: $h2PaddingSessionBytes,'
+      'keepaliveIntervalSecs: $keepaliveIntervalSecs,'
+      'keepaliveSignal: $keepaliveSignal,'
+      'sessionLifetimeSecs: $sessionLifetimeSecs,'
+      'xhttpEnabled: $xhttpEnabled,'
+      'xhttpPath: $xhttpPath,'
       'blockQuic: $blockQuic,'
       'ruExit: $ruExit,'
       'tlsPrefix: $tlsPrefix,'
@@ -247,6 +341,17 @@ class ServerData {
         other.tlsAuthKey == tlsAuthKey &&
         other.antiDpiDesync == antiDpiDesync &&
         other.h2PaddingFrames == h2PaddingFrames &&
+        other.h2PaddingFramesMin == h2PaddingFramesMin &&
+        other.h2PaddingPerStream == h2PaddingPerStream &&
+        other.h2PaddingMinBytes == h2PaddingMinBytes &&
+        other.h2PaddingMaxBytes == h2PaddingMaxBytes &&
+        other.h2PaddingStreamBytes == h2PaddingStreamBytes &&
+        other.h2PaddingSessionBytes == h2PaddingSessionBytes &&
+        other.keepaliveIntervalSecs == keepaliveIntervalSecs &&
+        other.keepaliveSignal == keepaliveSignal &&
+        other.sessionLifetimeSecs == sessionLifetimeSecs &&
+        other.xhttpEnabled == xhttpEnabled &&
+        other.xhttpPath == xhttpPath &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
         other.tlsPrefix == tlsPrefix &&
@@ -275,6 +380,17 @@ class ServerData {
     String? tlsAuthKey,
     String? antiDpiDesync,
     int? h2PaddingFrames,
+    int? h2PaddingFramesMin,
+    bool? h2PaddingPerStream,
+    int? h2PaddingMinBytes,
+    int? h2PaddingMaxBytes,
+    int? h2PaddingStreamBytes,
+    int? h2PaddingSessionBytes,
+    int? keepaliveIntervalSecs,
+    String? keepaliveSignal,
+    int? sessionLifetimeSecs,
+    bool? xhttpEnabled,
+    String? xhttpPath,
     bool? blockQuic,
     bool? ruExit,
     ValueData<Certificate>? certificate,
@@ -297,6 +413,17 @@ class ServerData {
     tlsAuthKey: tlsAuthKey ?? this.tlsAuthKey,
     antiDpiDesync: antiDpiDesync ?? this.antiDpiDesync,
     h2PaddingFrames: h2PaddingFrames ?? this.h2PaddingFrames,
+    h2PaddingFramesMin: h2PaddingFramesMin ?? this.h2PaddingFramesMin,
+    h2PaddingPerStream: h2PaddingPerStream ?? this.h2PaddingPerStream,
+    h2PaddingMinBytes: h2PaddingMinBytes ?? this.h2PaddingMinBytes,
+    h2PaddingMaxBytes: h2PaddingMaxBytes ?? this.h2PaddingMaxBytes,
+    h2PaddingStreamBytes: h2PaddingStreamBytes ?? this.h2PaddingStreamBytes,
+    h2PaddingSessionBytes: h2PaddingSessionBytes ?? this.h2PaddingSessionBytes,
+    keepaliveIntervalSecs: keepaliveIntervalSecs ?? this.keepaliveIntervalSecs,
+    keepaliveSignal: keepaliveSignal ?? this.keepaliveSignal,
+    sessionLifetimeSecs: sessionLifetimeSecs ?? this.sessionLifetimeSecs,
+    xhttpEnabled: xhttpEnabled ?? this.xhttpEnabled,
+    xhttpPath: xhttpPath ?? this.xhttpPath,
     blockQuic: blockQuic ?? this.blockQuic,
     ruExit: ruExit ?? this.ruExit,
     certificate: certificate != null ? certificate.value : this.certificate,

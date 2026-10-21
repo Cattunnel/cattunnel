@@ -103,7 +103,56 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
       _addIfNotNull(fields, _getFieldWrongValue(PresentationFieldName.tlsAuthKey));
     }
 
+    _addIfNotNull(
+      fields,
+      _validateExpertSettings(data),
+    );
+
     return fields;
+  }
+
+  /// The numbers of the expert settings: the engine clamps them, but a value
+  /// out of range means the person typed something wrong, and the save must
+  /// stop before the engine gets it.
+  PresentationField? _validateExpertSettings(ServerData data) {
+    var outOfRange = data.h2PaddingFrames < 0 ||
+        data.h2PaddingFrames > ConfigurationCodecKeys.h2PaddingFramesMax;
+
+    if (data.h2PaddingFrames > 0) {
+      outOfRange = outOfRange ||
+          data.h2PaddingFramesMin < 0 ||
+          data.h2PaddingFramesMin > ConfigurationCodecKeys.h2PaddingFramesMinMax;
+      outOfRange = outOfRange ||
+          data.h2PaddingMinBytes < 0 ||
+          data.h2PaddingMinBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
+      outOfRange = outOfRange ||
+          data.h2PaddingMaxBytes < 0 ||
+          data.h2PaddingMaxBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
+      outOfRange = outOfRange ||
+          data.h2PaddingStreamBytes < 0 ||
+          data.h2PaddingStreamBytes > ConfigurationCodecKeys.h2PaddingBytesBudgetMax;
+      outOfRange = outOfRange ||
+          data.h2PaddingSessionBytes < 0 ||
+          data.h2PaddingSessionBytes > ConfigurationCodecKeys.h2PaddingBytesBudgetMax;
+    }
+
+    outOfRange = outOfRange ||
+        data.keepaliveIntervalSecs < 0 ||
+        data.keepaliveIntervalSecs > ConfigurationCodecKeys.keepaliveIntervalSecsMax;
+    outOfRange = outOfRange ||
+        data.sessionLifetimeSecs < 0 ||
+        data.sessionLifetimeSecs > ConfigurationCodecKeys.sessionLifetimeSecsMax;
+
+    if (outOfRange) {
+      return _getFieldOutOfBounds(PresentationFieldName.expertSettings);
+    }
+
+    // The XHTTP path is a path: the engine refuses a prefix without a slash.
+    if (data.xhttpEnabled && data.xhttpPath.isNotEmpty && !data.xhttpPath.startsWith('/')) {
+      return _getFieldWrongValue(PresentationFieldName.expertSettings);
+    }
+
+    return null;
   }
 
   @override

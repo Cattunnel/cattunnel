@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:trusttunnel/common/assets/asset_icons.dart';
 import 'package:trusttunnel/common/error/model/enum/presentation_field_name.dart';
 import 'package:trusttunnel/common/error/model/presentation_field.dart';
@@ -21,7 +22,9 @@ import 'package:trusttunnel/feature/vpn/domain/tls_profile_auto.dart';
 import 'package:trusttunnel/widgets/buttons/custom_icon_button.dart';
 import 'package:trusttunnel/widgets/inputs/custom_text_field.dart';
 import 'package:trusttunnel/widgets/menu/custom_dropdown_menu.dart';
+import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/models/endpoint.dart';
 
 /// The groups of the server form. [bypass] is what people change; the rest
 /// starts collapsed (except [key] for a new server, which needs it filled).
@@ -48,9 +51,20 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
   TlsProfileChoice? _autoTls;
   bool _redetectingTls = false;
 
+  /// The text of a number field the user is in the middle of typing: the
+  /// model holds a whole number, but an empty or half-typed field must not
+  /// jump back to the old value.
+  final Map<String, String> _numberDrafts = {};
+
+  /// The value of a number field the user has emptied. The engine never sees
+  /// it: the save is stopped until the field holds a number.
+  static const _numberNotSet = -1;
+
+  /// What "keepalive on" means in the form: a ping every 60..240 seconds.
+  static const _keepaliveDefaultSecs = 60;
+
   /// Where each field the validator can flag lives, to open its group.
-  static const _sectionOf = {
-    PresentationFieldName.antiDpiDesync: _Section.bypass,
+  static const _sectionOf = {    PresentationFieldName.antiDpiDesync: _Section.bypass,
     PresentationFieldName.dnsServers: _Section.routing,
     PresentationFieldName.ipAddress: _Section.key,
     PresentationFieldName.domain: _Section.key,
@@ -547,6 +561,29 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         h2PaddingFrames: value ? ServerData.h2PaddingDefaultFrames : 0,
       ),
     ),
+    if (_formData.h2PaddingFrames > 0) ..._paddingFields(context),
+    SwitchListTile(
+      value: _formData.keepaliveIntervalSecs > 0,
+      title: Text(context.ln.expertKeepaliveLabel),
+      subtitle: Text(context.ln.expertKeepaliveDescription),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onChanged: (value) => _onDataChanged(
+        context,
+        keepaliveIntervalSecs: value ? _keepaliveDefaultSecs : 0,
+      ),
+    ),
+    if (_formData.keepaliveIntervalSecs > 0) ..._keepaliveFields(context),
+    SwitchListTile(
+      value: _formData.xhttpEnabled,
+      title: Text(context.ln.expertXhttpLabel),
+      subtitle: Text(context.ln.expertXhttpDescription),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onChanged: (value) => _onDataChanged(
+        context,
+        xhttpEnabled: value,
+      ),
+    ),
+    if (_formData.xhttpEnabled) ..._xhttpFields(context),
     SwitchListTile(
       value: _formData.blockQuic,
       title: Text(context.ln.blockQuicLabel),
@@ -598,8 +635,187 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     ),
   ];
 
-  RoutingProfile _getSelectedRoutingProfile(List<RoutingProfile> availableRoutingProfiles, String routingProfileId) =>
-      availableRoutingProfiles.firstWhereOrNull((profile) => profile.id == routingProfileId) ??
+  /// The numbers of the traffic shaper: how many frames of a stream get the
+  /// junk, how big the junk is and how much of it a stream and a session may
+  /// spend. The engine draws the frame count at random between the minimum
+  /// and the maximum.
+  List<Widget> _paddingFields(BuildContext context) => [
+    _numberField(
+      context,
+      key: 'paddingFrames',
+      label: context.ln.expertPaddingFramesLabel,
+      value: _formData.h2PaddingFrames,
+      min: 1,
+      max: ConfigurationCodecKeys.h2PaddingFramesMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingFrames: value),
+    ),
+    _numberField(
+      context,
+      key: 'paddingFramesMin',
+      label: context.ln.expertPaddingFramesMinLabel,
+      value: _formData.h2PaddingFramesMin,
+      min: 0,
+      max: ConfigurationCodecKeys.h2PaddingFramesMinMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingFramesMin: value),
+    ),
+    SwitchListTile(
+      value: _formData.h2PaddingPerStream,
+      title: Text(context.ln.expertPaddingPerStreamLabel),
+      subtitle: Text(context.ln.expertPaddingPerStreamDescription),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onChanged: (value) => _onDataChanged(
+        context,
+        h2PaddingPerStream: value,
+      ),
+    ),
+    _numberField(
+      context,
+      key: 'paddingMinBytes',
+      label: context.ln.expertPaddingMinBytesLabel,
+      value: _formData.h2PaddingMinBytes,
+      min: 0,
+      max: ConfigurationCodecKeys.h2PaddingBytesMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingMinBytes: value),
+    ),
+    _numberField(
+      context,
+      key: 'paddingMaxBytes',
+      label: context.ln.expertPaddingMaxBytesLabel,
+      value: _formData.h2PaddingMaxBytes,
+      min: 0,
+      max: ConfigurationCodecKeys.h2PaddingBytesMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingMaxBytes: value),
+    ),
+    _numberField(
+      context,
+      key: 'paddingStreamBytes',
+      label: context.ln.expertPaddingStreamBytesLabel,
+      value: _formData.h2PaddingStreamBytes,
+      min: 0,
+      max: ConfigurationCodecKeys.h2PaddingBytesBudgetMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingStreamBytes: value),
+    ),
+    _numberField(
+      context,
+      key: 'paddingSessionBytes',
+      label: context.ln.expertPaddingSessionBytesLabel,
+      value: _formData.h2PaddingSessionBytes,
+      min: 0,
+      max: ConfigurationCodecKeys.h2PaddingBytesBudgetMax,
+      onChanged: (value) => _onDataChanged(context, h2PaddingSessionBytes: value),
+    ),
+  ];
+
+  /// The keepalive of an idle session: how often the client reminds the
+  /// server that the session is still wanted, with what signal and how long
+  /// the session may live without a signal.
+  List<Widget> _keepaliveFields(BuildContext context) => [
+    _numberField(
+      context,
+      key: 'keepaliveInterval',
+      label: context.ln.expertKeepaliveIntervalLabel,
+      hint: context.ln.expertKeepaliveIntervalHint,
+      value: _formData.keepaliveIntervalSecs,
+      min: 1,
+      max: ConfigurationCodecKeys.keepaliveIntervalSecsMax,
+      onChanged: (value) => _onDataChanged(context, keepaliveIntervalSecs: value),
+    ),
+    CustomDropdownMenu<String>.expanded(
+      value: Endpoint.keepaliveSignals.contains(_formData.keepaliveSignal)
+          ? _formData.keepaliveSignal
+          : Endpoint.keepaliveSignals.first,
+      values: Endpoint.keepaliveSignals,
+      toText: (signal) => _keepaliveSignalText(context, signal),
+      labelText: context.ln.expertKeepaliveSignalLabel,
+      onChanged: (signal) {
+        if (signal == null) return;
+        _onDataChanged(context, keepaliveSignal: signal);
+      },
+    ),
+    _numberField(
+      context,
+      key: 'sessionLifetime',
+      label: context.ln.expertSessionLifetimeLabel,
+      hint: context.ln.expertSessionLifetimeHint,
+      value: _formData.sessionLifetimeSecs,
+      min: 0,
+      max: ConfigurationCodecKeys.sessionLifetimeSecsMax,
+      onChanged: (value) => _onDataChanged(context, sessionLifetimeSecs: value),
+    ),
+  ];
+
+  /// The XHTTP transport: the path prefix the requests go to.
+  List<Widget> _xhttpFields(BuildContext context) {
+    final path = _formData.xhttpPath;
+    final wrongPath = path.isNotEmpty && !path.startsWith('/');
+
+    return [
+      CustomTextField(
+        value: path,
+        label: context.ln.expertXhttpPathLabel,
+        hint: context.ln.expertXhttpPathHint,
+        onChanged: (value) => _onDataChanged(
+          context,
+          xhttpPath: value.trim(),
+        ),
+        error: wrongPath ? context.ln.expertPathWrong : null,
+      ),
+    ];
+  }
+
+  /// A number the user types: only digits, the range is checked while
+  /// typing, and the value the engine may take is written under the label.
+  ///
+  /// The text the user is in the middle of writing is kept aside, so an
+  /// empty field does not jump back to the old number while the person is
+  /// still typing.
+  Widget _numberField(
+    BuildContext context, {
+    required String key,
+    required String label,
+    required int value,
+    required int min,
+    required int max,
+    String? hint,
+    required ValueChanged<int> onChanged,
+  }) {
+    final draft = _numberDrafts[key];
+    final text = draft ?? value.toString();
+    final empty = text.trim().isEmpty;
+    final outOfRange = value < min || value > max;
+
+    return CustomTextField(
+      value: text,
+      label: label,
+      hint: hint,
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      counter: const SizedBox.shrink(),
+      onChanged: (value) {
+        _numberDrafts[key] = value;
+        final parsed = int.tryParse(value.trim());
+        if (parsed == null) {
+          // Nothing to write yet: the field stays as it is, the error shows.
+          onChanged(_numberNotSet);
+          return;
+        }
+        _numberDrafts.remove(key);
+        onChanged(parsed);
+      },
+      error: empty
+          ? context.ln.expertNumberWrong
+          : outOfRange
+          ? context.ln.expertNumberOutOfRange(min, max)
+          : null,
+    );
+  }
+
+  String _keepaliveSignalText(BuildContext context, String signal) => switch (signal) {
+    'ping' => context.ln.expertKeepaliveSignalPing,
+    _ => context.ln.expertKeepaliveSignalCheck,
+  };
+
+  RoutingProfile _getSelectedRoutingProfile(List<RoutingProfile> availableRoutingProfiles, String routingProfileId) =>      availableRoutingProfiles.firstWhereOrNull((profile) => profile.id == routingProfileId) ??
       availableRoutingProfiles.firstWhere((profile) => profile.id == RoutingProfileUtils.defaultRoutingProfileId);
 
   void _onSelectPemCertificatePressed(
@@ -660,6 +876,17 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     String? tlsAuthKey,
     String? antiDpiDesync,
     int? h2PaddingFrames,
+    int? h2PaddingFramesMin,
+    bool? h2PaddingPerStream,
+    int? h2PaddingMinBytes,
+    int? h2PaddingMaxBytes,
+    int? h2PaddingStreamBytes,
+    int? h2PaddingSessionBytes,
+    int? keepaliveIntervalSecs,
+    String? keepaliveSignal,
+    int? sessionLifetimeSecs,
+    bool? xhttpEnabled,
+    String? xhttpPath,
     bool? blockQuic,
     bool? ruExit,
     VpnProtocol? protocol,
@@ -685,6 +912,17 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         tlsAuthKey: tlsAuthKey,
         antiDpiDesync: antiDpiDesync,
         h2PaddingFrames: h2PaddingFrames,
+        h2PaddingFramesMin: h2PaddingFramesMin,
+        h2PaddingPerStream: h2PaddingPerStream,
+        h2PaddingMinBytes: h2PaddingMinBytes,
+        h2PaddingMaxBytes: h2PaddingMaxBytes,
+        h2PaddingStreamBytes: h2PaddingStreamBytes,
+        h2PaddingSessionBytes: h2PaddingSessionBytes,
+        keepaliveIntervalSecs: keepaliveIntervalSecs,
+        keepaliveSignal: keepaliveSignal,
+        sessionLifetimeSecs: sessionLifetimeSecs,
+        xhttpEnabled: xhttpEnabled,
+        xhttpPath: xhttpPath,
         blockQuic: blockQuic,
         ruExit: ruExit,
         routingProfileId: routingProfileId,

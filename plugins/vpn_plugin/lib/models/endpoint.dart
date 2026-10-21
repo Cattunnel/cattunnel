@@ -128,6 +128,74 @@ final class Endpoint {
   /// the first this many HTTP/2 frames; 0 - off.
   final int h2PaddingFrames;
 
+  /// CatTunnel: engine `h2_padding_frames_min` (own build) - the lower bound
+  /// of the number of the padded frames of a stream; the engine draws the
+  /// number at random between this value and [h2PaddingFrames].
+  final int h2PaddingFramesMin;
+
+  /// CatTunnel: engine `h2_padding_per_stream` (own build) - count the padded
+  /// frames per stream, not per session.
+  final bool h2PaddingPerStream;
+
+  /// CatTunnel: engine `h2_padding_min_bytes` (own build) - the lower bound
+  /// of the junk of a frame, in bytes.
+  final int h2PaddingMinBytes;
+
+  /// CatTunnel: engine `h2_padding_max_bytes` (own build) - the upper bound
+  /// of the junk of a frame, in bytes.
+  final int h2PaddingMaxBytes;
+
+  /// CatTunnel: engine `h2_padding_stream_bytes` (own build) - the junk
+  /// budget of a stream, in bytes.
+  final int h2PaddingStreamBytes;
+
+  /// CatTunnel: engine `h2_padding_session_bytes` (own build) - the junk
+  /// budget of a session, in bytes.
+  final int h2PaddingSessionBytes;
+
+  /// CatTunnel: engine `keepalive_interval_secs` (own build) - the base of
+  /// the interval between the keepalive signals of an idle session, in
+  /// seconds; 0 - off.
+  final int keepaliveIntervalSecs;
+
+  /// CatTunnel: engine `keepalive_signal` (own build) - the keepalive
+  /// signal: `check` or `ping`; empty - the engine default (`check`).
+  final String keepaliveSignal;
+
+  /// CatTunnel: engine `session_lifetime_secs` (own build) - the lifetime of
+  /// a session, in seconds; 0 - as long as the server keeps it.
+  final int sessionLifetimeSecs;
+
+  /// CatTunnel: engine `xhttp_enable` (own build) - carry the TCP
+  /// connections of the apps in a pair of HTTP/2 streams instead of the
+  /// CONNECT requests.
+  final bool xhttpEnabled;
+
+  /// CatTunnel: engine `xhttp_path` (own build) - the path prefix of the
+  /// XHTTP requests; empty - the engine default (`/api/v2/`).
+  final String xhttpPath;
+
+  /// The engine's own default for `h2_padding_frames_min`.
+  static const h2PaddingFramesMinDefault = 2;
+
+  /// The engine's own default for `h2_padding_min_bytes`.
+  static const h2PaddingMinBytesDefault = 1;
+
+  /// The engine's own default for `h2_padding_max_bytes` (padding step 2).
+  static const h2PaddingMaxBytesDefault = 64;
+
+  /// The engine's own default for `h2_padding_stream_bytes`.
+  static const h2PaddingStreamBytesDefault = 2048;
+
+  /// The engine's own default for `h2_padding_session_bytes` (padding step 2).
+  static const h2PaddingSessionBytesDefault = 4096;
+
+  /// The engine's own default for `xhttp_path`.
+  static const xhttpPathDefault = '/api/v2/';
+
+  /// The keepalive signals the engine knows.
+  static const keepaliveSignals = ['check', 'ping'];
+
   /// CatTunnel: engine `block_quic` (own build) - UDP to port 443 is refused,
   /// so browsers and apps fall back from QUIC to TCP inside the tunnel.
   final bool blockQuic;
@@ -162,6 +230,11 @@ final class Endpoint {
   /// - [clientRandom] and [certificate] default to empty strings.
   /// - [skipVerification] and [antiDpi] default to `false`.
   /// - [upStreamFallbackProtocol] defaults to `null` (no explicit fallback).
+  ///
+  /// The padding defaults are the ones the engine uses when the config says
+  /// nothing about them (own build, padding step 2): two to four frames per
+  /// stream, one to 64 bytes of junk per frame, 2 KB per stream and 4 KB per
+  /// session.
   const Endpoint({
     this.addresses = const [],
     this.dnsUpStreams = const [],
@@ -176,6 +249,17 @@ final class Endpoint {
     this.clientRandomAuthKey = '',
     this.antiDpiDesync = '',
     this.h2PaddingFrames = 0,
+    this.h2PaddingFramesMin = h2PaddingFramesMinDefault,
+    this.h2PaddingPerStream = true,
+    this.h2PaddingMinBytes = h2PaddingMinBytesDefault,
+    this.h2PaddingMaxBytes = h2PaddingMaxBytesDefault,
+    this.h2PaddingStreamBytes = h2PaddingStreamBytesDefault,
+    this.h2PaddingSessionBytes = h2PaddingSessionBytesDefault,
+    this.keepaliveIntervalSecs = 0,
+    this.keepaliveSignal = '',
+    this.sessionLifetimeSecs = 0,
+    this.xhttpEnabled = false,
+    this.xhttpPath = '',
     this.blockQuic = false,
     this.ruExit = false,
     this.skipVerification = false,
@@ -189,7 +273,7 @@ final class Endpoint {
 
   @override
   String toString() =>
-      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
+      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, h2PaddingFramesMin: $h2PaddingFramesMin, h2PaddingPerStream: $h2PaddingPerStream, h2PaddingMinBytes: $h2PaddingMinBytes, h2PaddingMaxBytes: $h2PaddingMaxBytes, h2PaddingStreamBytes: $h2PaddingStreamBytes, h2PaddingSessionBytes: $h2PaddingSessionBytes, keepaliveIntervalSecs: $keepaliveIntervalSecs, keepaliveSignal: $keepaliveSignal, sessionLifetimeSecs: $sessionLifetimeSecs, xhttpEnabled: $xhttpEnabled, xhttpPath: $xhttpPath, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
 
   @override
   bool operator ==(covariant Endpoint other) {
@@ -212,6 +296,17 @@ final class Endpoint {
         other.clientRandomAuthKey == clientRandomAuthKey &&
         other.antiDpiDesync == antiDpiDesync &&
         other.h2PaddingFrames == h2PaddingFrames &&
+        other.h2PaddingFramesMin == h2PaddingFramesMin &&
+        other.h2PaddingPerStream == h2PaddingPerStream &&
+        other.h2PaddingMinBytes == h2PaddingMinBytes &&
+        other.h2PaddingMaxBytes == h2PaddingMaxBytes &&
+        other.h2PaddingStreamBytes == h2PaddingStreamBytes &&
+        other.h2PaddingSessionBytes == h2PaddingSessionBytes &&
+        other.keepaliveIntervalSecs == keepaliveIntervalSecs &&
+        other.keepaliveSignal == keepaliveSignal &&
+        other.sessionLifetimeSecs == sessionLifetimeSecs &&
+        other.xhttpEnabled == xhttpEnabled &&
+        other.xhttpPath == xhttpPath &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
         other.hasIpv6 == hasIpv6 &&
@@ -237,6 +332,17 @@ final class Endpoint {
     clientRandomAuthKey,
     antiDpiDesync,
     h2PaddingFrames,
+    h2PaddingFramesMin,
+    h2PaddingPerStream,
+    h2PaddingMinBytes,
+    h2PaddingMaxBytes,
+    h2PaddingStreamBytes,
+    h2PaddingSessionBytes,
+    keepaliveIntervalSecs,
+    keepaliveSignal,
+    sessionLifetimeSecs,
+    xhttpEnabled,
+    xhttpPath,
     blockQuic,
     ruExit,
     hasIpv6,

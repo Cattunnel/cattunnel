@@ -30,6 +30,10 @@ abstract class ExceptionUtils {
       ln.dnsServersWrongFieldError,
     PresentationFieldExceptionCode.fieldWrongValue when field.fieldName == PresentationFieldName.antiDpiDesync =>
       ln.antiDpiDesyncWrongFieldError,
+    PresentationFieldExceptionCode.fieldWrongValue when field.fieldName == PresentationFieldName.expertSettings =>
+      ln.expertSettingsWrong,
+    PresentationFieldExceptionCode.outOfBounds when field.fieldName == PresentationFieldName.expertSettings =>
+      ln.expertSettingsWrong,
     PresentationFieldExceptionCode.fieldRequired when field.fieldName == PresentationFieldName.antiDpiDesync =>
       ln.antiDpiDesyncRequired,
     PresentationFieldExceptionCode.fieldWrongValue when field.fieldName == PresentationFieldName.url =>
