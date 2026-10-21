@@ -31,4 +31,11 @@ void main() {
     expect(out, isNot(contains('2001:db8::1')));
     expect(out, isNot(contains('2a00:1450:4009:80f::200e')));
   });
+
+  test('report sanitizer cuts the hardware addresses', () {
+    final out = ProblemReport.sanitize('mac aa:bb:cc:dd:ee:ff, wifi 00:11:22:33:44:55\n');
+
+    expect(out, isNot(contains('aa:bb:cc:dd:ee:ff')));
+    expect(out, isNot(contains('00:11:22:33:44:55')));
+  });
 }
