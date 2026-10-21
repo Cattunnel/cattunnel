@@ -266,6 +266,10 @@ class _VpnScopeState extends State<VpnScope> {
   /// updates while connected; `null` when not in auto.
   int? _autoAntiDpiMode;
 
+  /// The server the round is for: the technique belongs to it and to
+  /// nobody else.
+  String? _autoServerId;
+
   /// Anti-DPI "auto" is between two techniques: no "disconnected" notice.
   bool _autoSwitching = false;
 
@@ -364,6 +368,7 @@ class _VpnScopeState extends State<VpnScope> {
     _lastServerName = server.serverData.name;
     _currentServerId = server.id;
     _autoAntiDpiMode = null;
+    _autoServerId = null;
     // Windows: diagnostics must reach these while the tunnel owns DNS.
     await PhysicalNet.prime([ServerLatencyTester.parseAddress(server.serverData.ipAddress).$1, 'ya.ru']);
 
@@ -430,6 +435,7 @@ class _VpnScopeState extends State<VpnScope> {
     required bool directFirst,
   }) async {
     final auto = AntiDpiAuto(context.dependencyFactory.sharedPreferences);
+    _autoServerId = server.id;
     final kind = await AntiDpiAuto.networkKind();
     final fingerprint = await NetworkFingerprints.current(kind: kind);
     final network = fingerprint.key;
@@ -473,6 +479,7 @@ class _VpnScopeState extends State<VpnScope> {
           excludedRoutes: excludedRoutes,
           logLevel: logLevel,
           technique: technique,
+          first: index == 0,
         );
         if (outcome == _TechniqueOutcome.connected) {
           if (technique == 0) {
@@ -518,18 +525,25 @@ class _VpnScopeState extends State<VpnScope> {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
     required int technique,
+    required bool first,
   }) async {
     _autoAntiDpiMode = technique == 0 ? null : technique;
     final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
     await widget.vpnRepository.start(
+      // The engine takes the mode only with the anti-DPI on: the plain
+      // connection is the server's own setting, a technique turns it on.
       server: technique == 0
           ? server
-          : server.copyWith(serverData: server.serverData.copyWith(antiDpiMode: technique)),
+          : server.copyWith(
+              serverData: server.serverData.copyWith(antiDpi: true, antiDpiMode: technique),
+            ),
       routingProfile: routingProfile,
       excludedRoutes: excludedRoutes,
       logLevel: logLevel,
     );
-    _watchStartBegins(attempt);
+    if (first) {
+      _watchStartBegins(attempt);
+    }
 
     final outcome = await Future.any<Object?>([
       _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
@@ -598,10 +612,11 @@ class _VpnScopeState extends State<VpnScope> {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
   }) => widget.vpnRepository.updateConfiguration(
-    // Anti-DPI "auto" keeps the technique that connected.
+    // The round keeps its technique: the session stays on it, even when the
+    // app rewrites the configuration (the routes changed, the log level).
     server: switch (_autoAntiDpiMode) {
-      final mode? when server.serverData.antiDpiMode == ServerData.antiDpiAuto => server.copyWith(
-        serverData: server.serverData.copyWith(antiDpiMode: mode),
+      final mode? when server.id == _autoServerId => server.copyWith(
+        serverData: server.serverData.copyWith(antiDpi: true, antiDpiMode: mode),
       ),
       _ => server,
     },
