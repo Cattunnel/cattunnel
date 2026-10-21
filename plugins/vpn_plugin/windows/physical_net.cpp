@@ -44,14 +44,79 @@ bool NameContains(const wchar_t* name, const wchar_t* part) {
     return haystack.find(needle) != std::wstring::npos;
 }
 
+/** The address of a socket address, as text. */
+std::string AddressToString(const sockaddr* address) {
+    if (address == nullptr) return {};
+    char text[INET6_ADDRSTRLEN] = {};
+    if (address->sa_family == AF_INET) {
+        const auto* v4 = reinterpret_cast<const sockaddr_in*>(address);
+        if (inet_ntop(AF_INET, &v4->sin_addr, text, sizeof(text)) == nullptr) return {};
+    } else if (address->sa_family == AF_INET6) {
+        const auto* v6 = reinterpret_cast<const sockaddr_in6*>(address);
+        if (inet_ntop(AF_INET6, &v6->sin6_addr, text, sizeof(text)) == nullptr) return {};
+    } else {
+        return {};
+    }
+    return text;
+}
+
+/**
+ * The adapter the traffic takes before the tunnel: up, not loopback, not a
+ * tunnel (Wintun / TrustTunnel), with a default gateway, and the lowest
+ * metric of those.
+ * @param extra_flags Flags for GetAdaptersAddresses (the DNS servers are
+ * only in the list when GAA_FLAG_SKIP_DNS_SERVER is not set).
+ * @return The adapter, or nullptr.
+ */
+IP_ADAPTER_ADDRESSES* PhysicalAdapter(ULONG extra_flags) {
+    ULONG size = 16 * 1024;
+    std::vector<unsigned char> buffer;
+    ULONG result = ERROR_BUFFER_OVERFLOW;
+    for (int attempt = 0; attempt < 3 && result == ERROR_BUFFER_OVERFLOW; ++attempt) {
+        buffer.resize(size);
+        result = GetAdaptersAddresses(AF_INET,
+                                      extra_flags | GAA_FLAG_INCLUDE_GATEWAYS | GAA_FLAG_SKIP_ANYCAST |
+                                          GAA_FLAG_SKIP_MULTICAST,
+                                      nullptr,
+                                      reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data()), &size);
+    }
+    if (result != NO_ERROR) return nullptr;
+
+    IP_ADAPTER_ADDRESSES* best = nullptr;
+    ULONG best_metric = ULONG_MAX;
+    for (auto* a = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data()); a != nullptr; a = a->Next) {
+        if (a->OperStatus != IfOperStatusUp) continue;
+        if (a->IfType == IF_TYPE_SOFTWARE_LOOPBACK || a->IfType == IF_TYPE_PROP_VIRTUAL ||
+            a->IfType == IF_TYPE_TUNNEL) {
+            continue;
+        }
+        if (NameContains(a->Description, L"wintun") || NameContains(a->FriendlyName, L"trusttunnel") ||
+            NameContains(a->Description, L"trusttunnel")) {
+            continue;
+        }
+        bool has_gateway = false;
+        for (auto* g = a->FirstGatewayAddress; g != nullptr; g = g->Next) {
+            if (g->Address.lpSockaddr != nullptr && g->Address.lpSockaddr->sa_family == AF_INET) {
+                has_gateway = true;
+                break;
+            }
+        }
+        if (!has_gateway) continue;
+        if (a->Ipv4Metric < best_metric) {
+            best_metric = a->Ipv4Metric;
+            best = a;
+        }
+    }
+    return best;
+}
+
 /**
  * The adapter the traffic took before the tunnel: up, not loopback, not a
  * tunnel (Wintun / TrustTunnel), with a default gateway of [family] - which
  * also leaves out Hyper-V/WSL host adapters - and the lowest metric.
  * @return Interface index, 0 if none.
  */
-ULONG PhysicalInterfaceIndex(int family) {
-    ULONG size = 16 * 1024;
+ULONG PhysicalInterfaceIndex(int family) {    ULONG size = 16 * 1024;
     std::vector<unsigned char> buffer;
     ULONG result = ERROR_BUFFER_OVERFLOW;
     for (int attempt = 0; attempt < 3 && result == ERROR_BUFFER_OVERFLOW; ++attempt) {
@@ -292,6 +357,31 @@ std::string PhysicalNet::ProbeTcp(const std::string& ip, int port, int timeout_m
     SOCKET s = ConnectPhysical(ip, port, timeout_ms, &outcome);
     if (s != INVALID_SOCKET) closesocket(s);
     return outcome;
+}
+
+std::string PhysicalNet::FingerprintGateway() {
+    EnsureWinsock();
+    auto* adapter = PhysicalAdapter(GAA_FLAG_SKIP_DNS_SERVER);
+    if (adapter == nullptr) return {};
+    for (auto* g = adapter->FirstGatewayAddress; g != nullptr; g = g->Next) {
+        if (g->Address.lpSockaddr == nullptr || g->Address.lpSockaddr->sa_family != AF_INET) continue;
+        const auto address = AddressToString(g->Address.lpSockaddr);
+        if (!address.empty()) return address;
+    }
+    return {};
+}
+
+std::vector<std::string> PhysicalNet::FingerprintDnsServers() {
+    EnsureWinsock();
+    std::vector<std::string> servers;
+    auto* adapter = PhysicalAdapter(0);
+    if (adapter == nullptr) return servers;
+    for (auto* d = adapter->FirstDnsServerAddress; d != nullptr; d = d->Next) {
+        if (d->Address.lpSockaddr == nullptr) continue;
+        const auto address = AddressToString(d->Address.lpSockaddr);
+        if (!address.empty()) servers.push_back(address);
+    }
+    return servers;
 }
 
 }  // namespace vpn_plugin

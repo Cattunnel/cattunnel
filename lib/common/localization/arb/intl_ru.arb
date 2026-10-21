@@ -382,6 +382,22 @@
     }
   },
   "diagEngineStall": "Движок: соединение установилось, но трафик встал.",
+  "diagNetwork": "Сеть: {name}",
+  "@diagNetwork": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "diagNetworkRename": "Переименовать сеть",
+  "diagNetworkRenameTitle": "Название сети",
+  "diagNetworkRenameHint": "Например: Дома, Универ",
+  "diagNetworkRenameSave": "Сохранить",
+  "networkKindWifi": "Wi-Fi",
+  "networkKindMobile": "Мобильная сеть",
+  "networkKindEthernet": "Ethernet",
+  "networkKindOther": "Сеть",
   "subscriptionHttpsOnlyError": "Разрешены только ссылки https:// — в подписке твои ключи",
   "shareSubscription": "Поделиться через QR",
   "shareSubscriptionTitle": "Отсканируй в CatTunnel",

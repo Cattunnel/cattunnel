@@ -15,7 +15,10 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.da
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope_controller.dart';
 import 'package:trusttunnel/feature/support/detailed_log.dart';
+import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:vpn_plugin/models/net_diagnostic.dart';
@@ -112,6 +115,13 @@ abstract final class ProblemReport {
         ? null
         : NetDiagnostics.recent(selected.id, within: NetDiagnostics.freshWindow);
 
+    // The network the person is on, by the name they gave it. The gateway
+    // and the DNS servers stay on the phone: only the name goes into the
+    // report.
+    final kind = await AntiDpiAuto.networkKind();
+    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final network = networkName(context, dependencies.sharedPreferences, fingerprint);
+
     String? d(String key) => device[key]?.toString();
     final android = defaultTargetPlatform == TargetPlatform.android;
     final adapters = android ? null : await _orNull(_adapterNames);
@@ -133,6 +143,7 @@ abstract final class ProblemReport {
         'Adapters: ${adapters == null || adapters.isEmpty ? '?' : adapters.join(', ')}',
       ],
       'VPN: ${vpnState.name}${diagnosis == null ? '' : ', Marsik: $diagnosis'}',
+      'Network name: $network',
       if (verdict != null) 'Engine verdict: ${_verdictText(verdict)}',
       if (server != null)
         'Server: ${server.name} - ${server.domain} / ${server.ipAddress}, ${server.vpnProtocol.name}'

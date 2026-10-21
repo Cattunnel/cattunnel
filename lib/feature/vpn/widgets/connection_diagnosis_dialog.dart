@@ -18,8 +18,12 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.da
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
+import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
+import 'package:trusttunnel/widgets/custom_alert_dialog.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
 /// Marsik's "why won't it connect" report (see [ConnectionDiagnostics]):
@@ -61,12 +65,58 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   bool _connectedMeanwhile = false;
   Timer? _autoCloseTimer;
 
+  /// The network the person is on, for the name of it.
+  NetworkFingerprint? _fingerprint;
+
   @override
   void initState() {
     super.initState();
     _bobController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
     unawaited(_run());
+    unawaited(_loadNetwork());
+  }
+
+  Future<void> _loadNetwork() async {
+    final kind = await AntiDpiAuto.networkKind();
+    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    if (!mounted) return;
+    setState(() => _fingerprint = fingerprint);
+  }
+
+  /// The name of the network: the person gives it a name, and the name goes
+  /// into the report (the gateway and the DNS servers stay on the phone).
+  Future<void> _renameNetwork() async {
+    final fingerprint = _fingerprint;
+    if (fingerprint == null) return;
+    final preferences = context.dependencyFactory.sharedPreferences;
+    final field = TextEditingController(
+      text: NetworkFingerprint.customName(preferences, fingerprint.key) ?? '',
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => CustomAlertDialog(
+        title: dialogContext.ln.diagNetworkRenameTitle,
+        content: TextField(
+          controller: field,
+          autofocus: true,
+          decoration: InputDecoration(hintText: dialogContext.ln.diagNetworkRenameHint),
+          onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
+        ),
+        actionsBuilder: (_) => [
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.ln.cancel)),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(field.text),
+            child: Text(dialogContext.ln.diagNetworkRenameSave),
+          ),
+        ],
+      ),
+    );
+    field.dispose();
+    if (name == null) return;
+    await NetworkFingerprint.rename(preferences, fingerprint.key, name);
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -289,6 +339,13 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                   : const SizedBox(width: double.infinity),
             ),
             const SizedBox(height: 16),
+            if (_fingerprint != null) ...[
+              _NetworkRow(
+                name: networkName(context, context.dependencyFactory.sharedPreferences, _fingerprint!),
+                onRename: _renameNetwork,
+              ),
+              const SizedBox(height: 8),
+            ],
             _buildActions(context, result),
           ],
         ),
@@ -329,8 +386,25 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   }
 }
 
-class _StepRow extends StatelessWidget {
-  final String label;
+/// The name of the network, and a way to change it: the report says the
+/// name, and the name is what the person calls the network.
+class _NetworkRow extends StatelessWidget {
+  final String name;
+  final VoidCallback onRename;
+
+  const _NetworkRow({required this.name, required this.onRename});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      Expanded(child: Text(context.ln.diagNetwork(name))),
+      TextButton(onPressed: onRename, child: Text(context.ln.diagNetworkRename)),
+    ],
+  );
+}
+
+class _StepRow extends StatelessWidget {  final String label;
   final DiagnosisStepStatus status;
   final Color okColor;
 

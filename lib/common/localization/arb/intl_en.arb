@@ -536,6 +536,22 @@
     }
   },
   "diagEngineStall": "The engine: the connection came up, but the traffic stopped.",
+  "diagNetwork": "Network: {name}",
+  "@diagNetwork": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "diagNetworkRename": "Rename the network",
+  "diagNetworkRenameTitle": "Name of the network",
+  "diagNetworkRenameHint": "For example: Home, University",
+  "diagNetworkRenameSave": "Save",
+  "networkKindWifi": "Wi-Fi",
+  "networkKindMobile": "Mobile network",
+  "networkKindEthernet": "Ethernet",
+  "networkKindOther": "Network",
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
   "shareSubscriptionTitle": "Scan with CatTunnel",
