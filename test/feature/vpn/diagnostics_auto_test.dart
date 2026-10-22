@@ -35,9 +35,9 @@ Server _server(String id, String ip) => Server(
 );
 
 Future<({String kind, String network})> _currentNetwork() async {
-  final kind = await AntiDpiAuto.networkKind();
+  final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
 
-  return (kind: kind, network: (await NetworkFingerprints.current(kind: kind)).key);
+  return (kind: fingerprint.kind, network: fingerprint.key);
 }
 
 void main() {

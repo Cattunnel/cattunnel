@@ -82,8 +82,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   void _openNetworks() => context.push(const NetworksScreen());
 
   Future<void> _loadNetwork() async {
-    final kind = await AntiDpiAuto.networkKind();
-    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
     if (!mounted) return;
     setState(() => _fingerprint = fingerprint);
   }

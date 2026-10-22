@@ -8,6 +8,7 @@ import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/di/model/initialization_helper.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 
 /// The Quick Settings tile's connect while the app isn't running (Android).
 ///
@@ -56,7 +57,8 @@ abstract final class TileConnect {
     var data = server.serverData;
     if (data.antiDpi && data.antiDpiMode == ServerData.antiDpiAuto) {
       final auto = AntiDpiAuto(init.dependenciesFactory.sharedPreferences);
-      final order = auto.order(serverId: server.id, network: await AntiDpiAuto.networkKind());
+      final fingerprint = await NetworkFingerprints.current();
+      final order = auto.order(serverId: server.id, network: fingerprint.key);
       data = data.copyWith(antiDpiMode: order.first);
     }
 
@@ -113,7 +115,9 @@ Future<void> tileConnectMain() async {
       } catch (error) {
         // The type only: a message could carry configuration text. A missing
         // plugin's message is just the method and channel name.
-        failure = error is MissingPluginException ? 'MissingPluginException: ${error.message}' : error.runtimeType.toString();
+        failure = error is MissingPluginException
+            ? 'MissingPluginException: ${error.message}'
+            : error.runtimeType.toString();
       }
     },
     zoneValues: {Logger.loggerKey: AppLogger()},

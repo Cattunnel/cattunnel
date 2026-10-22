@@ -157,6 +157,7 @@
   "antiDpiAutoFailedBody": "Мурр... Я попробовал обычное соединение и способы обхода, и ни один не достучался до сервера. Попробуй другой сервер или пришли отчёт, в нём будет видно, где застряло.",
   "antiDpiStatusDirect": "Пробую напрямую…",
   "antiDpiStatusCut": "Похоже, фильтр режет соединение",
+  "antiDpiStatusTechniqueSingle": "Включаю обход…",
   "antiDpiStatusTechnique": "Включаю обход: способ {index} из {total}…",
   "@antiDpiStatusTechnique": {
     "placeholders": {

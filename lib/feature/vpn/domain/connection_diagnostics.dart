@@ -213,8 +213,8 @@ class ConnectionDiagnostics {
     required List<Server> otherServers,
     required void Function(DiagnosisStep step, DiagnosisStepStatus status) onStep,
   }) async {
-    final kind = await AntiDpiAuto.networkKind();
-    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
+    final kind = fingerprint.kind;
     final network = fingerprint.key;
     // The address and the network too: a verdict for the old one says
     // nothing once the user or the subscription has changed it, and the

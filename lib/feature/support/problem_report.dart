@@ -114,15 +114,12 @@ abstract final class ProblemReport {
     // What the engine saw in the last session to this server: the cut, the
     // freeze or the silence. The admin asks about it first, and the report
     // used to say nothing.
-    final verdict = selected == null
-        ? null
-        : NetDiagnostics.recent(selected.id, within: NetDiagnostics.freshWindow);
+    final verdict = selected == null ? null : NetDiagnostics.recent(selected.id, within: NetDiagnostics.freshWindow);
 
     // The network the person is on, by the name they gave it. The gateway
     // and the DNS servers stay on the phone: only the name goes into the
     // report.
-    final kind = await AntiDpiAuto.networkKind();
-    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
     final network = networkName(ln, dependencies.sharedPreferences, fingerprint);
 
     String? d(String key) => device[key]?.toString();
@@ -134,8 +131,8 @@ abstract final class ProblemReport {
       if (android) ...[
         '${d('manufacturer') ?? '?'} ${d('model') ?? ''} (${d('device') ?? '?'}), Android ${d('android') ?? '?'} / API ${d('sdk') ?? '?'}',
         if (d('firmware') != null) 'Firmware: ${d('firmware')}, patch ${d('securityPatch') ?? '?'}, ${d('abi') ?? '?'}',
-        'Operator: ${_or(d('operator'))} (${_or(d('operatorCode'))}), SIM: ${_or(d('simOperator'))} ${d('simCountry') ?? ''}'
-            '${device['roaming'] == true ? ', ROAMING' : ''}',
+        'SIM (for reference): ${_or(d('simOperator'))} ${d('simCountry') ?? ''}, cellular operator now: '
+            '${_or(d('operator'))} (${_or(d('operatorCode'))})${device['roaming'] == true ? ', ROAMING' : ''}',
         'Network: ${d('network') ?? '?'}, private DNS: ${d('privateDns') ?? '?'}'
             '${device['powerSave'] == true ? ', power saving ON' : ''}'
             '${device['batteryUnrestricted'] == false ? ', battery restricted' : ''}',

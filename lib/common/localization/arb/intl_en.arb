@@ -239,6 +239,7 @@
   "antiDpiAutoFailedBody": "Mrrr... I tried the plain connection and the techniques, and none reached the server. Try another server or send a report - it shows where it got stuck.",
   "antiDpiStatusDirect": "Trying the plain connection…",
   "antiDpiStatusCut": "Looks like a filter is cutting the connection",
+  "antiDpiStatusTechniqueSingle": "Turning on the bypass…",
   "antiDpiStatusTechnique": "Turning on the bypass: technique {index} of {total}…",
   "@antiDpiStatusTechnique": {
     "placeholders": {

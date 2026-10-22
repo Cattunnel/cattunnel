@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
@@ -133,5 +134,56 @@ void main() {
 
     await NetworkFingerprint.rememberKind(preferences, network);
     expect(NetworkFingerprint.operatorNameOf(preferences, network.key), 'МТС');
+  });
+
+  test('Wi-Fi at the same time as mobile data: the Wi-Fi key, no operator', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('cattunnel/apps');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (call) async => {
+        'kind': 'wifi',
+        'gateway': '192.168.1.1',
+        'dns': ['192.168.1.1'],
+        'domains': ['home.arpa'],
+        // Even if the platform sends the SIM operator, it says nothing
+        // about Wi-Fi and must not enter the key.
+        'operatorCode': '25001',
+        'operatorName': 'МТС',
+      },
+    );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null),
+    );
+
+    final fingerprint = await NetworkFingerprints.current(kind: 'mobile');
+
+    expect(fingerprint.kind, 'wifi');
+    expect(fingerprint.key, isNot(contains('mobile')));
+    expect(fingerprint.key, isNot(contains('25001')));
+  });
+
+  test('only mobile data: the key is the operator of the data SIM', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('cattunnel/apps');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      channel,
+      (call) async => {
+        'kind': 'mobile',
+        'gateway': '10.1.1.1',
+        'dns': ['1.1.1.1'],
+        'domains': <String>[],
+        'operatorCode': '25001',
+        'operatorName': 'МТС',
+      },
+    );
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null),
+    );
+
+    final fingerprint = await NetworkFingerprints.current(kind: 'wifi');
+
+    expect(fingerprint.kind, 'mobile');
+    expect(fingerprint.key, 'mobile:25001');
   });
 }

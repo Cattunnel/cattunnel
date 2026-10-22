@@ -34,7 +34,10 @@ class AntiDpiStatusLine extends StatelessWidget {
   String _text(BuildContext context, AntiDpiStatus status) => switch (status.step) {
     AntiDpiStep.tryingDirect => context.ln.antiDpiStatusDirect,
     AntiDpiStep.cut => context.ln.antiDpiStatusCut,
-    AntiDpiStep.tryingTechnique => context.ln.antiDpiStatusTechnique(status.index, status.total),
+    AntiDpiStep.tryingTechnique =>
+      status.total == 1
+          ? context.ln.antiDpiStatusTechniqueSingle
+          : context.ln.antiDpiStatusTechnique(status.index, status.total),
     AntiDpiStep.worked =>
       status.plainWorked
           ? context.ln.antiDpiStatusWorkedPlain(status.networkName)

@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
+import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -206,29 +207,69 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
      */
     private fun networkFingerprint(): Map<String, Any?> {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        // Wi-Fi and mobile data often run together ("adaptive Wi-Fi" keeps
+        // mobile data on). The first network in allNetworks is then the
+        // mobile one as often as the Wi-Fi one, so the kind picks the
+        // network: Wi-Fi first, then Ethernet, then mobile.
         var link: LinkProperties? = null
-        for (network in cm.allNetworks) {
-            val caps = cm.getNetworkCapabilities(network) ?: continue
-            // Our own VPN is not the network the person is on.
-            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
-            if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue
-            link = cm.getLinkProperties(network)
+        var kind = "other"
+        for ((transport, name) in listOf(
+            NetworkCapabilities.TRANSPORT_WIFI to "wifi",
+            NetworkCapabilities.TRANSPORT_ETHERNET to "ethernet",
+            NetworkCapabilities.TRANSPORT_CELLULAR to "mobile",
+        )) {
+            for (network in cm.allNetworks) {
+                val caps = cm.getNetworkCapabilities(network) ?: continue
+                // Our own VPN is not the network the person is on.
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+                if (!caps.hasTransport(transport)) continue
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue
+                link = cm.getLinkProperties(network) ?: continue
+                kind = name
+                break
+            }
             if (link != null) break
+        }
+        if (link == null) {
+            // A rare transport the three above do not cover.
+            for (network in cm.allNetworks) {
+                val caps = cm.getNetworkCapabilities(network) ?: continue
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) continue
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) continue
+                link = cm.getLinkProperties(network)
+                if (link != null) break
+            }
         }
         val gateway = link?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress ?: ""
         val dns = link?.dnsServers?.mapNotNull { it.hostAddress } ?: emptyList()
         val domains = link?.domains ?: emptyList()
         // The operator is what tells mobile networks apart: the gateway and
-        // the DNS servers there change with the city. No permission needed,
-        // and a part that fails is just left out.
+        // the DNS servers there change with the city. On Wi-Fi the operator
+        // of the SIM says nothing about the network, so it stays empty. No
+        // permission needed, and a part that fails is just left out.
         var operatorCode = ""
         var operatorName = ""
-        runCatching {
-            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-            operatorCode = tm.networkOperator.orEmpty()
-            operatorName = tm.networkOperatorName.orEmpty()
+        if (kind == "mobile") {
+            try {
+                val base = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                // The default subscription is the voice one; data may go
+                // through the other SIM. The SIM settings screen can also
+                // throw here on some ROMs, so the whole part stays guarded.
+                val tm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    val id = SubscriptionManager.getDefaultDataSubscriptionId()
+                    if (id == SubscriptionManager.INVALID_SUBSCRIPTION_ID) base else base.createForSubscriptionId(id)
+                } else {
+                    base
+                }
+                operatorCode = tm.networkOperator.orEmpty()
+                operatorName = tm.networkOperatorName.orEmpty()
+            } catch (_: SecurityException) {
+                // No phone state permission on this ROM: leave the operator
+                // out, the network key falls back to the bare kind.
+            }
         }
         return mapOf(
+            "kind" to kind,
             "gateway" to gateway,
             "dns" to dns,
             "domains" to domains,

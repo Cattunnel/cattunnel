@@ -152,12 +152,19 @@ abstract final class NetworkFingerprints {
   static const _physicalNetChannel = MethodChannel('cattunnel/physical_net');
 
   /// The fingerprint of the current network.
-  static Future<NetworkFingerprint> current({required String kind}) async {
+  ///
+  /// [kind] comes from the connectivity plugin and is only a fallback: on
+  /// Android the platform picks the network itself (Wi-Fi first, then
+  /// Ethernet, then mobile data) and returns its kind, so the fingerprint
+  /// and the kind cannot disagree when Wi-Fi and mobile data are on
+  /// together.
+  static Future<NetworkFingerprint> current({String kind = 'other'}) async {
     final parts = switch (defaultTargetPlatform) {
       TargetPlatform.android => await _android(),
       TargetPlatform.windows => await _windows(),
       TargetPlatform.linux => _linux(),
       _ => (
+        kind: '',
         gateway: '',
         dns: <String>[],
         domains: <String>[],
@@ -167,7 +174,7 @@ abstract final class NetworkFingerprints {
     };
 
     return NetworkFingerprint(
-      kind: kind,
+      kind: parts.kind.isEmpty ? kind : parts.kind,
       gateway: parts.gateway,
       dnsServers: parts.dns,
       searchDomains: parts.domains,
@@ -176,10 +183,20 @@ abstract final class NetworkFingerprints {
     );
   }
 
-  static Future<({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName})>
+  static Future<
+    ({
+      String kind,
+      String gateway,
+      List<String> dns,
+      List<String> domains,
+      String operatorCode,
+      String operatorName,
+    })
+  >
   _android() async {
     try {
       final parts = await _appsChannel.invokeMapMethod<Object?, Object?>('networkFingerprint');
+      final kind = parts?['kind'];
       final gateway = parts?['gateway'];
       final dns = parts?['dns'];
       final domains = parts?['domains'];
@@ -187,6 +204,7 @@ abstract final class NetworkFingerprints {
       final operatorName = parts?['operatorName'];
 
       return (
+        kind: kind is String ? kind : '',
         gateway: gateway is String ? gateway : '',
         dns: dns is List ? dns.map((e) => '$e').toList() : const <String>[],
         domains: domains is List ? domains.map((e) => '$e').toList() : const <String>[],
@@ -195,6 +213,7 @@ abstract final class NetworkFingerprints {
       );
     } on Object {
       return (
+        kind: '',
         gateway: '',
         dns: const <String>[],
         domains: const <String>[],
@@ -204,7 +223,16 @@ abstract final class NetworkFingerprints {
     }
   }
 
-  static Future<({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName})>
+  static Future<
+    ({
+      String kind,
+      String gateway,
+      List<String> dns,
+      List<String> domains,
+      String operatorCode,
+      String operatorName,
+    })
+  >
   _windows() async {
     try {
       final parts = await _physicalNetChannel.invokeMapMethod<Object?, Object?>('fingerprint');
@@ -212,6 +240,7 @@ abstract final class NetworkFingerprints {
       final dns = parts?['dns'];
 
       return (
+        kind: '',
         gateway: gateway is String ? gateway : '',
         dns: dns is List ? dns.map((e) => '$e').toList() : const <String>[],
         domains: const <String>[],
@@ -220,6 +249,7 @@ abstract final class NetworkFingerprints {
       );
     } on Object {
       return (
+        kind: '',
         gateway: '',
         dns: const <String>[],
         domains: const <String>[],
@@ -230,10 +260,19 @@ abstract final class NetworkFingerprints {
   }
 
   /// The gateway of the default route and the DNS servers of the system.
-  static ({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName}) _linux() {
+  static ({
+    String kind,
+    String gateway,
+    List<String> dns,
+    List<String> domains,
+    String operatorCode,
+    String operatorName,
+  })
+  _linux() {
     final dns = _linuxDns();
 
     return (
+      kind: '',
       gateway: _linuxGateway(),
       dns: dns.dns,
       domains: dns.domains,
