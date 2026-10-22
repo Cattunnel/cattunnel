@@ -14,6 +14,7 @@ import 'package:trusttunnel/feature/server/servers/domain/server_connection_acti
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_state.dart';
 import 'package:trusttunnel/feature/vpn/models/vpn_controller.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
@@ -200,7 +201,23 @@ class _AutoFailoverScopeState extends State<AutoFailoverScope> {
     }
   }
 
+  /// The device's own internet first: without it every server looks dead.
+  ///
+  /// The system knows whether the network reaches the internet (Android
+  /// checks that itself), and saying so costs no handshake. The desktop has
+  /// no such signal, and asks the reference host.
   static Future<bool> _hasInternet() async {
+    switch (await NetworkStates.current()) {
+      case NetworkState.none:
+      case NetworkState.captivePortal:
+        return false;
+      case NetworkState.validated:
+      case NetworkState.unvalidated:
+        return true;
+      case NetworkState.unknown:
+        break;
+    }
+
     try {
       final socket = await PhysicalNet.connect('ya.ru', 443, timeout: const Duration(seconds: 5));
       socket.destroy();

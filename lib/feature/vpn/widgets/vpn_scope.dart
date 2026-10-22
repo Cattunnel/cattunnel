@@ -23,6 +23,7 @@ import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/services/vpn_connection_notifier.dart';
 import 'package:trusttunnel/feature/vpn/models/log_controller.dart';
 import 'package:trusttunnel/feature/vpn/models/vpn_aspect.dart';
@@ -116,6 +117,21 @@ typedef UpdateVpnCallback =
 /// The `*Of` methods throw if called outside of a `VpnScope` subtree. Use the
 /// `*MaybeOf` variants if you want a nullable result instead.
 /// {@endtemplate}
+/// What one technique of the round did.
+enum _TechniqueOutcome {
+  /// The tunnel is up.
+  connected,
+
+  /// The handshake was cut (or got no answer): the path to the server is
+  /// cut, and another technique is worth a try.
+  cut,
+
+  /// No TCP connection at all, or nothing happened in time: the server is
+  /// not reachable, no technique helps, and the engine goes on with this
+  /// one.
+  unreachable,
+}
+
 class VpnScope extends StatefulWidget {
   /// Raised when a start never left "disconnected" - the VPN didn't even
   /// begin connecting (e.g. the system refused the VPN interface);
@@ -250,6 +266,10 @@ class _VpnScopeState extends State<VpnScope> {
   /// updates while connected; `null` when not in auto.
   int? _autoAntiDpiMode;
 
+  /// The server the round is for: the technique belongs to it and to
+  /// nobody else.
+  String? _autoServerId;
+
   /// Anti-DPI "auto" is between two techniques: no "disconnected" notice.
   bool _autoSwitching = false;
 
@@ -348,17 +368,34 @@ class _VpnScopeState extends State<VpnScope> {
     _lastServerName = server.serverData.name;
     _currentServerId = server.id;
     _autoAntiDpiMode = null;
+    _autoServerId = null;
     // Windows: diagnostics must reach these while the tunnel owns DNS.
     await PhysicalNet.prime([ServerLatencyTester.parseAddress(server.serverData.ipAddress).$1, 'ya.ru']);
 
     final data = server.serverData;
     if (data.antiDpi && data.antiDpiMode == ServerData.antiDpiAuto) {
-      await _startAntiDpiAuto(
+      await _startWithTechniques(
         attempt: attempt,
         server: server,
         routingProfile: routingProfile,
         excludedRoutes: excludedRoutes,
         logLevel: logLevel,
+        directFirst: false,
+      );
+
+      return;
+    }
+
+    if (!data.antiDpi) {
+      // The subscription says no anti-DPI. The plain connection goes first,
+      // and the techniques follow only if the network says the path is cut.
+      await _startWithTechniques(
+        attempt: attempt,
+        server: server,
+        routingProfile: routingProfile,
+        excludedRoutes: excludedRoutes,
+        logLevel: logLevel,
+        directFirst: true,
       );
 
       return;
@@ -374,84 +411,155 @@ class _VpnScopeState extends State<VpnScope> {
     _watchStartBegins(attempt);
   }
 
-  /// Anti-DPI "auto": the techniques in AntiDpiAuto's order, one round,
-  /// each until it connects or AntiDpiAuto.attemptTimeout; the one that
-  /// connects is remembered for this server and network. None - the VPN is
-  /// stopped and Marsik says so. A stop or another start in between ends
-  /// the round.
+  /// The techniques of one attempt, in order.
+  ///
+  /// With the anti-DPI "auto" in the subscription, the techniques are the
+  /// point. Without it, the plain connection goes first, and the
+  /// techniques follow only if the network says the path is cut - then the
+  /// network remembers that the plain connection does not work here (for
+  /// [AntiDpiAuto.memoryTtl]), and the next time in this network the
+  /// techniques go first.
   ///
   /// The engine's failure (our build; without it the round just times out)
   /// decides what happens after a technique fails:
-  /// - hello_reset - the filter cut this technique: the next one;
-  /// - hello_no_answer - the address looks frozen: no more switching, the
-  ///   engine keeps the technique and waits a minute itself (another
-  ///   technique is another handshake into the freeze). A start while the
-  ///   address is still frozen (ConnectFailures) tries only the first one;
+  /// - hello_reset, hello_no_answer - the path is cut: the next technique;
   /// - connect - no TCP at all, no technique helps: the engine keeps
-  ///   retrying, Marsik's diagnosis explains.
-  Future<void> _startAntiDpiAuto({
+  ///   retrying, the round ends;
+  /// - connect - the server connected: whatever died before is over.
+  Future<void> _startWithTechniques({
     required int attempt,
     required Server server,
     required RoutingProfile routingProfile,
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
+    required bool directFirst,
   }) async {
-    final auto = AntiDpiAuto(context.dependencyFactory.sharedPreferences);
-    final network = await AntiDpiAuto.networkKind();
-    final fullOrder = auto.order(serverId: server.id, network: network);
-    final order = ConnectFailures.isFrozen(server.id) ? fullOrder.take(1).toList() : fullOrder;
+    final preferences = context.dependencyFactory.sharedPreferences;
+    final auto = AntiDpiAuto(preferences);
+    _autoServerId = server.id;
+    final kind = await AntiDpiAuto.networkKind();
+    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final network = fingerprint.key;
+    // The list of the networks shows what kind each of them is.
+    await NetworkFingerprint.rememberKind(preferences, fingerprint);
+    final directFails = auto.directFails(serverId: server.id, network: network);
+    final techniques = <int>[
+      if (directFirst && !directFails) 0,
+      ...auto.order(serverId: server.id, network: network),
+    ];
+    // A frozen address gets one technique only: another handshake into the
+    // freeze only extends it.
+    final planned = ConnectFailures.isFrozen(server.id) ? techniques.take(1).toList() : techniques;
 
-    for (final (index, mode) in order.indexed) {
-      if (!mounted || attempt != _startAttempt) {
-        return;
-      }
-      if (index > 0) {
-        _autoSwitching = true;
-        try {
-          await widget.vpnRepository.stop();
-          await _waitForState(VpnState.disconnected, attempt, const Duration(seconds: 3));
-          // Not right after the previous ClientHello: handshakes milliseconds
-          // apart are one of the freeze triggers.
-          await Future<void>.delayed(AntiDpiAuto.switchPause);
-        } finally {
-          _autoSwitching = false;
-        }
+    // Nothing else may knock on the server's name while the round goes on
+    // (the connection diagnostics wait for it).
+    AntiDpiAuto.running.value = true;
+    try {
+      for (final (index, technique) in planned.indexed) {
         if (!mounted || attempt != _startAttempt) {
           return;
         }
-      }
+        if (index > 0) {
+          _autoSwitching = true;
+          try {
+            await widget.vpnRepository.stop();
+            await _waitForState(VpnState.disconnected, attempt, const Duration(seconds: 3));
+            // Not right after the previous ClientHello: handshakes milliseconds
+            // apart are one of the freeze triggers.
+            await Future<void>.delayed(AntiDpiAuto.switchPause);
+          } finally {
+            _autoSwitching = false;
+          }
+          if (!mounted || attempt != _startAttempt) {
+            return;
+          }
+        }
 
-      _autoAntiDpiMode = mode;
-      final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
-      await widget.vpnRepository.start(
-        server: server.copyWith(serverData: server.serverData.copyWith(antiDpiMode: mode)),
-        routingProfile: routingProfile,
-        excludedRoutes: excludedRoutes,
-        logLevel: logLevel,
-      );
-      if (index == 0) {
-        _watchStartBegins(attempt);
-      }
+        final outcome = await _tryTechnique(
+          attempt: attempt,
+          server: server,
+          routingProfile: routingProfile,
+          excludedRoutes: excludedRoutes,
+          logLevel: logLevel,
+          technique: technique,
+          first: index == 0,
+        );
+        if (outcome == _TechniqueOutcome.connected) {
+          if (technique == 0) {
+            // The plain connection works here: the network is not a DPI one.
+            await auto.forgetDirectFailure(serverId: server.id, network: network);
+          } else {
+            await auto.remember(serverId: server.id, network: network, mode: technique);
+          }
 
-      final outcome = await Future.any<Object?>([
-        _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
-        failure,
-      ]);
-      if (outcome == true) {
-        await auto.remember(serverId: server.id, network: network, mode: mode);
-
-        return;
+          return;
+        }
+        if (outcome == _TechniqueOutcome.unreachable) {
+          return; // the engine goes on with this technique
+        }
+        if (technique == 0) {
+          // The plain connection was cut: the network needs the techniques.
+          await auto.rememberDirectFailure(serverId: server.id, network: network);
+        }
       }
-      if (outcome == ConnectFailure.helloNoAnswer || outcome == ConnectFailure.connect) {
-        return; // the engine goes on with this technique
-      }
+    } finally {
+      AntiDpiAuto.running.value = false;
     }
 
-    if (!mounted || attempt != _startAttempt || order.length < fullOrder.length) {
+    if (!mounted || attempt != _startAttempt) {
       return;
     }
+    // Nothing worked: the next attempt starts with other techniques.
+    await auto.advance(
+      serverId: server.id,
+      network: network,
+      count: planned.where((technique) => technique != 0).length,
+    );
     await _stop();
     VpnScope.antiDpiAutoFailed.value = true;
+  }
+
+  /// One technique of the round: the plain connection (technique 0) or a
+  /// DPI mode.
+  Future<_TechniqueOutcome> _tryTechnique({
+    required int attempt,
+    required Server server,
+    required RoutingProfile routingProfile,
+    required List<String> excludedRoutes,
+    required VpnConfigurationLogLevel logLevel,
+    required int technique,
+    required bool first,
+  }) async {
+    _autoAntiDpiMode = technique == 0 ? null : technique;
+    final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
+    await widget.vpnRepository.start(
+      // The engine takes the mode only with the anti-DPI on: the plain
+      // connection is the server's own setting, a technique turns it on.
+      server: technique == 0
+          ? server
+          : server.copyWith(
+              serverData: server.serverData.copyWith(antiDpi: true, antiDpiMode: technique),
+            ),
+      routingProfile: routingProfile,
+      excludedRoutes: excludedRoutes,
+      logLevel: logLevel,
+    );
+    if (first) {
+      _watchStartBegins(attempt);
+    }
+
+    final outcome = await Future.any<Object?>([
+      _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
+      failure,
+    ]);
+    if (outcome == true) {
+      return _TechniqueOutcome.connected;
+    }
+    if (outcome == ConnectFailure.helloReset || outcome == ConnectFailure.helloNoAnswer) {
+      return _TechniqueOutcome.cut;
+    }
+
+    return _TechniqueOutcome.unreachable;
   }
 
   /// Whether the VPN reaches [target] within [timeout], while [attempt] is
@@ -507,10 +615,11 @@ class _VpnScopeState extends State<VpnScope> {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
   }) => widget.vpnRepository.updateConfiguration(
-    // Anti-DPI "auto" keeps the technique that connected.
+    // The round keeps its technique: the session stays on it, even when the
+    // app rewrites the configuration (the routes changed, the log level).
     server: switch (_autoAntiDpiMode) {
-      final mode? when server.serverData.antiDpiMode == ServerData.antiDpiAuto => server.copyWith(
-        serverData: server.serverData.copyWith(antiDpiMode: mode),
+      final mode? when server.id == _autoServerId => server.copyWith(
+        serverData: server.serverData.copyWith(antiDpi: true, antiDpiMode: mode),
       ),
       _ => server,
     },

@@ -236,7 +236,7 @@
   "blockQuicDescription": "UDP to port 443 is refused: browsers and apps fall back to TCP inside the tunnel",
   "helpExpertBody": "Protocol: HTTP/2 (TCP) or HTTP/3 (QUIC); anti-DPI works with HTTP/2 only.\nCustom SNI: the server name shown in the handshake instead of the domain; the server must accept it.\nSize masking: the first frames of every HTTP/2 stream get random padding (the PADDED flag, part of HTTP/2; the server accepts it as is). The sizes of the tunnel's first requests then differ every time, which makes the VPN harder to recognise. The numbers under the switch say how many frames and how many bytes to add. Costs a little traffic; off by default.\nClient Random: a tag at the start of the handshake random the server recognizes the client by. Set only when the admin says so.",
   "antiDpiAutoFailedTitle": "Couldn't get through",
-  "antiDpiAutoFailedBody": "Mrrr... I tried all three techniques and none reached the server. Try another server or send a report - it shows where it got stuck.",
+  "antiDpiAutoFailedBody": "Mrrr... I tried the plain connection and the techniques, and none reached the server. Try another server or send a report - it shows where it got stuck.",
   "ruExitLabel": "Russian exit (for trips abroad)",
   "ruExitDescription": "This server is in Russia. Only Russian sites and apps (banks, government services, marketplaces) go through it, everything else directly. Don't turn it on for everyday use in Russia: it does the opposite",
   "ruExitPromptTitle": "Is this server in Russia?",
@@ -491,6 +491,8 @@
   "diagStepTls": "Secure connection (TLS)",
   "diagStepAccess": "Access and keys",
   "diagVerdictNoInternet": "Mrrr... Your internet is gone - even Yandex doesn't answer. Check Wi-Fi or mobile data.",
+  "diagVerdictCaptivePortal": "The network is there, but the internet is behind a login, as in a hotel wifi. Sign in in the browser and I'll try again.",
+  "diagVerdictNetworkCuts": "The network is there and the internet works, but the path to the server is cut. The engine saw the connection freeze or die at the same place.",
   "diagVerdictServerTimeout": "The server is silent - the wires got tangled somewhere along the way. Its IP is probably blocked, or the server is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
   "diagVerdictSniBlocked": "Found it! Your provider cuts the connection by the server name (SNI) - that's DPI. With another name the same server answers fine.",
@@ -521,6 +523,68 @@
   "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
   "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",
   "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
+  "diagEngineHandshakeFreeze": "The engine: the handshake went out and nothing came back. The server's address looks frozen by the filter.",
+  "diagEngineCutAfterBytes": "The engine: the connection died at {bytes} bytes, {repeat} times in a row.",
+  "@diagEngineCutAfterBytes": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      },
+      "repeat": {
+        "type": "int"
+      }
+    }
+  },
+  "diagEngineStall": "The engine: the connection came up, but the traffic stopped.",
+  "diagNetwork": "Network: {name}",
+  "@diagNetwork": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "diagNetworkRename": "Rename the network",
+  "diagNetworkRenameTitle": "Name of the network",
+  "diagNetworkRenameHint": "For example: Home, University",
+  "diagNetworkRenameSave": "Save",
+  "networkKindWifi": "Wi-Fi",
+  "networkKindMobile": "Mobile network",
+  "networkKindEthernet": "Ethernet",
+  "networkKindOther": "Network",
+  "networksTitle": "Networks",
+  "networksEmpty": "The networks where the plain connection does not work will show up here.",
+  "networksRename": "Rename",
+  "networksForget": "Forget the network",
+  "networksForgetTitle": "Forget the network?",
+  "networksForgetDescription": "The app will try the plain connection here again, as in any other network.",
+  "networksForgetAll": "Forget all the networks",
+  "networksForgetAllTitle": "Forget all the networks?",
+  "networksForgetAllDescription": "The app will forget where it needs the bypass and try the plain connection everywhere.",
+  "networksDirectUntil": "The plain connection does not work here until {date}",
+  "@networksDirectUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "networksMode": "The technique {mode} worked",
+  "@networksMode": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "networksModes": "The techniques {modes} worked",
+  "@networksModes": {
+    "placeholders": {
+      "modes": {
+        "type": "String"
+      }
+    }
+  },
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
   "shareSubscriptionTitle": "Scan with CatTunnel",
@@ -742,6 +806,8 @@
   "reportProblem": "Report a problem",
   "reportTitle": "Problem report",
   "reportDescription": "This goes to the chat you pick, together with the last lines of the connection log. Logins, passwords and keys are cut out.",
+  "reportDetailedLog": "Detailed log for 10 minutes",
+  "reportDetailedLogDescription": "The engine log writes everything, the connection attempts included. The setting goes back on its own in 10 minutes.",
   "splitTitle": "Split tunneling",
   "splitSitesTitle": "Sites and IPs",
   "splitSitesDescription": "Domains and addresses that go direct, around the VPN",

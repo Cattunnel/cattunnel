@@ -10,6 +10,9 @@ namespace cattunnel_helper {
 inline constexpr size_t kMaxConfigBytes = 1024 * 1024;
 inline constexpr size_t kMaxListItems = 50000;
 
+/** The longest XHTTP path prefix the app may write. */
+inline constexpr size_t kMaxXhttpPathLength = 256;
+
 /**
  * Whether the CLI config [toml] may be run as root: valid TOML, only the keys
  * the app's encoder writes (lib/domain/configuration_codec.dart), no file

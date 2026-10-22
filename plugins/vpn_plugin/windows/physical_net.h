@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace vpn_plugin {
 
@@ -48,6 +49,16 @@ class PhysicalNet {
      * @return "ok", "timeout", "refused" or "failed".
      */
     static std::string ProbeTcp(const std::string& ip, int port, int timeout_ms);
+
+    /**
+     * What tells one network from another: the gateway of the physical
+     * adapter and its DNS servers (lib/feature/vpn/domain/network_fingerprint.dart).
+     * Empty when there is no adapter with a gateway.
+     */
+    static std::string FingerprintGateway();
+
+    /** The DNS servers of the physical adapter. */
+    static std::vector<std::string> FingerprintDnsServers();
 
  private:
     void AcceptLoop();

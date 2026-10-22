@@ -43,6 +43,57 @@ mtu_size = 1280
 
 TEST(CheckConfig, AcceptsWhatTheAppWrites) { EXPECT_EQ(CheckConfig(kGood), std::nullopt); }
 
+// The expert settings ("For experts" in the app): the traffic shaper, the
+// keepalive and the XHTTP transport.
+constexpr const char* kExpert = R"(
+h2_padding_frames = 8
+h2_padding_frames_min = 2
+h2_padding_per_stream = true
+h2_padding_min_bytes = 1
+h2_padding_max_bytes = 64
+h2_padding_stream_bytes = 2048
+h2_padding_session_bytes = 4096
+keepalive_interval_secs = 30
+keepalive_signal = "check"
+session_lifetime_secs = 3600
+xhttp_enable = true
+xhttp_path = "/api/v2/"
+)";
+
+/** [kGood] with [extra] added to its [endpoint] section. */
+std::string WithEndpointExtra(const std::string& extra) {
+    std::string config = kGood;
+    config.insert(config.find("\n[listener]"), "\n" + extra);
+
+    return config;
+}
+
+TEST(CheckConfig, AcceptsTheExpertSettings) { EXPECT_EQ(CheckConfig(WithEndpointExtra(kExpert)), std::nullopt); }
+
+TEST(CheckConfig, RefusesExpertNumbersOutOfRange) {
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_frames = 65\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_frames_min = 65\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_min_bytes = 257\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_max_bytes = 257\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_stream_bytes = 1048577\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_session_bytes = 1048577\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("keepalive_interval_secs = 3601\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("session_lifetime_secs = 86401\n")), std::nullopt);
+    // Negative numbers are out of range too.
+    EXPECT_NE(CheckConfig(WithEndpointExtra("h2_padding_min_bytes = -1\n")), std::nullopt);
+}
+
+TEST(CheckConfig, RefusesAnUnknownKeepaliveSignal) {
+    EXPECT_NE(CheckConfig(WithEndpointExtra("keepalive_signal = \"pong\"\n")), std::nullopt);
+    EXPECT_EQ(CheckConfig(WithEndpointExtra("keepalive_signal = \"ping\"\n")), std::nullopt);
+}
+
+TEST(CheckConfig, RefusesAnXhttpPathThatIsNotAPath) {
+    EXPECT_NE(CheckConfig(WithEndpointExtra("xhttp_path = \"api/v2/\"\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("xhttp_path = \"/api\\r\\nX-Injected: 1\"\n")), std::nullopt);
+    EXPECT_NE(CheckConfig(WithEndpointExtra("xhttp_path = \"/" + std::string(300, 'a') + "\"\n")), std::nullopt);
+}
+
 TEST(CheckConfig, RefusesUnknownKeysAnywhere) {
     EXPECT_NE(CheckConfig(std::string(kGood) + "logfile = \"/etc/shadow\"\n"), std::nullopt);  // in [listener.tun]
     EXPECT_NE(CheckConfig(std::string("certificate_path = \"/root/x\"\n") + kGood), std::nullopt);

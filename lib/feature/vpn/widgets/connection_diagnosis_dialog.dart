@@ -17,8 +17,12 @@ import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
+import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
+import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 
@@ -61,12 +65,27 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   bool _connectedMeanwhile = false;
   Timer? _autoCloseTimer;
 
+  /// The network the person is on, for the name of it.
+  NetworkFingerprint? _fingerprint;
+
   @override
   void initState() {
     super.initState();
     _bobController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
       ..repeat(reverse: true);
     unawaited(_run());
+    unawaited(_loadNetwork());
+  }
+
+  /// The list of the networks: there the name is changed and a network can
+  /// be forgotten.
+  void _openNetworks() => context.push(const NetworksScreen());
+
+  Future<void> _loadNetwork() async {
+    final kind = await AntiDpiAuto.networkKind();
+    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    if (!mounted) return;
+    setState(() => _fingerprint = fingerprint);
   }
 
   @override
@@ -185,6 +204,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
     return switch (result.verdict) {
       DiagnosisVerdict.noInternet => AssetImages.catSleeping,
+      DiagnosisVerdict.captivePortal => AssetImages.catSleeping,
+      DiagnosisVerdict.networkCuts => AssetImages.catWires,
       DiagnosisVerdict.serverTimeout ||
       DiagnosisVerdict.tlsBlocked ||
       DiagnosisVerdict.trafficBlocked => AssetImages.catWires,
@@ -200,6 +221,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
   String _verdictText(DiagnosisVerdict verdict) => switch (verdict) {
     DiagnosisVerdict.noInternet => context.ln.diagVerdictNoInternet,
+    DiagnosisVerdict.captivePortal => context.ln.diagVerdictCaptivePortal,
+    DiagnosisVerdict.networkCuts => context.ln.diagVerdictNetworkCuts,
     DiagnosisVerdict.serverTimeout => context.ln.diagVerdictServerTimeout,
     DiagnosisVerdict.serverRefused => context.ln.diagVerdictServerRefused,
     DiagnosisVerdict.sniBlocked => context.ln.diagVerdictSniBlocked,
@@ -212,6 +235,17 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.addressFrozen => context.ln.diagVerdictAddressFrozen,
     DiagnosisVerdict.clockWrong => context.ln.diagVerdictClockWrong,
   };
+
+  /// What the engine saw, in the person's words.
+  String? _engineText(ConnectionDiagnosis? result) {
+    final engine = result?.engine;
+    if (engine == null) return null;
+    if (engine.isHandshakeFreeze) return context.ln.diagEngineHandshakeFreeze;
+    if (engine.isCut) return context.ln.diagEngineCutAfterBytes(engine.cutBytes, engine.repeat);
+    if (engine.isStall) return context.ln.diagEngineStall;
+
+    return null;
+  }
 
   String _stepLabel(DiagnosisStep step) => switch (step) {
     DiagnosisStep.internet => context.ln.diagStepInternet,
@@ -268,11 +302,19 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                         extra: !_connectedMeanwhile && result?.alternative != null
                             ? context.ln.diagAlternative(result!.alternative!.serverData.name)
                             : null,
+                        engine: _connectedMeanwhile ? null : _engineText(result),
                       ),
                     )
                   : const SizedBox(width: double.infinity),
             ),
             const SizedBox(height: 16),
+            if (_fingerprint != null) ...[
+              _NetworkRow(
+                name: networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
+                onOpen: _openNetworks,
+              ),
+              const SizedBox(height: 8),
+            ],
             _buildActions(context, result),
           ],
         ),
@@ -313,8 +355,30 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   }
 }
 
-class _StepRow extends StatelessWidget {
-  final String label;
+/// The name of the network, and a way to open the list of the networks:
+/// there the name is changed and the network can be forgotten.
+class _NetworkRow extends StatelessWidget {
+  final String name;
+  final VoidCallback onOpen;
+
+  const _NetworkRow({required this.name, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onOpen,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: Text(context.ln.diagNetwork(name))),
+          Icon(Icons.navigate_next, color: context.colors.neutralDark),
+        ],
+      ),
+    ),
+  );
+}
+
+class _StepRow extends StatelessWidget {  final String label;
   final DiagnosisStepStatus status;
   final Color okColor;
 
@@ -375,7 +439,10 @@ class _SpeechBubble extends StatelessWidget {
   final String text;
   final String? extra;
 
-  const _SpeechBubble({required this.text, this.extra});
+  /// What the engine saw, under the verdict.
+  final String? engine;
+
+  const _SpeechBubble({required this.text, this.extra, this.engine});
 
   @override
   Widget build(BuildContext context) {
@@ -400,6 +467,13 @@ class _SpeechBubble extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(text, style: context.textTheme.bodyMedium),
+              if (engine != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  engine!,
+                  style: context.textTheme.bodySmall,
+                ),
+              ],
               if (extra != null) ...[
                 const SizedBox(height: 8),
                 Text(

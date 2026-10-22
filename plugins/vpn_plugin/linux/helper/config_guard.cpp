@@ -29,7 +29,27 @@ const Schema kEndpointKeys = {
         {"upstream_protocol", Kind::kString}, {"upstream_fallback_protocol", Kind::kString},
         {"anti_dpi", Kind::kBool}, {"anti_dpi_mode", Kind::kInt}, {"tls_profile", Kind::kString}, {"client_random_auth_key", Kind::kString}, {"anti_dpi_desync", Kind::kString}, {"h2_padding_frames", Kind::kInt}, {"block_quic", Kind::kBool}, {"dns_upstreams", Kind::kStrings},
         {"name", Kind::kString},
+        // The expert settings ("For experts" in the app): the traffic shaper,
+        // the keepalive and the XHTTP transport.
+        {"h2_padding_frames_min", Kind::kInt}, {"h2_padding_per_stream", Kind::kBool},
+        {"h2_padding_min_bytes", Kind::kInt}, {"h2_padding_max_bytes", Kind::kInt},
+        {"h2_padding_stream_bytes", Kind::kInt}, {"h2_padding_session_bytes", Kind::kInt},
+        {"keepalive_interval_secs", Kind::kInt}, {"keepalive_signal", Kind::kString},
+        {"session_lifetime_secs", Kind::kInt}, {"xhttp_enable", Kind::kBool}, {"xhttp_path", Kind::kString},
 };
+
+// The engine clamps the numbers to the same limits (see the app's
+// ConfigurationCodecKeys); a value outside them is a hand-written config, not
+// something the app produced.
+constexpr int64_t kPaddingFramesMax = 64;
+constexpr int64_t kPaddingBytesMax = 256;
+constexpr int64_t kPaddingBudgetMax = 1048576;
+constexpr int64_t kKeepaliveIntervalMax = 3600;
+constexpr int64_t kSessionLifetimeMax = 86400;
+
+// The keepalive signal the engine knows.
+constexpr const char* kKeepaliveSignalCheck = "check";
+constexpr const char* kKeepaliveSignalPing = "ping";
 const Schema kListenerKeys = {{"tun", Kind::kTable}, {"socks", Kind::kTable}};
 const Schema kTunKeys = {
         {"included_routes", Kind::kStrings}, {"excluded_routes", Kind::kStrings}, {"mtu_size", Kind::kInt},
@@ -71,6 +91,48 @@ bool IsLoopbackListen(std::string_view address) {
            address.rfind("localhost:", 0) == 0;
 }
 
+/** Whether the number [key] of [table] is within [min]..[max]. */
+std::optional<std::string> CheckRange(const toml::table& table, std::string_view key, int64_t min, int64_t max) {
+    const auto it = table.find(std::string(key));
+    if (it == table.end()) return std::nullopt;
+    const auto value = it->second.value<int64_t>();
+    if (!value) return std::string("not a number: ") + std::string(key);
+    if (*value < min || *value > max) {
+        return std::string("value out of range: ") + std::string(key);
+    }
+    return std::nullopt;
+}
+
+/** The keepalive signal is one the engine knows. */
+std::optional<std::string> CheckKeepaliveSignal(const toml::table& table) {
+    const auto it = table.find("keepalive_signal");
+    if (it == table.end()) return std::nullopt;
+    const auto signal = it->second.value<std::string>();
+    if (!signal) return "keepalive_signal: not a string";
+    if (*signal != kKeepaliveSignalCheck && *signal != kKeepaliveSignalPing) {
+        return "keepalive_signal: unknown signal";
+    }
+    return std::nullopt;
+}
+
+/**
+ * The XHTTP path prefix goes into an HTTP request line as it is: it has to
+ * look like a path, with no spaces and nothing that would split the line.
+ */
+std::optional<std::string> CheckXhttpPath(const toml::table& table) {
+    const auto it = table.find("xhttp_path");
+    if (it == table.end()) return std::nullopt;
+    const auto path = it->second.value<std::string>();
+    if (!path) return "xhttp_path: not a string";
+    if (path->empty() || path->front() != '/' || path->size() > kMaxXhttpPathLength) {
+        return "xhttp_path: not a path prefix";
+    }
+    for (const char c : *path) {
+        if (c <= ' ' || c == 0x7f) return "xhttp_path: not a path prefix";
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 std::optional<std::string> CheckConfig(std::string_view text) {
@@ -88,6 +150,19 @@ std::optional<std::string> CheckConfig(std::string_view text) {
     const auto* endpoint = config["endpoint"].as_table();
     if (endpoint == nullptr) return "no [endpoint]";
     if (auto error = CheckKeys(*endpoint, kEndpointKeys, "endpoint.")) return error;
+
+    // The numbers of the expert settings, and the two strings with a fixed
+    // set of values.
+    if (auto error = CheckRange(*endpoint, "h2_padding_frames", 0, kPaddingFramesMax)) return error;
+    if (auto error = CheckRange(*endpoint, "h2_padding_frames_min", 0, kPaddingFramesMax)) return error;
+    if (auto error = CheckRange(*endpoint, "h2_padding_min_bytes", 0, kPaddingBytesMax)) return error;
+    if (auto error = CheckRange(*endpoint, "h2_padding_max_bytes", 0, kPaddingBytesMax)) return error;
+    if (auto error = CheckRange(*endpoint, "h2_padding_stream_bytes", 0, kPaddingBudgetMax)) return error;
+    if (auto error = CheckRange(*endpoint, "h2_padding_session_bytes", 0, kPaddingBudgetMax)) return error;
+    if (auto error = CheckRange(*endpoint, "keepalive_interval_secs", 0, kKeepaliveIntervalMax)) return error;
+    if (auto error = CheckRange(*endpoint, "session_lifetime_secs", 0, kSessionLifetimeMax)) return error;
+    if (auto error = CheckKeepaliveSignal(*endpoint)) return error;
+    if (auto error = CheckXhttpPath(*endpoint)) return error;
 
     if (const auto* listener = config["listener"].as_table()) {
         if (auto error = CheckKeys(*listener, kListenerKeys, "listener.")) return error;

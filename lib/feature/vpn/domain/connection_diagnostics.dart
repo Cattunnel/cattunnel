@@ -11,8 +11,12 @@ import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/data/repository/server_repository.dart';
 import 'package:trusttunnel/data/repository/subscription_repository.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.dart';
+import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
+import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_state.dart';
 import 'package:trusttunnel/feature/vpn/domain/server_tls.dart';
+import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 enum DiagnosisStep { internet, server, tls, access }
 
@@ -21,6 +25,15 @@ enum DiagnosisStepStatus { pending, running, ok, failed, skipped }
 enum DiagnosisVerdict {
   /// Even a well-known domestic host is unreachable.
   noInternet,
+
+  /// The network is there, but it needs a login before it lets anything
+  /// through (a hotel or an airport wifi).
+  captivePortal,
+
+  /// The network is there and reaches the internet, but the path to the
+  /// server is cut: the engine's own verdict (a frozen address, a cut
+  /// after a fixed number of bytes, a session that went silent).
+  networkCuts,
 
   /// TCP connect to the server timed out - IP blocked, or the host is down.
   serverTimeout,
@@ -78,10 +91,15 @@ class ConnectionDiagnosis {
   /// current one looks blocked.
   final Server? alternative;
 
+  /// What the engine said about the last session to this server, when it
+  /// said something about the path rather than about the credentials.
+  final NetDiagnostic? engine;
+
   const ConnectionDiagnosis({
     required this.verdict,
     this.updatedServer,
     this.alternative,
+    this.engine,
   });
 }
 
@@ -199,6 +217,21 @@ class ConnectionDiagnostics {
       return recent.$2;
     }
 
+    // The anti-DPI "auto" is switching techniques right now. Its
+    // handshakes and ours would go to one name at the same time, and three
+    // of them close to each other are what a filter's "freeze" keys on. So
+    // we wait for the round to end instead of adding to it.
+    if (AntiDpiAuto.running.value) {
+      await _waitForAntiDpiAuto();
+      if (AntiDpiAuto.running.value) {
+        for (final step in DiagnosisStep.values) {
+          onStep(step, DiagnosisStepStatus.skipped);
+        }
+
+        return const ConnectionDiagnosis(verdict: DiagnosisVerdict.inconclusive);
+      }
+    }
+
     final diagnosis = await _run(server, otherServers: otherServers, onStep: onStep);
     if (_networkVerdicts.contains(diagnosis.verdict)) {
       _recentVerdicts[cacheKey] = (DateTime.now(), diagnosis);
@@ -206,6 +239,24 @@ class ConnectionDiagnostics {
 
     return diagnosis;
   }
+
+  /// How long to wait for the anti-DPI round: two techniques, a pause
+  /// between them and the timeout of each.
+  static const _autoWait = Duration(seconds: 20);
+
+  Future<void> _waitForAntiDpiAuto() async {
+    final until = DateTime.now().add(_autoWait);
+    while (AntiDpiAuto.running.value && DateTime.now().isBefore(until)) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
+  /// Whether the engine's verdict says the path to the server was cut: a
+  /// frozen address, a cut after a fixed number of bytes, a session that
+  /// went silent. An error from the server is not the network's doing.
+  @visibleForTesting
+  static bool isCutVerdict(NetDiagnostic verdict) =>
+      verdict.isHandshakeFreeze || verdict.isCut || verdict.isStall;
 
   Future<ConnectionDiagnosis> _run(
     Server server, {
@@ -225,16 +276,56 @@ class ConnectionDiagnostics {
       return ConnectionDiagnosis(verdict: verdict, alternative: await _findWorkingServer(otherServers));
     }
 
+    // 0. What the engine saw in the last session to this server: a frozen
+    // address, a cut after a fixed number of bytes, a session that went
+    // silent. That is the network's verdict, and no probe of ours can say
+    // more - every probe is another handshake to the same name, and a burst
+    // of them is what a filter's "freeze" keys on.
+    final engine = NetDiagnostics.recent(server.id, within: NetDiagnostics.freshWindow);
+    if (engine != null && isCutVerdict(engine)) {
+      onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
+      skipFrom(DiagnosisStep.internet);
+
+      return ConnectionDiagnosis(
+        verdict: DiagnosisVerdict.networkCuts,
+        engine: engine,
+        alternative: await _findWorkingServer(otherServers),
+      );
+    }
+
     // 1. Internet at all.
+    //
+    // The system checks the network itself (Android knows whether it
+    // reaches the internet and whether it is a login page), and its word is
+    // worth more than our probe: it tells "no network" from "the network
+    // needs a login" apart, and it costs no handshake. Where the system
+    // has not checked (or could not), the reference host is asked, as on
+    // the desktop.
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.running);
-    final internet =
+    final network = await NetworkStates.current();
+    final internet = switch (network) {
+      // There is no network, or the network is a login page.
+      NetworkState.none || NetworkState.captivePortal => false,
+      // The system checked the network and it reaches the internet.
+      NetworkState.validated => true,
+      // The system has not checked (or could not): the reference host is
+      // the control group, without it a dead uplink would look like a
+      // blocked server.
+      NetworkState.unvalidated || NetworkState.unknown =>
         await _tcp(_referenceHost, _referencePort) == _ProbeOutcome.ok ||
-        await _tcp(_referenceDnsIp, 53) == _ProbeOutcome.ok;
+            await _tcp(_referenceDnsIp, 53) == _ProbeOutcome.ok,
+    };
     if (!internet) {
       onStep(DiagnosisStep.internet, DiagnosisStepStatus.failed);
       skipFrom(DiagnosisStep.internet);
 
-      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.noInternet);
+      // No network: another server would not help either, and every probe
+      // of it is a handshake for nothing.
+      return ConnectionDiagnosis(
+        verdict: network == NetworkState.captivePortal
+            ? DiagnosisVerdict.captivePortal
+            : DiagnosisVerdict.noInternet,
+      );
     }
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
 

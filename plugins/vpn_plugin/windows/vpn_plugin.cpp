@@ -205,6 +205,20 @@ void VpnPlugin::HandlePhysicalNet(const flutter::MethodCall<flutter::EncodableVa
         return;
     }
 
+    if (call.method_name() == "fingerprint") {
+        const auto gateway = PhysicalNet::FingerprintGateway();
+        const auto servers = PhysicalNet::FingerprintDnsServers();
+        flutter::EncodableList dns;
+        for (const auto& server : servers) {
+            dns.push_back(EncodableValue(server));
+        }
+        result->Success(EncodableValue(EncodableMap{
+                {EncodableValue("gateway"), EncodableValue(gateway)},
+                {EncodableValue("dns"), EncodableValue(dns)},
+        }));
+        return;
+    }
+
     result->NotImplemented();
 }
 
