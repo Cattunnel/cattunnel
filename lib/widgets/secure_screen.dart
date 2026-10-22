@@ -10,10 +10,24 @@ import 'package:flutter/widgets.dart';
 /// age key or share QR. Not app-wide on purpose: family members screenshot
 /// errors to ask for help. Nested instances are counted, so closing one of
 /// two stacked secure screens doesn't lift the flag early.
+///
+/// [allowScreenshots] (Cyber security -> "Block screenshots" off) turns the
+/// whole thing off; it is loaded at start-up, see App.
 class SecureScreen extends StatefulWidget {
   final Widget child;
 
+  static bool allowScreenshots = false;
+
   const SecureScreen({super.key, required this.child});
+
+  /// Applies the setting at once, also to a secure screen that is open now
+  /// (the Cyber security screen itself is one under the app lock).
+  static Future<void> setAllowScreenshots(bool value) async {
+    allowScreenshots = value;
+    if (_SecureScreenState._active > 0) {
+      await _SecureScreenState._setSecure(!value);
+    }
+  }
 
   @override
   State<SecureScreen> createState() => _SecureScreenState();
@@ -26,7 +40,7 @@ class _SecureScreenState extends State<SecureScreen> {
   @override
   void initState() {
     super.initState();
-    if (_active++ == 0) {
+    if (_active++ == 0 && !SecureScreen.allowScreenshots) {
       unawaited(_setSecure(true));
     }
   }

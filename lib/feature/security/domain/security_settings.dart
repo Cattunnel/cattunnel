@@ -11,6 +11,7 @@ class SecuritySettings {
   static const _panicButtonKey = 'security_panic_button';
   static const _appLockKey = 'security_app_lock';
   static const _disguiseKey = 'security_disguise';
+  static const _allowScreenshotsKey = 'security_allow_screenshots';
 
   final SharedPreferences _preferences;
 
@@ -36,4 +37,11 @@ class SecuritySettings {
   bool get disguise => _preferences.getBool(_disguiseKey) ?? false;
 
   Future<void> setDisguise(bool value) => _preferences.setBool(_disguiseKey, value);
+
+  /// Off by default: screens with keys (the whole app under the app lock)
+  /// are kept out of screenshots, see SecureScreen. On lifts that for every
+  /// screen, e.g. to capture an error for the admin.
+  bool get allowScreenshots => _preferences.getBool(_allowScreenshotsKey) ?? false;
+
+  Future<void> setAllowScreenshots(bool value) => _preferences.setBool(_allowScreenshotsKey, value);
 }
