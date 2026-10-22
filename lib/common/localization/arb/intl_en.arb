@@ -600,6 +600,8 @@
   "leakCheck": "Leak check",
   "trustUserCas": "Strict server certificate check",
   "trustUserCasDescription": "On: the VPN verifies the server against Android's system certificates only - without the Russian Ministry one or any other manually installed. Servers with their own certificate (PEM) are always verified against it. Turn it off only if the VPN won't connect because of it (Marsik will tell you) or your provider asked you to install their certificate.",
+  "blockScreenshots": "Block screenshots",
+  "blockScreenshotsDescription": "Screens with keys (the whole app while the app lock is on) stay out of screenshots and screen recordings. Turn it off to capture an error for the admin, then turn it back on.",
   "trustCasStep1": "Meow... Do you really want to turn off the strict check? The VPN will then trust manually installed certificates again - one of them may be the Russian Ministry one, and with it your VPN can be decrypted, login and password included.",
   "trustCasStep2": "This exposes not only you but also whoever runs the server: everything is visible in a decrypted tunnel. Really sure?",
   "trustCasStep3": "Last time I ask! Turn it off only if the VPN won't connect otherwise or your provider asked you to. Turn it off?",

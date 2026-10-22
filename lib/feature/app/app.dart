@@ -16,6 +16,7 @@ import 'package:trusttunnel/feature/security/widgets/app_lock_gate.dart';
 import 'package:trusttunnel/feature/updates/widgets/update_watcher.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_watchdog.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
+import 'package:trusttunnel/widgets/secure_screen.dart';
 
 class App extends StatefulWidget {
   const App({super.key});
@@ -30,6 +31,7 @@ class _AppState extends State<App> {
     super.initState();
     AppLocalePreferences.load(context.dependencyFactory.sharedPreferences);
     AppearancePreferences.load(context.dependencyFactory.sharedPreferences);
+    SecureScreen.allowScreenshots = SecuritySettings(context.dependencyFactory.sharedPreferences).allowScreenshots;
     unawaited(_syncDisguise());
   }
 

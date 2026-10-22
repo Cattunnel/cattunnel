@@ -13,6 +13,7 @@ import 'package:trusttunnel/widgets/common/custom_arrow_list_tile.dart';
 import 'package:trusttunnel/widgets/common/custom_switch_tile.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
+import 'package:trusttunnel/widgets/secure_screen.dart';
 
 /// Settings -> Cyber security: Marsik's checks, the user-CA protection (on by
 /// default) and the opt-in extras (panic button, disguise, app lock).
@@ -30,6 +31,7 @@ class _CyberSecurityScreenState extends State<CyberSecurityScreen> {
   late bool _trustUserCas;
   late bool _panicButton;
   late bool _appLock;
+  late bool _allowScreenshots;
   bool _disguise = false;
 
   @override
@@ -39,6 +41,7 @@ class _CyberSecurityScreenState extends State<CyberSecurityScreen> {
     _trustUserCas = _settings.trustUserCas;
     _panicButton = _settings.panicButton;
     _appLock = _settings.appLock;
+    _allowScreenshots = _settings.allowScreenshots;
     _disguise = _settings.disguise;
 
     // The launcher alias is the source of truth (e.g. after a panic wipe
@@ -140,6 +143,14 @@ class _CyberSecurityScreenState extends State<CyberSecurityScreen> {
     }
   }
 
+  Future<void> _setAllowScreenshots(bool value) async {
+    await _settings.setAllowScreenshots(value);
+    await SecureScreen.setAllowScreenshots(value);
+    if (mounted) {
+      setState(() => _allowScreenshots = value);
+    }
+  }
+
   Widget _header(String text) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
     child: Text(text, style: context.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
@@ -173,6 +184,13 @@ class _CyberSecurityScreenState extends State<CyberSecurityScreen> {
             subtitle: context.ln.trustUserCasDescription,
             value: !_trustUserCas,
             onChanged: (strict) => _setTrustUserCas(!strict),
+          ),
+          // Shown as "block screenshots: on" - the stored setting is its inverse.
+          CustomSwitchTile(
+            title: context.ln.blockScreenshots,
+            subtitle: context.ln.blockScreenshotsDescription,
+            value: !_allowScreenshots,
+            onChanged: (block) => _setAllowScreenshots(!block),
           ),
           const Divider(),
           _header(context.ln.cyberOptionalHeader),
