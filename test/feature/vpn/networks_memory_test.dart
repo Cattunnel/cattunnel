@@ -49,7 +49,7 @@ void main() {
     final auto = AntiDpiAuto(preferences);
     final now = DateTime(2026, 10, 21, 12);
 
-    await auto.rememberDirectFailure(serverId: 'server-1', network: network.key);
+    await auto.rememberDirectFailure(serverId: 'server-1', network: network.key, now: now);
     final until = NetworksMemory.all(preferences, now: now).first.directFailsUntil;
 
     expect(until, isNotNull);

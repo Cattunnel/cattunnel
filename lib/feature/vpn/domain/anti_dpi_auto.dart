@@ -118,8 +118,15 @@ class AntiDpiAuto {
   }
 
   /// Remembers that the plain connection does not work in this network.
-  Future<void> rememberDirectFailure({required String serverId, required String network}) =>
-      _preferences.setInt(_directKey(serverId, network), DateTime.now().millisecondsSinceEpoch);
+  Future<void> rememberDirectFailure({
+    required String serverId,
+    required String network,
+    DateTime? now,
+  }) =>
+      _preferences.setInt(
+        _directKey(serverId, network),
+        (now ?? DateTime.now()).millisecondsSinceEpoch,
+      );
 
   /// The plain connection worked: the network is not a DPI one.
   Future<void> forgetDirectFailure({required String serverId, required String network}) =>

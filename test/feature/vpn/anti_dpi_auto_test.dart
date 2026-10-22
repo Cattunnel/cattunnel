@@ -44,7 +44,7 @@ void main() {
 
     expect(auto.directFails(serverId: '7', network: 'net1', now: now), isFalse);
 
-    await auto.rememberDirectFailure(serverId: '7', network: 'net1');
+    await auto.rememberDirectFailure(serverId: '7', network: 'net1', now: now);
     expect(auto.directFails(serverId: '7', network: 'net1', now: now), isTrue);
     // Another network is another network.
     expect(auto.directFails(serverId: '7', network: 'net2', now: now), isFalse);
