@@ -56,6 +56,7 @@ import 'package:trusttunnel/data/ru_lists/ru_lists_service.dart';
 import 'package:trusttunnel/feature/app/controller/app_window_controller.dart';
 import 'package:trusttunnel/feature/app/controller/desktop_app_window_controller.dart';
 import 'package:trusttunnel/feature/app/controller/macos_app_window_controller.dart';
+import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:vpn_plugin/deep_link_manager.dart';
 import 'package:vpn_plugin/vpn_plugin.dart';
 
@@ -349,6 +350,7 @@ class DependencyFactoryImpl implements DependencyFactory {
     subscriptionDataSource: subscriptionDataSource,
     serverDataSource: serverDataSource,
     pinStore: sharedPreferences,
+    onAntiDpiEnabled: (serverId) => AntiDpiAuto(sharedPreferences).forgetServer(serverId),
   );
 
   @override

@@ -24,6 +24,7 @@ import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/domain/services/vpn_connection_notifier.dart';
 import 'package:trusttunnel/feature/vpn/models/log_controller.dart';
 import 'package:trusttunnel/feature/vpn/models/vpn_aspect.dart';
@@ -132,6 +133,43 @@ enum _TechniqueOutcome {
   unreachable,
 }
 
+/// One step of the anti-DPI "auto", in words the home screen can show
+/// under the connect button.
+enum AntiDpiStep { tryingDirect, cut, tryingTechnique, worked, failed }
+
+class AntiDpiStatus {
+  final AntiDpiStep step;
+
+  /// The technique being tried: 1-based among the techniques (not the
+  /// plain connection).
+  final int index;
+  final int total;
+  final int? mode;
+
+  /// The network as the person knows it: the operator on mobile, the name
+  /// or the automatic one elsewhere.
+  final String networkName;
+
+  /// The plain connection worked (for [AntiDpiStep.worked]).
+  final bool plainWorked;
+
+  /// How many techniques the failed round tried, and whether it tried the
+  /// plain connection first.
+  final int bypassTried;
+  final bool triedPlain;
+
+  const AntiDpiStatus({
+    required this.step,
+    this.index = 0,
+    this.total = 0,
+    this.mode,
+    this.networkName = '',
+    this.plainWorked = false,
+    this.bypassTried = 0,
+    this.triedPlain = false,
+  });
+}
+
 class VpnScope extends StatefulWidget {
   /// Raised when a start never left "disconnected" - the VPN didn't even
   /// begin connecting (e.g. the system refused the VPN interface);
@@ -141,6 +179,10 @@ class VpnScope extends StatefulWidget {
   /// Raised when anti-DPI "auto" went through every technique and none
   /// connected; ConnectionWatchdog shows Marsik's alert and resets it.
   static final antiDpiAutoFailed = ValueNotifier<bool>(false);
+
+  /// What the anti-DPI "auto" is doing right now, for the line under the
+  /// connect button; null when there is nothing to say.
+  static final antiDpiStatus = ValueNotifier<AntiDpiStatus?>(null);
 
   final AppWindowController? appWindowController;
 
@@ -281,6 +323,8 @@ class _VpnScopeState extends State<VpnScope> {
   DateTime _lastStartAt = DateTime.fromMillisecondsSinceEpoch(0);
   static const _sameStartWindow = Duration(seconds: 3);
 
+  Timer? _antiDpiStatusTimer;
+
   @override
   void initState() {
     super.initState();
@@ -353,6 +397,7 @@ class _VpnScopeState extends State<VpnScope> {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
   }) async {
+    _clearAntiDpiStatus();
     final key = Object.hash(server, routingProfile, Object.hashAll(excludedRoutes), logLevel);
     final now = DateTime.now();
     if (key == _lastStartKey && now.difference(_lastStartAt) < _sameStartWindow) {
@@ -435,6 +480,7 @@ class _VpnScopeState extends State<VpnScope> {
     required bool directFirst,
   }) async {
     final preferences = context.dependencyFactory.sharedPreferences;
+    final ln = context.ln;
     final auto = AntiDpiAuto(preferences);
     _autoServerId = server.id;
     final kind = await AntiDpiAuto.networkKind();
@@ -442,7 +488,8 @@ class _VpnScopeState extends State<VpnScope> {
     final network = fingerprint.key;
     // The list of the networks shows what kind each of them is.
     await NetworkFingerprint.rememberKind(preferences, fingerprint);
-    final directFails = auto.directFails(serverId: server.id, network: network);
+    final directFails = auto.directFails(serverId: server.id, network: network, kind: kind);
+    final networkName = networkNameByKey(ln, preferences, network, kind);
     final techniques = <int>[
       if (directFirst && !directFails) 0,
       ...auto.order(serverId: server.id, network: network),
@@ -454,7 +501,12 @@ class _VpnScopeState extends State<VpnScope> {
     // Nothing else may knock on the server's name while the round goes on
     // (the connection diagnostics wait for it).
     AntiDpiAuto.running.value = true;
+    AntiDpiAuto.lastRound.value = null;
+    final triedModes = <int>[];
+    var pathCut = false;
     try {
+      final bypassTotal = planned.where((technique) => technique != 0).length;
+      var bypassTried = 0;
       for (final (index, technique) in planned.indexed) {
         if (!mounted || attempt != _startAttempt) {
           return;
@@ -475,6 +527,21 @@ class _VpnScopeState extends State<VpnScope> {
           }
         }
 
+        if (technique == 0) {
+          _showAntiDpiStatus(AntiDpiStatus(step: AntiDpiStep.tryingDirect, networkName: networkName));
+        } else {
+          bypassTried++;
+          _showAntiDpiStatus(
+            AntiDpiStatus(
+              step: AntiDpiStep.tryingTechnique,
+              index: bypassTried,
+              total: bypassTotal,
+              mode: technique,
+              networkName: networkName,
+            ),
+          );
+        }
+
         final outcome = await _tryTechnique(
           attempt: attempt,
           server: server,
@@ -489,17 +556,45 @@ class _VpnScopeState extends State<VpnScope> {
             // The plain connection works here: the network is not a DPI one.
             await auto.forgetDirectFailure(serverId: server.id, network: network);
           } else {
+            triedModes.add(technique);
             await auto.remember(serverId: server.id, network: network, mode: technique);
           }
+          AntiDpiAuto.lastRound.value = AntiDpiRound(
+            serverId: server.id,
+            network: network,
+            kind: kind,
+            triedPlain: planned.contains(0),
+            triedModes: triedModes,
+            workedMode: technique,
+            pathCut: pathCut,
+            at: DateTime.now(),
+          );
+          _showAntiDpiStatus(
+            AntiDpiStatus(
+              step: AntiDpiStep.worked,
+              mode: technique,
+              networkName: networkName,
+              plainWorked: technique == 0,
+            ),
+            hideAfter: const Duration(seconds: 8),
+          );
 
           return;
         }
         if (outcome == _TechniqueOutcome.unreachable) {
+          _clearAntiDpiStatus();
+
           return; // the engine goes on with this technique
         }
+        pathCut = true;
         if (technique == 0) {
           // The plain connection was cut: the network needs the techniques.
           await auto.rememberDirectFailure(serverId: server.id, network: network);
+          _showAntiDpiStatus(
+            AntiDpiStatus(step: AntiDpiStep.cut, networkName: networkName),
+          );
+        } else {
+          triedModes.add(technique);
         }
       }
     } finally {
@@ -515,8 +610,43 @@ class _VpnScopeState extends State<VpnScope> {
       network: network,
       count: planned.where((technique) => technique != 0).length,
     );
+    AntiDpiAuto.lastRound.value = AntiDpiRound(
+      serverId: server.id,
+      network: network,
+      kind: kind,
+      triedPlain: planned.contains(0),
+      triedModes: triedModes,
+      workedMode: null,
+      pathCut: pathCut,
+      at: DateTime.now(),
+    );
+    _showAntiDpiStatus(
+      AntiDpiStatus(
+        step: AntiDpiStep.failed,
+        bypassTried: planned.where((technique) => technique != 0).length,
+        triedPlain: planned.contains(0),
+        networkName: networkName,
+      ),
+      hideAfter: const Duration(seconds: 12),
+    );
     await _stop();
     VpnScope.antiDpiAutoFailed.value = true;
+  }
+
+  /// The line under the connect button. A new step replaces the old one;
+  /// [hideAfter] clears it once the person has had time to read it.
+  void _showAntiDpiStatus(AntiDpiStatus status, {Duration? hideAfter}) {
+    _antiDpiStatusTimer?.cancel();
+    _antiDpiStatusTimer = null;
+    VpnScope.antiDpiStatus.value = status;
+    if (hideAfter == null) return;
+    _antiDpiStatusTimer = Timer(hideAfter, _clearAntiDpiStatus);
+  }
+
+  void _clearAntiDpiStatus() {
+    _antiDpiStatusTimer?.cancel();
+    _antiDpiStatusTimer = null;
+    VpnScope.antiDpiStatus.value = null;
   }
 
   /// One technique of the round: the plain connection (technique 0) or a
@@ -809,6 +939,7 @@ class _VpnScopeState extends State<VpnScope> {
 
   @override
   void dispose() {
+    _clearAntiDpiStatus();
     _appLifecycleListener.dispose();
     _logStreamSub?.cancel().ignore();
     _vpnStreamSub?.cancel().ignore();

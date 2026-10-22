@@ -48,7 +48,8 @@ abstract final class NetworksMemory {
   static List<RememberedNetwork> all(SharedPreferences preferences, {DateTime? now}) {
     final at = now ?? DateTime.now();
     final kinds = <String, String>{};
-    final direct = <String, DateTime>{};
+    final written = <String, int>{};
+    final since = <String, int>{};
     final modes = <String, Set<int>>{};
 
     for (final key in preferences.getKeys()) {
@@ -56,15 +57,18 @@ abstract final class NetworksMemory {
         kinds[key.substring(NetworkFingerprint.kindKey('').length)] = preferences.getString(key) ?? 'other';
         continue;
       }
+      if (key.startsWith(AntiDpiAuto.directSinceKeyPrefix)) {
+        final network = _networkOf(key, AntiDpiAuto.directSinceKeyPrefix);
+        final value = preferences.getInt(key);
+        if (network == null || value == null) continue;
+        since[network] = value;
+        continue;
+      }
       if (key.startsWith(AntiDpiAuto.directKeyPrefix)) {
         final network = _networkOf(key, AntiDpiAuto.directKeyPrefix);
-        final written = preferences.getInt(key);
-        if (network == null || written == null) continue;
-        // The memory of a network has a week of life.
-        final until = DateTime.fromMillisecondsSinceEpoch(written).add(AntiDpiAuto.memoryTtl);
-        if (until.isAfter(at)) {
-          direct[network] = until;
-        }
+        final value = preferences.getInt(key);
+        if (network == null || value == null) continue;
+        written[network] = value;
         continue;
       }
       if (key.startsWith(AntiDpiAuto.modeKeyPrefix)) {
@@ -72,6 +76,20 @@ abstract final class NetworksMemory {
         final mode = preferences.getInt(key);
         if (network == null || mode == null) continue;
         (modes[network] ??= <int>{}).add(mode);
+      }
+    }
+
+    // The memory of a network has a week of life, a day in the first
+    // days on mobile (see [AntiDpiAuto.directTtl]).
+    final direct = <String, DateTime>{};
+    for (final entry in written.entries) {
+      final network = entry.key;
+      final kind = kinds[network] ?? 'other';
+      final first = DateTime.fromMillisecondsSinceEpoch(since[network] ?? entry.value);
+      final ttl = AntiDpiAuto.directTtl(kind: kind, since: first, now: at);
+      final until = DateTime.fromMillisecondsSinceEpoch(entry.value).add(ttl);
+      if (until.isAfter(at)) {
+        direct[network] = until;
       }
     }
 
@@ -127,6 +145,7 @@ abstract final class NetworksMemory {
       AntiDpiAuto.modeKeyPrefix,
       AntiDpiAuto.cursorKeyPrefix,
       AntiDpiAuto.directKeyPrefix,
+      AntiDpiAuto.directSinceKeyPrefix,
     ]) {
       if (_networkOf(prefKey, prefix) == key) return true;
     }
@@ -140,7 +159,8 @@ abstract final class NetworksMemory {
       prefKey.startsWith(NetworkFingerprint.nameKey('')) ||
       prefKey.startsWith(AntiDpiAuto.modeKeyPrefix) ||
       prefKey.startsWith(AntiDpiAuto.cursorKeyPrefix) ||
-      prefKey.startsWith(AntiDpiAuto.directKeyPrefix);
+      prefKey.startsWith(AntiDpiAuto.directKeyPrefix) ||
+      prefKey.startsWith(AntiDpiAuto.directSinceKeyPrefix);
 
   /// The network of a key of the memory: the last part of the key is the
   /// network, the rest is the server.

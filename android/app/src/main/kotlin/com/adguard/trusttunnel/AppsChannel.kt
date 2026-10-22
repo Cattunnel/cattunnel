@@ -218,7 +218,23 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
         val gateway = link?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress ?: ""
         val dns = link?.dnsServers?.mapNotNull { it.hostAddress } ?: emptyList()
         val domains = link?.domains ?: emptyList()
-        return mapOf("gateway" to gateway, "dns" to dns, "domains" to domains)
+        // The operator is what tells mobile networks apart: the gateway and
+        // the DNS servers there change with the city. No permission needed,
+        // and a part that fails is just left out.
+        var operatorCode = ""
+        var operatorName = ""
+        runCatching {
+            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            operatorCode = tm.networkOperator.orEmpty()
+            operatorName = tm.networkOperatorName.orEmpty()
+        }
+        return mapOf(
+            "gateway" to gateway,
+            "dns" to dns,
+            "domains" to domains,
+            "operatorCode" to operatorCode,
+            "operatorName" to operatorName,
+        )
     }
 
     /** PNG of the app icon, [size] px square; null if the app is gone. */

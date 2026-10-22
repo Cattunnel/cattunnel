@@ -64,4 +64,70 @@ void main() {
     await auto.forgetDirectFailure(serverId: '7', network: 'net1');
     expect(auto.directFails(serverId: '7', network: 'net1', now: now), isFalse);
   });
+
+  test('a mobile network checks the plain connection daily for the first three days', () async {
+    SharedPreferences.setMockInitialValues({});
+    final auto = AntiDpiAuto(await SharedPreferences.getInstance());
+    final first = DateTime(2026, 10, 21, 12);
+
+    await auto.rememberDirectFailure(serverId: '7', network: 'mobile:25001', now: first);
+    expect(
+      auto.directFails(
+        serverId: '7',
+        network: 'mobile:25001',
+        kind: 'mobile',
+        now: first.add(const Duration(hours: 12)),
+      ),
+      isTrue,
+    );
+    expect(
+      auto.directFails(
+        serverId: '7',
+        network: 'mobile:25001',
+        kind: 'mobile',
+        now: first.add(const Duration(hours: 25)),
+      ),
+      isFalse,
+    );
+
+    // After the warmup the network keeps the memory like Wi-Fi.
+    final fourthDay = first.add(const Duration(days: 4));
+    await auto.rememberDirectFailure(serverId: '7', network: 'mobile:25001', now: fourthDay);
+    expect(
+      auto.directFails(
+        serverId: '7',
+        network: 'mobile:25001',
+        kind: 'mobile',
+        now: fourthDay.add(const Duration(days: 6)),
+      ),
+      isTrue,
+    );
+    expect(
+      auto.directFails(
+        serverId: '7',
+        network: 'mobile:25001',
+        kind: 'mobile',
+        now: fourthDay.add(const Duration(days: 8)),
+      ),
+      isFalse,
+    );
+  });
+
+  test('a subscription that turned anti-DPI on forgets the server in every network', () async {
+    SharedPreferences.setMockInitialValues({});
+    final auto = AntiDpiAuto(await SharedPreferences.getInstance());
+
+    await auto.remember(serverId: '7', network: 'wifi-a', mode: 2);
+    await auto.remember(serverId: '7', network: 'mobile:25001', mode: 3);
+    await auto.rememberDirectFailure(serverId: '7', network: 'wifi-a');
+    await auto.remember(serverId: '8', network: 'wifi-a', mode: 1);
+
+    await auto.forgetServer('7');
+
+    expect(auto.order(serverId: '7', network: 'wifi-a'), [1, 2]);
+    expect(auto.order(serverId: '7', network: 'mobile:25001'), [1, 2]);
+    expect(auto.directFails(serverId: '7', network: 'wifi-a'), isFalse);
+    expect(auto.order(serverId: '8', network: 'wifi-a'), [1, 2]);
+    expect(auto.order(serverId: '8', network: 'wifi-a'), contains(1));
+  });
 }

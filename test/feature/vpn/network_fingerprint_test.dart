@@ -57,7 +57,8 @@ void main() {
   });
 
   test('the gateway out of /proc/net/route', () {
-    const routes = 'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n'
+    const routes =
+        'Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT\n'
         'eth0\t00000000\t0101A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0\n'
         'eth0\t00F0A8C0\t00000000\t0001\t0\t0\t100\t00F0FFFF\t0\t0\t0\n'
         'wlan0\t00000000\t0202A8C0\t0003\t0\t0\t200\t00000000\t0\t0\t0\n';
@@ -68,7 +69,8 @@ void main() {
   });
 
   test('the DNS servers and the search domains out of resolv.conf', () {
-    const resolv = '# a comment\n'
+    const resolv =
+        '# a comment\n'
         'nameserver 192.168.1.1\n'
         'nameserver 8.8.8.8\n'
         'search home.lan lan\n'
@@ -78,5 +80,58 @@ void main() {
 
     expect(parsed.dns, ['192.168.1.1', '8.8.8.8']);
     expect(parsed.domains, ['home.lan', 'lan']);
+  });
+
+  test('a mobile network is known by its operator, not by the gateway', () {
+    const mts = NetworkFingerprint(
+      kind: 'mobile',
+      gateway: '10.1.1.1',
+      dnsServers: ['1.1.1.1'],
+      searchDomains: [],
+      operatorCode: '25001',
+      operatorName: 'МТС',
+    );
+    const mtsAnotherCity = NetworkFingerprint(
+      kind: 'mobile',
+      gateway: '10.9.9.9',
+      dnsServers: ['8.8.8.8'],
+      searchDomains: [],
+      operatorCode: '25001',
+      operatorName: 'МТС',
+    );
+    const megafon = NetworkFingerprint(
+      kind: 'mobile',
+      gateway: '10.1.1.1',
+      dnsServers: ['1.1.1.1'],
+      searchDomains: [],
+      operatorCode: '25002',
+      operatorName: 'МегаФон',
+    );
+
+    expect(mts.key, 'mobile:25001');
+    expect(mtsAnotherCity.key, mts.key);
+    expect(megafon.key, isNot(mts.key));
+  });
+
+  test('a mobile network without an operator code stays one network', () {
+    const unknown = NetworkFingerprint(kind: 'mobile', gateway: '', dnsServers: [], searchDomains: []);
+
+    expect(unknown.key, 'mobile');
+  });
+
+  test('the operator name is the default name of a mobile network', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    const network = NetworkFingerprint(
+      kind: 'mobile',
+      gateway: '10.1.1.1',
+      dnsServers: [],
+      searchDomains: [],
+      operatorCode: '25001',
+      operatorName: 'МТС',
+    );
+
+    await NetworkFingerprint.rememberKind(preferences, network);
+    expect(NetworkFingerprint.operatorNameOf(preferences, network.key), 'МТС');
   });
 }

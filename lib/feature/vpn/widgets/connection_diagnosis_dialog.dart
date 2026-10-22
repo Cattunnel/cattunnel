@@ -112,6 +112,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       subscriptionRepository: context.repositoryFactory.subscriptionRepository,
       serverRepository: context.repositoryFactory.serverRepository,
       trustUserCas: SecuritySettings(context.dependencyFactory.sharedPreferences).trustUserCas,
+      preferences: context.dependencyFactory.sharedPreferences,
     );
 
     final result = await diagnostics.run(
@@ -206,6 +207,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       DiagnosisVerdict.noInternet => AssetImages.catSleeping,
       DiagnosisVerdict.captivePortal => AssetImages.catSleeping,
       DiagnosisVerdict.networkCuts => AssetImages.catWires,
+      DiagnosisVerdict.bypassNeeded => AssetImages.catWires,
       DiagnosisVerdict.serverTimeout ||
       DiagnosisVerdict.tlsBlocked ||
       DiagnosisVerdict.trafficBlocked => AssetImages.catWires,
@@ -223,6 +225,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.noInternet => context.ln.diagVerdictNoInternet,
     DiagnosisVerdict.captivePortal => context.ln.diagVerdictCaptivePortal,
     DiagnosisVerdict.networkCuts => context.ln.diagVerdictNetworkCuts,
+    DiagnosisVerdict.bypassNeeded => context.ln.diagVerdictBypassNeeded,
     DiagnosisVerdict.serverTimeout => context.ln.diagVerdictServerTimeout,
     DiagnosisVerdict.serverRefused => context.ln.diagVerdictServerRefused,
     DiagnosisVerdict.sniBlocked => context.ln.diagVerdictSniBlocked,
@@ -245,6 +248,15 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     if (engine.isStall) return context.ln.diagEngineStall;
 
     return null;
+  }
+
+  /// What the anti-DPI "auto" ended with, in the person's words.
+  String? _autoText(ConnectionDiagnosis? result) {
+    final round = result?.auto;
+    if (round == null || !round.failed) return null;
+    final count = round.triedModes.length;
+
+    return round.triedPlain ? context.ln.diagAutoFailedPlain(count) : context.ln.diagAutoFailedModes(count);
   }
 
   String _stepLabel(DiagnosisStep step) => switch (step) {
@@ -303,6 +315,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                             ? context.ln.diagAlternative(result!.alternative!.serverData.name)
                             : null,
                         engine: _connectedMeanwhile ? null : _engineText(result),
+                        auto: _connectedMeanwhile ? null : _autoText(result),
                       ),
                     )
                   : const SizedBox(width: double.infinity),
@@ -378,7 +391,8 @@ class _NetworkRow extends StatelessWidget {
   );
 }
 
-class _StepRow extends StatelessWidget {  final String label;
+class _StepRow extends StatelessWidget {
+  final String label;
   final DiagnosisStepStatus status;
   final Color okColor;
 
@@ -442,7 +456,10 @@ class _SpeechBubble extends StatelessWidget {
   /// What the engine saw, under the verdict.
   final String? engine;
 
-  const _SpeechBubble({required this.text, this.extra, this.engine});
+  /// What the anti-DPI "auto" tried, under the verdict.
+  final String? auto;
+
+  const _SpeechBubble({required this.text, this.extra, this.engine, this.auto});
 
   @override
   Widget build(BuildContext context) {
@@ -471,6 +488,13 @@ class _SpeechBubble extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   engine!,
+                  style: context.textTheme.bodySmall,
+                ),
+              ],
+              if (auto != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  auto!,
                   style: context.textTheme.bodySmall,
                 ),
               ],

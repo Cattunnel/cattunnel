@@ -18,6 +18,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_s
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_empty_placeholder.dart';
+import 'package:trusttunnel/feature/vpn/widgets/anti_dpi_status_line.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
@@ -160,6 +161,7 @@ class _CozyServersViewState extends State<CozyServersView> {
               padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
               children: [
                 Center(child: connectButton()),
+                const AntiDpiStatusLine(),
                 SizedBox(height: aero ? 8 : 24),
                 if (aero)
                   Center(
@@ -207,6 +209,7 @@ class _CozyServersViewState extends State<CozyServersView> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               connectButton(size: 260),
+                              const AntiDpiStatusLine(),
                               const SizedBox(height: 28),
                               _StatusBlock(
                                 state: state,

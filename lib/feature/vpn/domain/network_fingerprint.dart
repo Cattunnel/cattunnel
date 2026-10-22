@@ -32,11 +32,20 @@ class NetworkFingerprint {
   /// The search domains of the network ("home.arpa" and the like).
   final List<String> searchDomains;
 
+  /// The MCC+MNC of the mobile operator (for example "25001"), when the
+  /// network is mobile. It tells operators apart without any permission.
+  final String operatorCode;
+
+  /// The name of the mobile operator as the phone shows it.
+  final String operatorName;
+
   const NetworkFingerprint({
     required this.kind,
     required this.gateway,
     required this.dnsServers,
     required this.searchDomains,
+    this.operatorCode = '',
+    this.operatorName = '',
   });
 
   /// A fingerprint with nothing in it: the platform has no such signal.
@@ -48,9 +57,18 @@ class NetworkFingerprint {
   /// The key of the network: the same network has the same key after a
   /// restart of the app, another network has another one.
   ///
-  /// A short hash of the parts, so the key says nothing about the gateway
-  /// and the DNS servers. The parts themselves stay on the phone.
+  /// A mobile network is known by its operator: the gateway and the DNS
+  /// servers there belong to the operator and say nothing about which
+  /// network it is (the phone gets a different gateway in every city).
+  /// Wi-Fi and Ethernet keep the short hash of the parts, so the key says
+  /// nothing about the gateway and the DNS servers. The parts themselves
+  /// stay on the phone.
   String get key {
+    if (kind == 'mobile') {
+      final code = operatorCode.trim();
+
+      return code.isEmpty ? kind : 'mobile:$code';
+    }
     if (isEmpty) return kind;
     final parts = [kind, gateway, ...dnsServers, ...searchDomains]..sort((a, b) => a.compareTo(b));
 
@@ -58,8 +76,9 @@ class NetworkFingerprint {
   }
 
   /// A short piece of the key, for the automatic name of a network. Empty
-  /// when there was nothing to hash: the key is then the kind itself.
-  String get shortId => isEmpty || key.length <= 4 ? '' : key.substring(0, 4);
+  /// when there was nothing to hash: the key is then the kind itself, and
+  /// a mobile network is named after its operator instead.
+  String get shortId => kind == 'mobile' || isEmpty || key.length <= 4 ? '' : key.substring(0, 4);
 
   /// The name the person gave this network, if they did.
   static String? customName(SharedPreferences preferences, String key) {
@@ -86,10 +105,26 @@ class NetworkFingerprint {
   /// The key of the name of the network.
   static String nameKey(String key) => 'network_name.$key';
 
-  /// Remembers the kind of the network.
+  /// The key of the operator of a mobile network.
+  static String operatorNameKey(String key) => 'network_operator.$key';
+
+  /// The operator of a mobile network, if it was remembered.
+  static String? operatorNameOf(SharedPreferences preferences, String key) {
+    final name = preferences.getString(operatorNameKey(key));
+
+    return name == null || name.trim().isEmpty ? null : name.trim();
+  }
+
+  /// Remembers the kind of the network, and the operator of a mobile one
+  /// (its default name).
   static Future<void> rememberKind(SharedPreferences preferences, NetworkFingerprint fingerprint) async {
-    if (preferences.getString(kindKey(fingerprint.key)) == fingerprint.kind) return;
-    await preferences.setString(kindKey(fingerprint.key), fingerprint.kind);
+    if (preferences.getString(kindKey(fingerprint.key)) != fingerprint.kind) {
+      await preferences.setString(kindKey(fingerprint.key), fingerprint.kind);
+    }
+    final operatorName = fingerprint.operatorName.trim();
+    if (fingerprint.kind != 'mobile' || operatorName.isEmpty) return;
+    if (preferences.getString(operatorNameKey(fingerprint.key)) == operatorName) return;
+    await preferences.setString(operatorNameKey(fingerprint.key), operatorName);
   }
 
   /// A short, stable hash. Not a secret: the fingerprint stays on the
@@ -122,7 +157,13 @@ abstract final class NetworkFingerprints {
       TargetPlatform.android => await _android(),
       TargetPlatform.windows => await _windows(),
       TargetPlatform.linux => _linux(),
-      _ => (gateway: '', dns: <String>[], domains: <String>[]),
+      _ => (
+        gateway: '',
+        dns: <String>[],
+        domains: <String>[],
+        operatorCode: '',
+        operatorName: '',
+      ),
     };
 
     return NetworkFingerprint(
@@ -130,27 +171,41 @@ abstract final class NetworkFingerprints {
       gateway: parts.gateway,
       dnsServers: parts.dns,
       searchDomains: parts.domains,
+      operatorCode: parts.operatorCode,
+      operatorName: parts.operatorName,
     );
   }
 
-  static Future<({String gateway, List<String> dns, List<String> domains})> _android() async {
+  static Future<({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName})>
+  _android() async {
     try {
       final parts = await _appsChannel.invokeMapMethod<Object?, Object?>('networkFingerprint');
       final gateway = parts?['gateway'];
       final dns = parts?['dns'];
       final domains = parts?['domains'];
+      final operatorCode = parts?['operatorCode'];
+      final operatorName = parts?['operatorName'];
 
       return (
         gateway: gateway is String ? gateway : '',
         dns: dns is List ? dns.map((e) => '$e').toList() : const <String>[],
         domains: domains is List ? domains.map((e) => '$e').toList() : const <String>[],
+        operatorCode: operatorCode is String ? operatorCode : '',
+        operatorName: operatorName is String ? operatorName : '',
       );
     } on Object {
-      return (gateway: '', dns: const <String>[], domains: const <String>[]);
+      return (
+        gateway: '',
+        dns: const <String>[],
+        domains: const <String>[],
+        operatorCode: '',
+        operatorName: '',
+      );
     }
   }
 
-  static Future<({String gateway, List<String> dns, List<String> domains})> _windows() async {
+  static Future<({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName})>
+  _windows() async {
     try {
       final parts = await _physicalNetChannel.invokeMapMethod<Object?, Object?>('fingerprint');
       final gateway = parts?['gateway'];
@@ -160,17 +215,31 @@ abstract final class NetworkFingerprints {
         gateway: gateway is String ? gateway : '',
         dns: dns is List ? dns.map((e) => '$e').toList() : const <String>[],
         domains: const <String>[],
+        operatorCode: '',
+        operatorName: '',
       );
     } on Object {
-      return (gateway: '', dns: const <String>[], domains: const <String>[]);
+      return (
+        gateway: '',
+        dns: const <String>[],
+        domains: const <String>[],
+        operatorCode: '',
+        operatorName: '',
+      );
     }
   }
 
   /// The gateway of the default route and the DNS servers of the system.
-  static ({String gateway, List<String> dns, List<String> domains}) _linux() {
+  static ({String gateway, List<String> dns, List<String> domains, String operatorCode, String operatorName}) _linux() {
     final dns = _linuxDns();
 
-    return (gateway: _linuxGateway(), dns: dns.dns, domains: dns.domains);
+    return (
+      gateway: _linuxGateway(),
+      dns: dns.dns,
+      domains: dns.domains,
+      operatorCode: '',
+      operatorName: '',
+    );
   }
 
   /// The gateway of the default route, from /proc/net/route. The address

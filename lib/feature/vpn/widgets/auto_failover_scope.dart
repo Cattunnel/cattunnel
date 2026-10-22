@@ -46,19 +46,22 @@ class AutoFailoverScope extends StatefulWidget {
   /// or null if there's none to switch to.
   @visibleForTesting
   static Server? nextServer(List<Server> servers, Server current) {
-    final subscription = current.serverData.subscriptionName;
-    if (subscription == null) return null;
-    final candidates = servers
-        .where(
-          (s) =>
-              s.id == current.id ||
-              (s.serverData.subscriptionName == subscription && !s.serverData.ruExit && !_isReserve(s)),
-        )
-        .toList();
+    final candidates = servers.where((s) => s.id == current.id || canUseAsAlternative(current, s)).toList();
     final index = candidates.indexWhere((s) => s.id == current.id);
     if (candidates.length < 2 || index < 0) return null;
 
     return candidates[(index + 1) % candidates.length];
+  }
+
+  /// Whether [other] is a fair alternative to [current]: the same
+  /// subscription, not a reserve key (the cascade is kept for emergencies)
+  /// and not a Russian-exit one. A self-added key is the person's own
+  /// choice, and another subscription is another account.
+  static bool canUseAsAlternative(Server current, Server other) {
+    final subscription = current.serverData.subscriptionName;
+    if (subscription == null || other.id == current.id) return false;
+
+    return other.serverData.subscriptionName == subscription && !other.serverData.ruExit && !_isReserve(other);
   }
 
   static bool _isReserve(Server server) {
@@ -156,8 +159,10 @@ class _AutoFailoverScopeState extends State<AutoFailoverScope> {
       return;
     }
     _preferredId ??= current.id;
-    _log('failover: ${current.serverData.name} did not connect for ${AutoFailoverScope.failAfter.inMinutes} min, '
-        'switching to ${next.serverData.name}');
+    _log(
+      'failover: ${current.serverData.name} did not connect for ${AutoFailoverScope.failAfter.inMinutes} min, '
+      'switching to ${next.serverData.name}',
+    );
     await _switchTo(next);
   }
 

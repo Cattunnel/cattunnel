@@ -3,8 +3,10 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/vpn/widgets/auto_failover_scope.dart';
 
-Server _s(String id, String name, {String? sub = 'family', bool ruExit = false}) =>
-    Server(id: id, serverData: ServerData.empty(name: name, subscriptionName: sub, ruExit: ruExit));
+Server _s(String id, String name, {String? sub = 'family', bool ruExit = false}) => Server(
+  id: id,
+  serverData: ServerData.empty(name: name, subscriptionName: sub, ruExit: ruExit),
+);
 
 void main() {
   final servers = [
@@ -40,5 +42,16 @@ void main() {
 
   test('from a reserve key the person picked, the next regular one', () {
     expect(AutoFailoverScope.nextServer(servers, servers[4])?.id, '1');
+  });
+
+  test('an alternative is the same subscription, no reserve and no Russian exit', () {
+    final current = servers[0];
+
+    expect(AutoFailoverScope.canUseAsAlternative(current, servers[1]), isTrue);
+    expect(AutoFailoverScope.canUseAsAlternative(current, servers[3]), isFalse);
+    expect(AutoFailoverScope.canUseAsAlternative(current, servers[4]), isFalse);
+    expect(AutoFailoverScope.canUseAsAlternative(current, servers[5]), isFalse);
+    expect(AutoFailoverScope.canUseAsAlternative(current, servers[6]), isFalse);
+    expect(AutoFailoverScope.canUseAsAlternative(current, current), isFalse);
   });
 }

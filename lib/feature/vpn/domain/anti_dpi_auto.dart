@@ -28,6 +28,13 @@ class AntiDpiAuto {
   /// connection.
   static const memoryTtl = Duration(days: 7);
 
+  /// The same on a mobile network during the first [mobileWarmup]: the
+  /// operator changes the gateway with the city, so a "yes, it is cut"
+  /// here says less than a Wi-Fi one and is worth checking again every
+  /// day. After the warmup the network behaves like Wi-Fi.
+  static const mobileMemoryTtl = Duration(days: 1);
+  static const mobileWarmup = Duration(days: 3);
+
   static const attemptTimeout = Duration(seconds: 6);
 
   /// Between stopping one technique and starting the next.
@@ -39,6 +46,10 @@ class AntiDpiAuto {
   static const cursorKeyPrefix = 'anti_dpi_cursor';
   static const directKeyPrefix = 'anti_dpi_direct';
 
+  /// When the plain connection first failed in this network: the mobile
+  /// memory counts [mobileWarmup] from here.
+  static const directSinceKeyPrefix = 'anti_dpi_direct_since';
+
   /// The technique that worked in the network, for the server.
   static String modeKey(String serverId, String network) => '$modeKeyPrefix.$serverId.$network';
 
@@ -47,6 +58,12 @@ class AntiDpiAuto {
 
   /// The plain connection does not work in the network, for the server.
   static String directKey(String serverId, String network) => '$directKeyPrefix.$serverId.$network';
+
+  /// When the plain connection first failed in the network, for the server.
+  static String directSinceKey(String serverId, String network) => '$directSinceKeyPrefix.$serverId.$network';
+
+  /// The round that ended last, for the diagnostics dialog.
+  static final lastRound = ValueNotifier<AntiDpiRound?>(null);
 
   /// Whether the round is going on right now.
   ///
@@ -108,33 +125,130 @@ class AntiDpiAuto {
     await _preferences.setInt(_cursorKey(serverId, network), (cursor + count) % modes.length);
   }
 
+  /// How long the memory of a direct failure lives, from when it was first
+  /// remembered in this network.
+  static Duration directTtl({required String kind, required DateTime since, required DateTime now}) {
+    if (kind == 'mobile' && now.difference(since) < mobileWarmup) return mobileMemoryTtl;
+
+    return memoryTtl;
+  }
+
   /// Whether the plain connection does not work in this network: it failed
   /// there and the memory has not expired yet.
-  bool directFails({required String serverId, required String network, DateTime? now}) {
+  bool directFails({
+    required String serverId,
+    required String network,
+    String kind = 'other',
+    DateTime? now,
+  }) {
     final at = _preferences.getInt(_directKey(serverId, network));
     if (at == null) return false;
+    final when = now ?? DateTime.now();
+    final since = DateTime.fromMillisecondsSinceEpoch(
+      _preferences.getInt(_directSinceKey(serverId, network)) ?? at,
+    );
 
-    return (now ?? DateTime.now()).difference(DateTime.fromMillisecondsSinceEpoch(at)) < memoryTtl;
+    return when.difference(DateTime.fromMillisecondsSinceEpoch(at)) < directTtl(kind: kind, since: since, now: when);
   }
 
   /// Remembers that the plain connection does not work in this network.
+  /// The first failure starts the mobile warmup; later ones only refresh
+  /// the failure itself.
   Future<void> rememberDirectFailure({
     required String serverId,
     required String network,
     DateTime? now,
-  }) =>
-      _preferences.setInt(
-        _directKey(serverId, network),
-        (now ?? DateTime.now()).millisecondsSinceEpoch,
-      );
+  }) async {
+    final when = now ?? DateTime.now();
+    if (!_preferences.containsKey(_directSinceKey(serverId, network))) {
+      await _preferences.setInt(_directSinceKey(serverId, network), when.millisecondsSinceEpoch);
+    }
+    await _preferences.setInt(_directKey(serverId, network), when.millisecondsSinceEpoch);
+  }
 
   /// The plain connection worked: the network is not a DPI one.
-  Future<void> forgetDirectFailure({required String serverId, required String network}) =>
-      _preferences.remove(_directKey(serverId, network));
+  Future<void> forgetDirectFailure({required String serverId, required String network}) async {
+    await _preferences.remove(_directKey(serverId, network));
+    await _preferences.remove(_directSinceKey(serverId, network));
+  }
+
+  /// Forgets everything the round remembered for the server, in every
+  /// network: the subscription turned anti-DPI on for it, so what was
+  /// learnt about it before says nothing now.
+  Future<void> forgetServer(String serverId) async {
+    for (final key in _preferences.getKeys().toList()) {
+      for (final prefix in [modeKeyPrefix, cursorKeyPrefix, directKeyPrefix, directSinceKeyPrefix]) {
+        if (key.startsWith('$prefix.$serverId.')) {
+          await _preferences.remove(key);
+        }
+      }
+    }
+  }
+
+  /// Waits for the round to end and returns what it ended with, if that
+  /// was this server and not too long ago. There is no fixed "20 seconds":
+  /// the round itself is bounded, and the diagnostics may only speak after
+  /// it, or its handshakes would add to the burst.
+  static Future<AntiDpiRound?> waitForRound({String? serverId}) async {
+    final until = DateTime.now().add(roundWaitLimit);
+    while (running.value && DateTime.now().isBefore(until)) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final round = lastRound.value;
+    if (round == null || (serverId != null && round.serverId != serverId)) return null;
+    if (DateTime.now().difference(round.at) > roundFreshWindow) return null;
+
+    return round;
+  }
+
+  /// A safety cap, above the longest round (three techniques, two pauses).
+  static const roundWaitLimit = Duration(seconds: 45);
+  static const roundFreshWindow = Duration(minutes: 2);
 
   String _hintKey(String serverId, String network) => modeKey(serverId, network);
 
   String _cursorKey(String serverId, String network) => cursorKey(serverId, network);
 
   String _directKey(String serverId, String network) => directKey(serverId, network);
+
+  String _directSinceKey(String serverId, String network) => directSinceKey(serverId, network);
+}
+
+/// What one round of anti-DPI "auto" ended with: the technique that
+/// worked, or that none did, and what it tried.
+class AntiDpiRound {
+  final String serverId;
+  final String network;
+
+  /// `wifi`, `mobile`, `ethernet` or `other`.
+  final String kind;
+
+  /// The plain connection was part of the round.
+  final bool triedPlain;
+
+  /// The techniques the round tried, in order.
+  final List<int> triedModes;
+
+  /// The technique that connected (0 for the plain connection), or null.
+  final int? workedMode;
+
+  /// At least one attempt was cut rather than unreachable: the path to the
+  /// server is filtered, so this is a network problem, not a dead server.
+  final bool pathCut;
+
+  final DateTime at;
+
+  const AntiDpiRound({
+    required this.serverId,
+    required this.network,
+    required this.kind,
+    required this.triedPlain,
+    required this.triedModes,
+    required this.workedMode,
+    required this.pathCut,
+    required this.at,
+  });
+
+  bool get failed => workedMode == null;
+  bool get workedPlain => workedMode == 0;
 }

@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:dage/dage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +13,7 @@ import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
+import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 
@@ -62,6 +63,11 @@ class SubscriptionSyncService {
   final ServerDataSource _serverDataSource;
   final SharedPreferences? _pins;
 
+  /// Called with the id of a server whose subscription just turned
+  /// anti-DPI on: what the automation learnt about it before says nothing
+  /// now, so it forgets it.
+  final Future<void> Function(String serverId)? _onAntiDpiEnabled;
+
   /// "Skip TLS verification" pins: host -> base64 DER of the certificate it
   /// showed the first time (trust on first use, audit 13.10 item 6).
   static const _pinsKey = 'subscription_tofu_pins';
@@ -70,9 +76,11 @@ class SubscriptionSyncService {
     required SubscriptionDataSource subscriptionDataSource,
     required ServerDataSource serverDataSource,
     SharedPreferences? pinStore,
+    Future<void> Function(String serverId)? onAntiDpiEnabled,
   }) : _subscriptionDataSource = subscriptionDataSource,
        _serverDataSource = serverDataSource,
-       _pins = pinStore;
+       _pins = pinStore,
+       _onAntiDpiEnabled = onAntiDpiEnabled;
 
   /// {@macro subscription_sync_service}
   Future<void> refresh(SubscriptionData subscription) async {
@@ -85,6 +93,7 @@ class SubscriptionSyncService {
     final bytes = await _fetch(subscription);
     final body = await _decode(bytes, subscription);
     final servers = await _parse(body);
+    final before = {for (final server in await _serverDataSource.getAllServers()) server.id: server.serverData.antiDpi};
 
     // An empty result would make the sync below delete every server of this
     // subscription except the selected one. Far more likely a broken response
@@ -95,6 +104,7 @@ class SubscriptionSyncService {
     }
 
     await _subscriptionDataSource.syncServersForSubscription(id: id, servers: servers);
+    await _forgetTurnedOnAntiDpi(before);
 
     final mirrors = _parseMirrors(body);
     if (mirrors.isNotEmpty && SubscriptionData.joinUrls(mirrors) != SubscriptionData.joinUrls(subscription.urls)) {
@@ -106,6 +116,25 @@ class SubscriptionSyncService {
 
     await _subscriptionDataSource.markRefreshed(id: id, at: DateTime.now());
   }
+
+  /// A server whose subscription turned anti-DPI on: the automation memory
+  /// about it (a technique that worked, "the plain connection is cut")
+  /// belongs to the old setup, not to this one.
+  Future<void> _forgetTurnedOnAntiDpi(Map<String, bool> before) async {
+    final on = _onAntiDpiEnabled;
+    if (on == null) return;
+    for (final id in turnedOnAntiDpi(before, await _serverDataSource.getAllServers())) {
+      await on(id);
+    }
+  }
+
+  /// The servers whose subscription turned anti-DPI on (false -> true).
+  /// A subscription can turn it on, never off.
+  @visibleForTesting
+  static List<String> turnedOnAntiDpi(Map<String, bool> before, List<Server> after) => [
+    for (final server in after)
+      if (before[server.id] == false && server.serverData.antiDpi) server.id,
+  ];
 
   /// Tries the subscription's mirrors in their fixed order; the first one
   /// that answers 200 wins.

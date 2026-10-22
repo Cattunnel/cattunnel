@@ -13,6 +13,14 @@ String networkNameByKey(AppLocalizations ln, SharedPreferences preferences, Stri
   final custom = NetworkFingerprint.customName(preferences, key);
   if (custom != null) return custom;
 
+  // A mobile network is named after its operator: that is what the person
+  // sees in the status bar, and the gateway there changes with the city.
+  if (kind == 'mobile') {
+    final operator = NetworkFingerprint.operatorNameOf(preferences, key);
+
+    return operator ?? networkKindName(ln, kind);
+  }
+
   final kindName = networkKindName(ln, kind);
   // The key of a network with a fingerprint is a hash; without one it is
   // the kind itself, and there is nothing to tell it apart with.

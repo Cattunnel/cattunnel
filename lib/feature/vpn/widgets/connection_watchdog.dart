@@ -8,6 +8,7 @@ import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/support/problem_report.dart';
+import 'package:trusttunnel/feature/vpn/widgets/auto_failover_scope.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_diagnosis_dialog.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
@@ -58,10 +59,13 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   /// Marsik says so, names the usual culprits and offers a problem report
   /// (it carries the engine log with the real reason).
   Future<void> _onStartDidNotBegin() async {
-    if (!VpnScope.startDidNotBegin.value || _dialogOpen || !mounted) {
+    if (!VpnScope.startDidNotBegin.value || !mounted) {
       return;
     }
+    // Take the flag even when another dialog is open: otherwise it stays
+    // true for the session and the next failure is never raised again.
     VpnScope.startDidNotBegin.value = false;
+    if (_dialogOpen) return;
 
     _dialogOpen = true;
     try {
@@ -101,10 +105,12 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   /// Anti-DPI "auto" tried every technique and none connected (see
   /// VpnScope._startAntiDpiAuto) - Marsik says so and offers a report.
   Future<void> _onAntiDpiAutoFailed() async {
-    if (!VpnScope.antiDpiAutoFailed.value || _dialogOpen || !mounted) {
+    if (!VpnScope.antiDpiAutoFailed.value || !mounted) {
       return;
     }
+    // See _onStartDidNotBegin: the flag must not stay true for the session.
     VpnScope.antiDpiAutoFailed.value = false;
+    if (_dialogOpen) return;
 
     _dialogOpen = true;
     try {
@@ -192,7 +198,9 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
       await ConnectionDiagnosisDialog.show(
         context,
         server: server,
-        otherServers: serversController.servers.where((other) => other.id != server.id).toList(),
+        otherServers: serversController.servers
+            .where((other) => AutoFailoverScope.canUseAsAlternative(server, other))
+            .toList(),
       );
     } finally {
       _dialogOpen = false;

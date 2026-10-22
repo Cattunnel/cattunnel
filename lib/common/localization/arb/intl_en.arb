@@ -237,6 +237,39 @@
   "helpExpertBody": "Protocol: HTTP/2 (TCP) or HTTP/3 (QUIC); anti-DPI works with HTTP/2 only.\nCustom SNI: the server name shown in the handshake instead of the domain; the server must accept it.\nSize masking: the first frames of every HTTP/2 stream get random padding (the PADDED flag, part of HTTP/2; the server accepts it as is). The sizes of the tunnel's first requests then differ every time, which makes the VPN harder to recognise. The numbers under the switch say how many frames and how many bytes to add. Costs a little traffic; off by default.\nClient Random: a tag at the start of the handshake random the server recognizes the client by. Set only when the admin says so.",
   "antiDpiAutoFailedTitle": "Couldn't get through",
   "antiDpiAutoFailedBody": "Mrrr... I tried the plain connection and the techniques, and none reached the server. Try another server or send a report - it shows where it got stuck.",
+  "antiDpiStatusDirect": "Trying the plain connection…",
+  "antiDpiStatusCut": "Looks like a filter is cutting the connection",
+  "antiDpiStatusTechnique": "Turning on the bypass: technique {index} of {total}…",
+  "@antiDpiStatusTechnique": {
+    "placeholders": {
+      "index": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "antiDpiStatusWorkedBypass": "It worked. Remembered: the network \"{network}\" needs the bypass",
+  "@antiDpiStatusWorkedBypass": {
+    "placeholders": {
+      "network": {"type": "String"}
+    }
+  },
+  "antiDpiStatusWorkedPlain": "It worked. The network \"{network}\" does not need the bypass",
+  "@antiDpiStatusWorkedPlain": {
+    "placeholders": {
+      "network": {"type": "String"}
+    }
+  },
+  "antiDpiStatusFailedPlain": "It did not help: I tried the plain connection and {count, plural, one{{count} technique} other{{count} techniques}}",
+  "@antiDpiStatusFailedPlain": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "antiDpiStatusFailedModes": "It did not help: I tried {count, plural, one{{count} technique} other{{count} techniques}}",
+  "@antiDpiStatusFailedModes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "ruExitLabel": "Russian exit (for trips abroad)",
   "ruExitDescription": "This server is in Russia. Only Russian sites and apps (banks, government services, marketplaces) go through it, everything else directly. Don't turn it on for everyday use in Russia: it does the opposite",
   "ruExitPromptTitle": "Is this server in Russia?",
@@ -523,6 +556,19 @@
   "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
   "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",
   "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
+  "diagVerdictBypassNeeded": "The network seems to cut the plain connection, so I'm turning on the bypass and trying to get through. If that does not work, try another server.",
+  "diagAutoFailedPlain": "The automation already tried the plain connection and {count, plural, one{{count} technique} other{{count} techniques}}, and none got through.",
+  "@diagAutoFailedPlain": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "diagAutoFailedModes": "The automation already tried {count, plural, one{{count} technique} other{{count} techniques}}, and none got through.",
+  "@diagAutoFailedModes": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "diagEngineHandshakeFreeze": "The engine: the handshake went out and nothing came back. The server's address looks frozen by the filter.",
   "diagEngineCutAfterBytes": "The engine: the connection died at {bytes} bytes, {repeat} times in a row.",
   "@diagEngineCutAfterBytes": {

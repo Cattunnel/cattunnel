@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/utils/physical_net.dart';
 import 'package:trusttunnel/data/domain/subscription_sync_service.dart';
 import 'package:trusttunnel/data/model/server.dart';
@@ -14,6 +15,7 @@ import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_state.dart';
 import 'package:trusttunnel/feature/vpn/domain/server_tls.dart';
 import 'package:vpn_plugin/models/net_diagnostic.dart';
@@ -34,6 +36,11 @@ enum DiagnosisVerdict {
   /// server is cut: the engine's own verdict (a frozen address, a cut
   /// after a fixed number of bytes, a session that went silent).
   networkCuts,
+
+  /// The app already knows the plain connection is cut in this network
+  /// (anti-DPI "auto" remembered it): the bypass is the answer, not "no
+  /// internet", even when the reference host is unreachable too.
+  bypassNeeded,
 
   /// TCP connect to the server timed out - IP blocked, or the host is down.
   serverTimeout,
@@ -95,11 +102,16 @@ class ConnectionDiagnosis {
   /// said something about the path rather than about the credentials.
   final NetDiagnostic? engine;
 
+  /// What the anti-DPI "auto" ended with while the dialog was waiting, if
+  /// that round was for this server.
+  final AntiDpiRound? auto;
+
   const ConnectionDiagnosis({
     required this.verdict,
     this.updatedServer,
     this.alternative,
     this.engine,
+    this.auto,
   });
 }
 
@@ -166,6 +178,11 @@ class ConnectionDiagnostics {
   final ServerRepository _serverRepository;
   final bool _trustUserCas;
 
+  /// The app's memory of the networks. Without it the diagnosis still
+  /// works, it just cannot say that this network is already known to cut
+  /// the plain connection.
+  final SharedPreferences? _preferences;
+
   /// Reachable from any Russian network, including mobile whitelist modes.
   /// Used as the "is there internet" probe, and as the unrelated host that
   /// the server's SNI is sent to when checking for SNI filtering - ya.ru
@@ -177,11 +194,13 @@ class ConnectionDiagnostics {
     required SubscriptionRepository subscriptionRepository,
     required ServerRepository serverRepository,
     bool trustUserCas = false,
+    SharedPreferences? preferences,
     @visibleForTesting String referenceHost = 'ya.ru',
     @visibleForTesting int referencePort = 443,
   }) : _subscriptionRepository = subscriptionRepository,
        _serverRepository = serverRepository,
        _trustUserCas = trustUserCas,
+       _preferences = preferences,
        _referenceHost = referenceHost,
        _referencePort = referencePort;
 
@@ -194,9 +213,13 @@ class ConnectionDiagnostics {
     required List<Server> otherServers,
     required void Function(DiagnosisStep step, DiagnosisStepStatus status) onStep,
   }) async {
-    // The address too: a verdict for the old one says nothing once the user or
-    // the subscription has changed it.
-    final cacheKey = '${server.id}|${server.serverData.ipAddress}';
+    final kind = await AntiDpiAuto.networkKind();
+    final fingerprint = await NetworkFingerprints.current(kind: kind);
+    final network = fingerprint.key;
+    // The address and the network too: a verdict for the old one says
+    // nothing once the user or the subscription has changed it, and the
+    // same server may be cut in one network and fine in another.
+    final cacheKey = '${server.id}|${server.serverData.ipAddress}|$network';
     if (ConnectFailures.isFrozen(server.id)) {
       for (final step in DiagnosisStep.values) {
         onStep(step, DiagnosisStepStatus.skipped);
@@ -220,16 +243,39 @@ class ConnectionDiagnostics {
     // The anti-DPI "auto" is switching techniques right now. Its
     // handshakes and ours would go to one name at the same time, and three
     // of them close to each other are what a filter's "freeze" keys on. So
-    // we wait for the round to end instead of adding to it.
+    // we wait for the round to end (it is bounded itself) instead of
+    // adding to it, and then say what it ended with.
+    final waitedForRound = AntiDpiAuto.running.value;
+    final round = await AntiDpiAuto.waitForRound(serverId: server.id);
     if (AntiDpiAuto.running.value) {
-      await _waitForAntiDpiAuto();
-      if (AntiDpiAuto.running.value) {
-        for (final step in DiagnosisStep.values) {
-          onStep(step, DiagnosisStepStatus.skipped);
-        }
-
-        return const ConnectionDiagnosis(verdict: DiagnosisVerdict.inconclusive);
+      for (final step in DiagnosisStep.values) {
+        onStep(step, DiagnosisStepStatus.skipped);
       }
+
+      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.inconclusive);
+    }
+    if (round != null && (round.failed || waitedForRound)) {
+      for (final step in DiagnosisStep.values) {
+        onStep(step, DiagnosisStepStatus.skipped);
+      }
+
+      return round.failed
+          ? ConnectionDiagnosis(verdict: DiagnosisVerdict.networkCuts, auto: round)
+          : ConnectionDiagnosis(verdict: DiagnosisVerdict.inconclusive, auto: round);
+    }
+
+    // The app already knows this network cuts the plain connection. Saying
+    // "no internet" here would be wrong even when the reference host does
+    // not answer either: the bypass is on, and that is the way through. The
+    // probes would also be more handshakes into the filter.
+    final preferences = _preferences;
+    if (preferences != null &&
+        AntiDpiAuto(preferences).directFails(serverId: server.id, network: network, kind: kind)) {
+      for (final step in DiagnosisStep.values) {
+        onStep(step, DiagnosisStepStatus.skipped);
+      }
+
+      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.bypassNeeded);
     }
 
     final diagnosis = await _run(server, otherServers: otherServers, onStep: onStep);
@@ -240,23 +286,11 @@ class ConnectionDiagnostics {
     return diagnosis;
   }
 
-  /// How long to wait for the anti-DPI round: two techniques, a pause
-  /// between them and the timeout of each.
-  static const _autoWait = Duration(seconds: 20);
-
-  Future<void> _waitForAntiDpiAuto() async {
-    final until = DateTime.now().add(_autoWait);
-    while (AntiDpiAuto.running.value && DateTime.now().isBefore(until)) {
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-    }
-  }
-
   /// Whether the engine's verdict says the path to the server was cut: a
   /// frozen address, a cut after a fixed number of bytes, a session that
   /// went silent. An error from the server is not the network's doing.
   @visibleForTesting
-  static bool isCutVerdict(NetDiagnostic verdict) =>
-      verdict.isHandshakeFreeze || verdict.isCut || verdict.isStall;
+  static bool isCutVerdict(NetDiagnostic verdict) => verdict.isHandshakeFreeze || verdict.isCut || verdict.isStall;
 
   Future<ConnectionDiagnosis> _run(
     Server server, {
@@ -322,9 +356,7 @@ class ConnectionDiagnostics {
       // No network: another server would not help either, and every probe
       // of it is a handshake for nothing.
       return ConnectionDiagnosis(
-        verdict: network == NetworkState.captivePortal
-            ? DiagnosisVerdict.captivePortal
-            : DiagnosisVerdict.noInternet,
+        verdict: network == NetworkState.captivePortal ? DiagnosisVerdict.captivePortal : DiagnosisVerdict.noInternet,
       );
     }
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
