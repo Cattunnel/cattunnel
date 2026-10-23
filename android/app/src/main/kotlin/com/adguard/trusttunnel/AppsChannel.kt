@@ -242,7 +242,8 @@ class AppsChannel(private val context: Context, messenger: BinaryMessenger) : Me
         }
         val gateway = link?.routes?.firstOrNull { it.isDefaultRoute }?.gateway?.hostAddress ?: ""
         val dns = link?.dnsServers?.mapNotNull { it.hostAddress } ?: emptyList()
-        val domains = link?.domains ?: emptyList()
+        // LinkProperties.getDomains() is one comma-separated string.
+        val domains = link?.domains?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
         // The operator is what tells mobile networks apart: the gateway and
         // the DNS servers there change with the city. On Wi-Fi the operator
         // of the SIM says nothing about the network, so it stays empty. No
