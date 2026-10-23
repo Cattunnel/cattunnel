@@ -34,10 +34,29 @@ class ConnectionDiagnosisDialog extends StatefulWidget {
   final Server server;
   final List<Server> otherServers;
 
+  /// Test-only: show this state without running the probes. The QA
+  /// screenshots need every verdict, and a real probe cannot produce all of
+  /// them; the normal app passes nothing here.
+  @visibleForTesting
+  final ConnectionDiagnosis? debugDiagnosis;
+  @visibleForTesting
+  final Map<DiagnosisStep, DiagnosisStepStatus>? debugSteps;
+  @visibleForTesting
+  final String? debugNetworkName;
+  @visibleForTesting
+  final bool debugConnectedMeanwhile;
+  @visibleForTesting
+  final bool debugSkipDiagnostics;
+
   const ConnectionDiagnosisDialog({
     super.key,
     required this.server,
     required this.otherServers,
+    this.debugDiagnosis,
+    this.debugSteps,
+    this.debugNetworkName,
+    this.debugConnectedMeanwhile = false,
+    this.debugSkipDiagnostics = false,
   });
 
   static Future<void> show(
@@ -65,16 +84,34 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   bool _connectedMeanwhile = false;
   Timer? _autoCloseTimer;
 
+  /// The network name for a debug screenshot, when there is no real one.
+  String? _debugNetworkName;
+
+  bool get _debug =>
+      widget.debugSkipDiagnostics ||
+      widget.debugDiagnosis != null ||
+      widget.debugSteps != null ||
+      widget.debugNetworkName != null;
+
   /// The network the person is on, for the name of it.
   NetworkFingerprint? _fingerprint;
 
   @override
   void initState() {
     super.initState();
-    _bobController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-      ..repeat(reverse: true);
-    unawaited(_run());
-    unawaited(_loadNetwork());
+    _bobController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    if (_debug) {
+      _statuses.addAll(
+        widget.debugSteps ?? {for (final step in DiagnosisStep.values) step: DiagnosisStepStatus.skipped},
+      );
+      _result = widget.debugDiagnosis;
+      _connectedMeanwhile = widget.debugConnectedMeanwhile;
+      _debugNetworkName = widget.debugNetworkName;
+    } else {
+      _bobController.repeat(reverse: true);
+      unawaited(_run());
+      unawaited(_loadNetwork());
+    }
   }
 
   /// The list of the networks: there the name is changed and a network can
@@ -90,6 +127,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_debug) return;
 
     // Slow but fine after all - say so and get out of the way.
     final state = VpnScope.vpnControllerOf(context).state;
@@ -320,9 +358,11 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                   : const SizedBox(width: double.infinity),
             ),
             const SizedBox(height: 16),
-            if (_fingerprint != null) ...[
+            if (_fingerprint != null || _debugNetworkName != null) ...[
               _NetworkRow(
-                name: networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
+                name:
+                    _debugNetworkName ??
+                    networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
                 onOpen: _openNetworks,
               ),
               const SizedBox(height: 8),
