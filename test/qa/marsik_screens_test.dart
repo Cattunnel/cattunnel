@@ -282,6 +282,68 @@ void main() {
     }
   });
 
+  testWidgets('dialog: large font, width 360', (tester) async {
+    for (final locale in ['ru', 'en']) {
+      final server = _server(locale == 'ru' ? 'Германия 1' : 'Germany 1');
+      for (final dark in [false, true]) {
+        for (final verdict in DiagnosisVerdict.values) {
+          await _shot(
+            tester,
+            'dialog_large360_${verdict.name}_${locale}_${dark ? 'dark' : 'light'}',
+            locale: locale,
+            dark: dark,
+            width: 360,
+            scale: 1.3,
+            height: 1200,
+            child: _dialog(
+              locale: locale,
+              server: server,
+              diagnosis: _diagnosis(verdict),
+              steps: _verdictSteps(verdict),
+              networkName: locale == 'ru' ? 'Домашний Wi-Fi' : 'Home Wi-Fi',
+            ),
+          );
+        }
+      }
+    }
+  });
+
+  testWidgets('dialog: large font with alternative, width 412', (tester) async {
+    const verdicts = [
+      DiagnosisVerdict.networkCuts,
+      DiagnosisVerdict.serverTimeout,
+      DiagnosisVerdict.serverRefused,
+      DiagnosisVerdict.sniBlocked,
+      DiagnosisVerdict.tlsBlocked,
+      DiagnosisVerdict.trafficBlocked,
+      DiagnosisVerdict.addressFrozen,
+    ];
+    for (final locale in ['ru', 'en']) {
+      final server = _server(locale == 'ru' ? 'Германия 1' : 'Germany 1');
+      final alternative = _server(locale == 'ru' ? 'Нидерланды' : 'Netherlands');
+      for (final dark in [false, true]) {
+        for (final verdict in verdicts) {
+          await _shot(
+            tester,
+            'dialog_large_alt_${verdict.name}_${locale}_${dark ? 'dark' : 'light'}',
+            locale: locale,
+            dark: dark,
+            width: 412,
+            scale: 1.3,
+            height: 1200,
+            child: _dialog(
+              locale: locale,
+              server: server,
+              diagnosis: _diagnosis(verdict, alternative: alternative),
+              steps: _verdictSteps(verdict),
+              networkName: locale == 'ru' ? 'Домашний Wi-Fi' : 'Home Wi-Fi',
+            ),
+          );
+        }
+      }
+    }
+  });
+
   testWidgets('dialog: round is running, failed, worked, connected meanwhile', (tester) async {
     const locales = ['ru', 'en'];
     const widths = [360.0, 412.0];
