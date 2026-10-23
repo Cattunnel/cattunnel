@@ -459,8 +459,10 @@ class _VpnScopeState extends State<VpnScope> {
   /// The techniques of one attempt, in order.
   ///
   /// With the anti-DPI "auto" in the subscription, the techniques are the
-  /// point. Without it, the plain connection goes first, and the
-  /// techniques follow only if the network says the path is cut - then the
+  /// point, and the line under the button stays empty unless nothing
+  /// worked: the key asked for the bypass, not the network. Without it, the
+  /// plain connection goes first, and the techniques follow only if the
+  /// network says the path is cut - then the
   /// network remembers that the plain connection does not work here (for
   /// [AntiDpiAuto.memoryTtl]), and the next time in this network the
   /// techniques go first.
@@ -531,15 +533,17 @@ class _VpnScopeState extends State<VpnScope> {
           _showAntiDpiStatus(AntiDpiStatus(step: AntiDpiStep.tryingDirect, networkName: networkName));
         } else {
           bypassTried++;
-          _showAntiDpiStatus(
-            AntiDpiStatus(
-              step: AntiDpiStep.tryingTechnique,
-              index: bypassTried,
-              total: bypassTotal,
-              mode: technique,
-              networkName: networkName,
-            ),
-          );
+          if (directFirst) {
+            _showAntiDpiStatus(
+              AntiDpiStatus(
+                step: AntiDpiStep.tryingTechnique,
+                index: bypassTried,
+                total: bypassTotal,
+                mode: technique,
+                networkName: networkName,
+              ),
+            );
+          }
         }
 
         final outcome = await _tryTechnique(
@@ -569,15 +573,17 @@ class _VpnScopeState extends State<VpnScope> {
             pathCut: pathCut,
             at: DateTime.now(),
           );
-          _showAntiDpiStatus(
-            AntiDpiStatus(
-              step: AntiDpiStep.worked,
-              mode: technique,
-              networkName: networkName,
-              plainWorked: technique == 0,
-            ),
-            hideAfter: const Duration(seconds: 8),
-          );
+          if (directFirst) {
+            _showAntiDpiStatus(
+              AntiDpiStatus(
+                step: AntiDpiStep.worked,
+                mode: technique,
+                networkName: networkName,
+                plainWorked: technique == 0,
+              ),
+              hideAfter: const Duration(seconds: 8),
+            );
+          }
 
           return;
         }
