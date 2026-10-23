@@ -480,7 +480,7 @@ class _VpnScopeState extends State<VpnScope> {
     required bool directFirst,
   }) async {
     final preferences = context.dependencyFactory.sharedPreferences;
-    final ln = context.ln;
+    final ln = Localization.ln;
     final auto = AntiDpiAuto(preferences);
     _autoServerId = server.id;
     final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
