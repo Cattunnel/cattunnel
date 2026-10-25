@@ -13,6 +13,29 @@ abstract final class SubscriptionShareLink {
   static const _scheme = 'cattunnel';
   static const _host = 'subscription';
 
+  /// Одноразовый код из ссылки `cattunnel://subscription?code=...&base=...`.
+  ///
+  /// Код - не адрес подписки: он живёт несколько минут и сгорает после
+  /// обмена. Постоянного адреса подписки в ссылке нет вообще, поэтому
+  /// пересланная ссылка ничего не даёт.
+  static ({String code, String base})? tryDecodeCode(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null || uri.scheme != _scheme || uri.host != _host) {
+      return null;
+    }
+    final code = uri.queryParameters['code']?.trim() ?? '';
+    final base = uri.queryParameters['base']?.trim() ?? '';
+    if (code.isEmpty || base.isEmpty) {
+      return null;
+    }
+    final baseUri = Uri.tryParse(base);
+    if (baseUri == null || baseUri.scheme != 'https' || baseUri.host.isEmpty) {
+      return null;
+    }
+
+    return (code: code, base: base);
+  }
+
   static String encode(SubscriptionData subscription) => Uri(
     scheme: _scheme,
     host: _host,
