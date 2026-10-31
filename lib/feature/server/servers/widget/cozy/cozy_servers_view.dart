@@ -160,7 +160,9 @@ class _CozyServersViewState extends State<CozyServersView> {
               // Room for the bottom buttons, which grow with the font.
               padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
               children: [
-                Center(child: connectButton()),
+                // Grows with the screen: a fixed size looked small on a wide
+                // phone (about 480 dp) and right on a 360 dp one.
+                Center(child: connectButton(size: (MediaQuery.sizeOf(context).width * 0.62).clamp(232.0, 300.0))),
                 const AntiDpiStatusLine(),
                 SizedBox(height: aero ? 8 : 24),
                 if (aero)
@@ -671,34 +673,42 @@ class _AeroServerCard extends StatelessWidget {
               children: [
                 Text(
                   server.serverData.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: context.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: colors.neutralBlack,
                   ),
                 ),
+                // One line: an address broken at its ":" reads as two things.
                 Text(
                   server.serverData.ipAddress,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: colors.neutralDark),
                 ),
+                // Under the address, not beside the name: beside it the chip
+                // took the name's width on a narrow phone or a large font.
+                if (latency != null) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: (context.isAeroNight ? AeroColors.limeNight : AeroColors.lime).withValues(alpha: 0.28),
+                    ),
+                    child: Text(
+                      context.ln.cozyPing(latency.inMilliseconds),
+                      style: context.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: context.isAeroNight ? const Color(0xFFC9FF6A) : const Color(0xFF2F6D0A),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          if (latency != null)
-            Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(999),
-                color: (context.isAeroNight ? AeroColors.limeNight : AeroColors.lime).withValues(alpha: 0.28),
-              ),
-              child: Text(
-                context.ln.cozyPing(latency.inMilliseconds),
-                style: context.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: context.isAeroNight ? const Color(0xFFC9FF6A) : const Color(0xFF2F6D0A),
-                ),
-              ),
-            ),
           Icon(Icons.expand_more_rounded, color: colors.neutralDark),
         ],
       ),
