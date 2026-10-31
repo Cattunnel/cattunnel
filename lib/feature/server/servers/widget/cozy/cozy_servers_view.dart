@@ -53,6 +53,14 @@ class CozyServersView extends StatefulWidget {
   /// looked small on a wide phone (about 480 dp) and right on a 360 dp one.
   static double mobileButtonSize(double screenWidth) => (screenWidth * 0.62).clamp(232.0, 300.0);
 
+  /// Wide (desktop-style) home layout: Marsik on the left, server panel on
+  /// the right. Kept at 840 dp so a vertical tablet (e.g. 711 dp wide) still
+  /// gets the phone layout instead of a cramped two-pane view.
+  static const double wideLayoutBreakpoint = 840;
+
+  static bool useWideLayout(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint;
+
   @override
   State<CozyServersView> createState() => _CozyServersViewState();
 }
@@ -159,7 +167,7 @@ class _CozyServersViewState extends State<CozyServersView> {
           : const CustomAppBar(title: 'CatTunnel'),
       body: current == null
           ? const ServersEmptyPlaceholder()
-          : context.isMobileBreakpoint
+          : !CozyServersView.useWideLayout(context)
           ? ListView(
               // Room for the bottom buttons, which grow with the font.
               padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
@@ -198,60 +206,42 @@ class _CozyServersViewState extends State<CozyServersView> {
               ],
             )
           // Wide (desktop) window: Marsik and the status on the left, the
-          // server list always open on the right. Narrower than 600 px
+          // server list always open on the right. Narrower than 840 px
           // it's the phone layout above.
-          : Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              connectButton(size: 260),
-                              const AntiDpiStatusLine(),
-                              const SizedBox(height: 28),
-                              _StatusBlock(
-                                state: state,
-                                connectedSince: _connectedSince,
-                                server: current,
-                              ),
-                              const VpnBadgeHint(padding: EdgeInsets.only(top: 16)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const Positioned(left: 16, bottom: 16, child: CatPettingButton()),
-                    ],
-                  ),
+          : CozyWideLayoutView(
+              leftChildren: [
+                connectButton(size: 260),
+                const AntiDpiStatusLine(),
+                const SizedBox(height: 28),
+                _StatusBlock(
+                  state: state,
+                  connectedSince: _connectedSince,
+                  server: current,
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 8, 16, 16),
-                  child: SizedBox(
-                    width: (MediaQuery.sizeOf(context).width * 0.38).clamp(320.0, 480.0),
-                    child: Material(
-                      color: context.colors.backgroundSystem,
-                      borderRadius: BorderRadius.circular(28),
-                      clipBehavior: Clip.antiAlias,
-                      child: CozyServerPicker.panel(
-                        currentId: current.id,
-                        onOpenDetails: (server) => _openServerDetails(context, server),
-                        onPick: (server) => _switchTo(context, server, current, state),
-                        onAdd: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
-                      ),
+                const VpnBadgeHint(padding: EdgeInsets.only(top: 16)),
+              ],
+              serverPanel: Padding(
+                padding: const EdgeInsets.fromLTRB(0, 8, 16, 16),
+                child: SizedBox(
+                  width: (MediaQuery.sizeOf(context).width * 0.38).clamp(320.0, 480.0),
+                  child: Material(
+                    color: context.colors.backgroundSystem,
+                    borderRadius: BorderRadius.circular(28),
+                    clipBehavior: Clip.antiAlias,
+                    child: CozyServerPicker.panel(
+                      currentId: current.id,
+                      onOpenDetails: (server) => _openServerDetails(context, server),
+                      onPick: (server) => _switchTo(context, server, current, state),
+                      onAdd: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // Wide window: the petting button sits under Marsik, "+" is in the
       // server panel.
-      floatingActionButton: current != null && !context.isMobileBreakpoint
+      floatingActionButton: current != null && !CozyServersView.useWideLayout(context)
           ? null
           : SizedBox(
               width: double.infinity,
@@ -734,4 +724,43 @@ class AeroServerCardView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wide (desktop/tablet) home layout extracted so it can be rendered in
+/// tests without the app's scopes: the left column children and the server
+/// panel are passed in by the caller.
+@visibleForTesting
+class CozyWideLayoutView extends StatelessWidget {
+  final List<Widget> leftChildren;
+  final Widget serverPanel;
+
+  const CozyWideLayoutView({
+    super.key,
+    required this.leftChildren,
+    required this.serverPanel,
+  });
+
+  @override
+  Widget build(BuildContext context) => Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Stack(
+              children: [
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: leftChildren,
+                    ),
+                  ),
+                ),
+                const Positioned(left: 16, bottom: 16, child: SizedBox.shrink()),
+              ],
+            ),
+          ),
+          serverPanel,
+        ],
+      );
 }
