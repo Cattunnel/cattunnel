@@ -92,6 +92,7 @@ class _ServersScreenViewState extends State<ServersScreenView> {
     final sortedServers = _sortedServers(latencyController);
 
     return ScaffoldWrapper(
+      readable: false,
       child: ScaffoldMessenger(
         key: _scaffoldMessengerKey,
         child: Scaffold(

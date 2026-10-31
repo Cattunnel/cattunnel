@@ -28,10 +28,17 @@ abstract class NavigationUtils {
           icon: CustomIcon.medium(
             icon: e['icon'] as IconData,
           ),
-          label: Text(
-            e['label'].toString(),
-            textAlign: TextAlign.center,
-            style: context.textTheme.labelMedium,
+          // One line, shrunk if it must: on the Tab S4 "Настройки" broke
+          // into "Настройк / и" in the 80 dp rail.
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              e['label'].toString(),
+              maxLines: 1,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: context.textTheme.labelMedium,
+            ),
           ),
         ),
       )

@@ -4,16 +4,35 @@ import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/y2k/y2k_widgets.dart';
 
 class ScaffoldWrapper extends StatelessWidget {
-  final Widget child;
-
   /// Y2K / Аэро: the full, livelier backdrop (the home screen) instead of the calm one.
   final bool y2kLoud;
 
+  /// Lists, settings and forms stop at [readableWidth] in the middle of a
+  /// wide window. On a landscape tablet the settings ran 1800 dp from the
+  /// label to its arrow and the help texts were one line across the
+  /// screen. Screens that use the width (the server list, statistics,
+  /// logs) pass false.
+  final bool readable;
+
+  static const readableWidth = 840.0;
+
   const ScaffoldWrapper({
     super.key,
-    required this.child,
+    required Widget child,
     this.y2kLoud = false,
-  });
+    this.readable = true,
+  }) : _child = child;
+
+  final Widget _child;
+
+  Widget get child => readable
+      ? Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: readableWidth),
+            child: _child,
+          ),
+        )
+      : _child;
 
   @override
   Widget build(BuildContext context) => context.isY2k

@@ -108,6 +108,7 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
     // No screenshots / Recents thumbnail: when and where the VPN was used.
     return SecureScreen(
       child: ScaffoldWrapper(
+        readable: false,
         child: Scaffold(
           appBar: CustomAppBar(
             title: ln.trafficStats,

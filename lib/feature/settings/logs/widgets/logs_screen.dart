@@ -16,6 +16,7 @@ class LogsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ScaffoldWrapper(
+    readable: false,
     child: ScaffoldMessenger(
       child: Scaffold(
         appBar: CustomAppBar(

@@ -241,7 +241,9 @@ class _CozyServersViewState extends State<CozyServersView> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // Wide window: the petting button sits under Marsik, "+" is in the
       // server panel.
-      floatingActionButton: current != null && !CozyServersView.useWideLayout(context)
+      // Not "!useWideLayout": that flipped the buttons when the threshold
+      // moved from 600 to 840 dp, and every phone lost "Add servers".
+      floatingActionButton: current != null && CozyServersView.useWideLayout(context)
           ? null
           : SizedBox(
               width: double.infinity,
@@ -274,6 +276,7 @@ class _CozyServersViewState extends State<CozyServersView> {
     );
 
     return ScaffoldWrapper(
+      readable: false,
       y2kLoud: true,
       child: ScaffoldMessenger(
         key: _scaffoldMessengerKey,

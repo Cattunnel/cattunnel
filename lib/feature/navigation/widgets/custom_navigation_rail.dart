@@ -21,7 +21,7 @@ class CustomNavigationRail extends StatelessWidget {
       padding: const EdgeInsets.only(top: 24.0),
       child: SingleChildScrollView(
         child: SizedBox(
-          width: 80,
+          width: 96,
           child: IntrinsicHeight(
             child: NavigationRail(
               // Marsik on top, like the app icon: the wide window's face.
@@ -32,6 +32,7 @@ class CustomNavigationRail extends StatelessWidget {
               selectedIndex: selectedIndex,
               onDestinationSelected: onDestinationSelected,
               labelType: NavigationRailLabelType.all,
+              minWidth: 96,
               destinations: destinations,
             ),
           ),

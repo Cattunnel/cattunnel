@@ -278,7 +278,9 @@ class _SpeechBubble extends StatelessWidget {
     if (rect == null) {
       return Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: screenSize.height - 48),
+          // 560 dp at most: on a landscape tablet the card stretched to
+          // 1500 dp, one line of text across the whole screen.
+          constraints: BoxConstraints(maxHeight: screenSize.height - 48, maxWidth: 560),
           child: card,
         ),
       );
@@ -291,9 +293,11 @@ class _SpeechBubble extends StatelessWidget {
       right: 0,
       top: belowSpotlight ? null : rect.bottom + 16,
       bottom: belowSpotlight ? screenSize.height - rect.top + 16 : null,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: room < 160 ? 160 : room),
-        child: card,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: room < 160 ? 160 : room, maxWidth: 560),
+          child: card,
+        ),
       ),
     );
   }
