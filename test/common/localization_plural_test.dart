@@ -23,12 +23,21 @@ void main() {
     );
     expect(
       ln.diagAutoFailedModes(5),
-      'Автоматика уже попробовала 5 способов обхода, ни один не прошёл.',
+      'Я уже пробовал 5 способов обхода, ни один не прошёл.',
     );
     expect(
       ln.diagAutoFailedPlain(21),
-      'Автоматика уже попробовала напрямую и 21 способ обхода, ни один не прошёл.',
+      'Я уже пробовал без обхода и 21 способ обхода, ни один не прошёл.',
     );
+  });
+
+  test('a cut counted in a row declines too, and one cut is not "1 times in a row"', () async {
+    final ln = await _ru();
+
+    expect(ln.diagEngineCutAfterBytes(1), 'Соединение оборвалось на полпути.');
+    expect(ln.diagEngineCutAfterBytes(2), 'Соединение 2 раза подряд обрывалось на одном и том же месте.');
+    expect(ln.diagEngineCutAfterBytes(5), 'Соединение 5 раз подряд обрывалось на одном и том же месте.');
+    expect(ln.diagEngineCutAfterBytes(22), 'Соединение 22 раза подряд обрывалось на одном и том же месте.');
   });
 
   test('the single technique has words without numbering', () async {

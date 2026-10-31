@@ -237,7 +237,7 @@
   "helpExpertBody": "Protocol: HTTP/2 (TCP) or HTTP/3 (QUIC); anti-DPI works with HTTP/2 only.\nCustom SNI: the server name shown in the handshake instead of the domain; the server must accept it.\nSize masking: the first frames of every HTTP/2 stream get random padding (the PADDED flag, part of HTTP/2; the server accepts it as is). The sizes of the tunnel's first requests then differ every time, which makes the VPN harder to recognise. The numbers under the switch say how many frames and how many bytes to add. Costs a little traffic; off by default.\nClient Random: a tag at the start of the handshake random the server recognizes the client by. Set only when the admin says so.",
   "antiDpiAutoFailedTitle": "Couldn't get through",
   "antiDpiAutoFailedBody": "Mrrr... I tried the plain connection and the techniques, and none reached the server. Try another server or send a report - it shows where it got stuck.",
-  "antiDpiStatusDirect": "Trying the plain connection…",
+  "antiDpiStatusDirect": "Trying without the bypass…",
   "antiDpiStatusCut": "Looks like a filter is cutting the connection",
   "antiDpiStatusTechniqueSingle": "Turning on the bypass…",
   "antiDpiStatusTechnique": "Turning on the bypass: technique {index} of {total}…",
@@ -519,17 +519,18 @@
   "catPurrOn": "Purring on",
   "catPurrOff": "Purring off",
   "diagTitleChecking": "Marsik is checking the connection…",
-  "diagTitleDone": "Here's what I found",
+  "diagTitleDone": "What stops the connection",
   "diagStepInternet": "Internet",
   "diagStepServer": "Server responds",
-  "diagStepTls": "Secure connection (TLS)",
-  "diagStepAccess": "Access and keys",
-  "diagVerdictNoInternet": "Mrrr... Your internet is gone - even Yandex doesn't answer. Check Wi-Fi or mobile data.",
-  "diagVerdictCaptivePortal": "The network is there, but the internet is behind a login, as in a hotel wifi. Sign in in the browser and I'll try again.",
-  "diagVerdictNetworkCuts": "The network is there and the internet works, but the path to the server is cut. The engine saw the connection freeze or die at the same place.",
-  "diagVerdictServerTimeout": "The server is silent - the wires got tangled somewhere along the way. Its IP is probably blocked, or the server is down.",
+  "diagStepTls": "Secure connection",
+  "diagStepAccess": "Access",
+  "diagStepNotChecked": "not checked",
+  "diagVerdictNoInternet": "Mrrr... Your phone says there is no internet. Check Wi-Fi or mobile data.",
+  "diagVerdictCaptivePortal": "The network wants you to sign in: the internet here is behind a login. Open the browser, sign in, and I'll try again.",
+  "diagVerdictNetworkCuts": "The internet works, but the path to the server is cut: the connection freezes or dies at the same place.",
+  "diagVerdictServerTimeout": "The server is silent. Its address is probably blocked, or the server itself is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
-  "diagVerdictTlsBlocked": "The server answers, but your provider drops any secure connection to it. That happens on mobile networks with whitelists.",
+  "diagVerdictTlsBlocked": "The server answers, but your provider drops the secure connection to it. That happens on mobile networks that only let allowed sites through.",
   "diagVerdictAccessEnded": "The network is fine, but the subscription can't be found anymore. Access has probably ended or the link was disabled - check the bot.",
   "diagVerdictKeysUpdated": "The keys have changed - I already took the new ones from the subscription. Reconnecting!",
   "diagVerdictKeysRejected": "The network is fine and the server answers, but it doesn't accept the keys. Access may have been disabled - contact your server admin.",
@@ -551,37 +552,34 @@
     }
   },
   "diagDisconnect": "Disconnect",
-  "diagKeepWaiting": "Keep waiting",
-  "diagVerdictTrafficBlocked": "The server answers and accepts your keys, but the connection still won't come up - looks like your provider chokes the traffic after the handshake.",
-  "diagVerdictAddressFrozen": "The server stays silent after the handshake - the provider's filter seems to have \"frozen\" its address for a couple of minutes. Knocking now only extends the freeze, so I'm waiting and will try again in a minute the same way. You can wait or switch to another server.",
+  "diagKeepWaiting": "Wait",
+  "diagVerdictTrafficBlocked": "The server answers and accepts your key, but the connection still won't come up. Looks like your provider chokes the traffic after sign-in.",
+  "diagVerdictAddressFrozen": "The server doesn't answer the connection. The provider's filter seems to have frozen its address for 2 minutes. Every new attempt extends the freeze, so it's better to wait or switch to another server.",
   "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",
   "diagVerdictInconclusive": "The network to the server looks fine, but I couldn't figure out why it won't connect. Try another server or contact your server admin.",
   "diagVerdictBypassNeeded": "The network seems to cut the plain connection, so I'm turning on the bypass and trying to get through. If that does not work, try another server.",
-  "diagAutoFailedPlain": "The automation already tried the plain connection and {count, plural, one{{count} technique} other{{count} techniques}}, and none got through.",
+  "diagAutoFailedPlain": "I already tried without the bypass and {count, plural, one{{count} bypass technique} other{{count} bypass techniques}}, and none got through.",
   "@diagAutoFailedPlain": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "diagAutoFailedModes": "The automation already tried {count, plural, one{{count} technique} other{{count} techniques}}, and none got through.",
+  "diagAutoFailedModes": "I already tried {count, plural, one{{count} bypass technique} other{{count} bypass techniques}}, and none got through.",
   "@diagAutoFailedModes": {
     "placeholders": {
       "count": {"type": "int"}
     }
   },
-  "diagEngineHandshakeFreeze": "The engine: the handshake went out and nothing came back. The server's address looks frozen by the filter.",
-  "diagEngineCutAfterBytes": "The engine: the connection died at {bytes} bytes, {repeat} times in a row.",
+  "diagEngineHandshakeFreeze": "The server didn't answer the first message. The filter seems to have frozen its address.",
+  "diagEngineCutAfterBytes": "{repeat, plural, one{The connection died halfway.} other{The connection died at the same place {repeat} times in a row.}}",
   "@diagEngineCutAfterBytes": {
     "placeholders": {
-      "bytes": {
-        "type": "int"
-      },
       "repeat": {
         "type": "int"
       }
     }
   },
-  "diagEngineStall": "The engine: the connection came up, but the traffic stopped.",
+  "diagEngineStall": "The connection came up, but the traffic stopped.",
   "diagNetwork": "Network: {name}",
   "@diagNetwork": {
     "placeholders": {

@@ -279,7 +279,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     final engine = result?.engine;
     if (engine == null) return null;
     if (engine.isHandshakeFreeze) return context.ln.diagEngineHandshakeFreeze;
-    if (engine.isCut) return context.ln.diagEngineCutAfterBytes(engine.cutBytes, engine.repeat);
+    if (engine.isCut) return context.ln.diagEngineCutAfterBytes(engine.repeat);
     if (engine.isStall) return context.ln.diagEngineStall;
 
     return null;
@@ -389,8 +389,11 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
           ),
           const SizedBox(height: 8),
         ],
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Side by side where they fit, one under the other where they don't
+        // (a narrow phone, a large font): never cut off.
+        OverflowBar(
+          alignment: MainAxisAlignment.spaceBetween,
+          overflowAlignment: OverflowBarAlignment.end,
           children: [
             TextButton(onPressed: _disconnect, child: Text(context.ln.diagDisconnect)),
             TextButton(onPressed: _close, child: Text(context.ln.diagKeepWaiting)),
@@ -473,9 +476,21 @@ class _StepRow extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               style: (context.textTheme.bodyMedium ?? const TextStyle()).copyWith(
                 color: dimmed ? context.colors.neutralLight : null,
-                decoration: status == DiagnosisStepStatus.skipped ? TextDecoration.lineThrough : null,
               ),
-              child: Text(label),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label),
+                  // Said in words, not struck through: a step that was not
+                  // checked is not a step that failed. Under the label, so
+                  // a narrow screen does not break the label mid-word.
+                  if (status == DiagnosisStepStatus.skipped)
+                    Text(
+                      context.ln.diagStepNotChecked,
+                      style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralLight),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
