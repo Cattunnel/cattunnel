@@ -368,6 +368,7 @@
   "diagStepServer": "Сервер отвечает",
   "diagStepTls": "Защищённое соединение",
   "diagStepAccess": "Доступ",
+  "diagStepTraffic": "Трафик после подключения",
   "diagStepNotChecked": "не проверял",
   "diagVerdictNoInternet": "Мурр... Телефон говорит, что интернета нет. Проверь Wi-Fi или мобильные данные.",
   "diagVerdictCaptivePortal": "Сеть просит войти: интернет здесь за паролем. Войди через настройки Wi-Fi или в браузере, и я попробую снова.",
@@ -396,6 +397,7 @@
     }
   },
   "diagKeepWaiting": "Ждать",
+  "diagNetworkEdit": "Изменить",
   "diagCancel": "Отменить",
   "diagClose": "Закрыть",
   "diagRetry": "Попробовать снова",

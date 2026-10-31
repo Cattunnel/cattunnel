@@ -522,6 +522,7 @@
   "diagStepServer": "Server responds",
   "diagStepTls": "Secure connection",
   "diagStepAccess": "Access",
+  "diagStepTraffic": "Traffic after connecting",
   "diagStepNotChecked": "not checked",
   "diagVerdictNoInternet": "Mrrr... Your phone says there is no internet. Check Wi-Fi or mobile data.",
   "diagVerdictCaptivePortal": "The network wants you to sign in: the internet here is behind a login. Sign in through the Wi-Fi settings or in the browser, and I'll try again.",
@@ -550,6 +551,7 @@
     }
   },
   "diagKeepWaiting": "Wait",
+  "diagNetworkEdit": "Edit",
   "diagCancel": "Cancel",
   "diagClose": "Close",
   "diagRetry": "Try again",

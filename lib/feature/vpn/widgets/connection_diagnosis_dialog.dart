@@ -406,6 +406,11 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
             const SizedBox(height: 16),
             for (final step in DiagnosisStep.values)
               _StepRow(label: _stepLabel(step), status: _statuses[step]!, okColor: _okColor),
+            // Every check before it passed, yet nothing works: the traffic is
+            // cut after sign-in. Without this row the list showed four green
+            // steps under a negative verdict (task 38, problem 4).
+            if (result?.verdict == DiagnosisVerdict.trafficBlocked)
+              _StepRow(label: context.ln.diagStepTraffic, status: DiagnosisStepStatus.failed, okColor: _okColor),
             AnimatedSize(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut,
@@ -510,11 +515,26 @@ class _NetworkRow extends StatelessWidget {
     onTap: onOpen,
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(child: Text(context.ln.diagNetwork(name))),
-          Icon(Icons.navigate_next, color: context.colors.neutralDark),
-        ],
+      // "Edit" in words, not a chevron: the chevron read as the main action
+      // of the window (task 38, problem 14). The list renames and forgets
+      // networks, it does not switch them.
+      // Wrap, not Row: on a narrow screen with a large font "Edit" goes to
+      // the next line instead of squeezing the name until "Wi-Fi" breaks.
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            Text(context.ln.diagNetwork(name)),
+            Text(
+              context.ln.diagNetworkEdit,
+              style: context.textTheme.bodyMedium?.copyWith(color: context.colors.accent, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     ),
   );
