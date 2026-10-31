@@ -49,6 +49,10 @@ class CozyServersView extends StatefulWidget {
 
   const CozyServersView({super.key, this.deepLinkData, this.y2k = false, this.aero = false});
 
+  /// The connect button on a phone grows with the screen: a fixed size
+  /// looked small on a wide phone (about 480 dp) and right on a 360 dp one.
+  static double mobileButtonSize(double screenWidth) => (screenWidth * 0.62).clamp(232.0, 300.0);
+
   @override
   State<CozyServersView> createState() => _CozyServersViewState();
 }
@@ -160,9 +164,7 @@ class _CozyServersViewState extends State<CozyServersView> {
               // Room for the bottom buttons, which grow with the font.
               padding: EdgeInsets.fromLTRB(24, 16, 24, 72 + 48 * MediaQuery.textScalerOf(context).scale(1)),
               children: [
-                // Grows with the screen: a fixed size looked small on a wide
-                // phone (about 480 dp) and right on a 360 dp one.
-                Center(child: connectButton(size: (MediaQuery.sizeOf(context).width * 0.62).clamp(232.0, 300.0))),
+                Center(child: connectButton(size: CozyServersView.mobileButtonSize(MediaQuery.sizeOf(context).width))),
                 const AntiDpiStatusLine(),
                 SizedBox(height: aero ? 8 : 24),
                 if (aero)
@@ -621,9 +623,27 @@ class _AeroServerCard extends StatelessWidget {
   const _AeroServerCard({required this.server, required this.onTap});
 
   @override
+  Widget build(BuildContext context) => AeroServerCardView(
+    server: server,
+    latency: ServerLatencyScope.of(context).resultFor(server.id)?.latency,
+    onTap: onTap,
+  );
+}
+
+/// The Aero server card itself, with the ping already measured: the home
+/// screen shots render it without the app's scopes.
+@visibleForTesting
+class AeroServerCardView extends StatelessWidget {
+  final Server server;
+  final Duration? latency;
+  final VoidCallback onTap;
+
+  const AeroServerCardView({super.key, required this.server, required this.latency, required this.onTap});
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final latency = ServerLatencyScope.of(context).resultFor(server.id)?.latency;
+    final latency = this.latency;
 
     return AeroGlass(
       onTap: onTap,
