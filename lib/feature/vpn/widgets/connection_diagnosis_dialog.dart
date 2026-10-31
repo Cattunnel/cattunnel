@@ -327,13 +327,13 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisStep.access => context.ln.diagStepAccess,
   };
 
-  /// The step being checked now, counted from 1.
-  int get _currentStep {
-    final finished = _statuses.values.where(
-      (status) => status != DiagnosisStepStatus.pending && status != DiagnosisStepStatus.running,
-    );
+  /// The step being checked now, counted from 1; null between steps. Seen
+  /// on the S22: after the server step failed, Marsik was asking other
+  /// servers and the old count said "Step 4 of 4" over two unchecked steps.
+  int? get _currentStep {
+    final running = DiagnosisStep.values.indexWhere((step) => _statuses[step] == DiagnosisStepStatus.running);
 
-    return min(finished.length + 1, DiagnosisStep.values.length);
+    return running < 0 ? null : running + 1;
   }
 
   Future<void> _act(DoctorAction action) async {
@@ -398,7 +398,12 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
             if (!done) ...[
               const SizedBox(height: 4),
               Text(
-                context.ln.diagProgress(_currentStep, DiagnosisStep.values.length),
+                switch (_currentStep) {
+                  final step? => context.ln.diagProgress(step, DiagnosisStep.values.length),
+                  // Between steps (waiting for the bypass round, asking other
+                  // servers after a failed one): no step number to claim.
+                  null => context.ln.diagProgressUsually,
+                },
                 textAlign: TextAlign.center,
                 style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
               ),

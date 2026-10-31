@@ -551,6 +551,7 @@
     }
   },
   "diagKeepWaiting": "Wait",
+  "diagProgressUsually": "Usually under 30 seconds.",
   "diagNetworkEdit": "Edit",
   "diagCancel": "Cancel",
   "diagClose": "Close",

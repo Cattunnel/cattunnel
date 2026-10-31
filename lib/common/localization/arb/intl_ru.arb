@@ -397,6 +397,7 @@
     }
   },
   "diagKeepWaiting": "Ждать",
+  "diagProgressUsually": "Обычно до 30 секунд.",
   "diagNetworkEdit": "Изменить",
   "diagCancel": "Отменить",
   "diagClose": "Закрыть",
