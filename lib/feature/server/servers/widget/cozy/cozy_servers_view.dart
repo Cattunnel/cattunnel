@@ -209,6 +209,7 @@ class _CozyServersViewState extends State<CozyServersView> {
           // server list always open on the right. Narrower than 840 px
           // it's the phone layout above.
           : CozyWideLayoutView(
+              corner: const CatPettingButton(),
               leftChildren: [
                 connectButton(size: 260),
                 const AntiDpiStatusLine(),
@@ -737,10 +738,15 @@ class CozyWideLayoutView extends StatelessWidget {
   final List<Widget> leftChildren;
   final Widget serverPanel;
 
+  /// Bottom left under Marsik: the petting button in the app; a test leaves
+  /// it out (it needs the app's scopes).
+  final Widget? corner;
+
   const CozyWideLayoutView({
     super.key,
     required this.leftChildren,
     required this.serverPanel,
+    this.corner,
   });
 
   @override
@@ -759,7 +765,7 @@ class CozyWideLayoutView extends StatelessWidget {
                     ),
                   ),
                 ),
-                const Positioned(left: 16, bottom: 16, child: SizedBox.shrink()),
+                if (corner != null) Positioned(left: 16, bottom: 16, child: corner!),
               ],
             ),
           ),
