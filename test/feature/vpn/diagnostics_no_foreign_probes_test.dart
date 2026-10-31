@@ -7,7 +7,9 @@ import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/vpn_protocol.dart';
 import 'package:trusttunnel/data/repository/server_repository.dart';
 import 'package:trusttunnel/data/repository/subscription_repository.dart';
+import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
+import 'package:vpn_plugin/models/connect_failure.dart';
 
 /// Not reached on these paths: the verdict comes before the credentials.
 class _UnusedServerRepository implements ServerRepository {
@@ -93,5 +95,42 @@ void main() {
 
     expect(result.verdict, DiagnosisVerdict.tlsBlocked);
     expect(hosts.toSet(), {'127.0.0.1'});
+  });
+
+  test('the engine just saw the handshake reset: no second handshake of ours to that address', () async {
+    final server = _server('engine-reset', '203.0.113.40:443');
+    final others = [_server('other-c', '203.0.113.41:443')];
+    ConnectFailures.record(server.id, ConnectFailure.helloReset);
+    addTearDown(() => ConnectFailures.clear(server.id));
+
+    final (result, hosts) = await _diagnose(
+      server,
+      others,
+      connect: (_, _) async => throw const SocketException('refused', osError: OSError('Connection refused', 111)),
+    );
+
+    expect(result.verdict, DiagnosisVerdict.tlsBlocked);
+    // Only the other server is asked (by TCP); the engine is still knocking
+    // on this one.
+    expect(hosts, ['203.0.113.41']);
+  });
+
+  test('an old engine failure is not taken for the current state', () async {
+    final server = _server('engine-old', '203.0.113.50:443');
+    ConnectFailures.record(
+      server.id,
+      ConnectFailure.helloReset,
+      at: DateTime.now().subtract(ConnectionDiagnostics.engineFailureWindow * 2),
+    );
+    addTearDown(() => ConnectFailures.clear(server.id));
+
+    final (result, hosts) = await _diagnose(
+      server,
+      const [],
+      connect: (_, _) async => throw const SocketException('refused', osError: OSError('Connection refused', 111)),
+    );
+
+    expect(result.verdict, DiagnosisVerdict.serverRefused);
+    expect(hosts, ['203.0.113.50']);
   });
 }

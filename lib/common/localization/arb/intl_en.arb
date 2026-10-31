@@ -235,8 +235,6 @@
   "blockQuicLabel": "Turn off QUIC",
   "blockQuicDescription": "UDP to port 443 is refused: browsers and apps fall back to TCP inside the tunnel",
   "helpExpertBody": "Protocol: HTTP/2 (TCP) or HTTP/3 (QUIC); anti-DPI works with HTTP/2 only.\nCustom SNI: the server name shown in the handshake instead of the domain; the server must accept it.\nSize masking: the first frames of every HTTP/2 stream get random padding (the PADDED flag, part of HTTP/2; the server accepts it as is). The sizes of the tunnel's first requests then differ every time, which makes the VPN harder to recognise. The numbers under the switch say how many frames and how many bytes to add. Costs a little traffic; off by default.\nClient Random: a tag at the start of the handshake random the server recognizes the client by. Set only when the admin says so.",
-  "antiDpiAutoFailedTitle": "Couldn't get through",
-  "antiDpiAutoFailedBody": "Mrrr... I tried the plain connection and the techniques, and none reached the server. Try another server or send a report - it shows where it got stuck.",
   "antiDpiStatusDirect": "Trying without the bypass…",
   "antiDpiStatusCut": "Looks like a filter is cutting the connection",
   "antiDpiStatusTechniqueSingle": "Turning on the bypass…",

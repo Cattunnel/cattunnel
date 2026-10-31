@@ -103,48 +103,18 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   }
 
   /// Anti-DPI "auto" tried every technique and none connected (see
-  /// VpnScope._startAntiDpiAuto) - Marsik says so and offers a report.
+  /// VpnScope._startAntiDpiAuto). Marsik tells it, with the same checklist
+  /// and buttons as any other verdict: one voice for every failure, not a
+  /// separate alert with its own wording (task 38, problem 16).
   Future<void> _onAntiDpiAutoFailed() async {
     if (!VpnScope.antiDpiAutoFailed.value || !mounted) {
       return;
     }
     // See _onStartDidNotBegin: the flag must not stay true for the session.
     VpnScope.antiDpiAutoFailed.value = false;
-    if (_dialogOpen) return;
-
-    _dialogOpen = true;
-    try {
-      final report = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => CustomAlertDialog(
-          title: dialogContext.ln.antiDpiAutoFailedTitle,
-          scrollable: true,
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const MarsikImage(AssetImages.catWires, height: 110),
-              const SizedBox(height: 16),
-              Text(dialogContext.ln.antiDpiAutoFailedBody, textAlign: TextAlign.center),
-            ],
-          ),
-          actionsBuilder: (spacing) => [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(dialogContext.ln.startFailedAlertLater),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(dialogContext.ln.startFailedAlertReport),
-            ),
-          ],
-        ),
-      );
-      if (report == true && mounted) {
-        await ProblemReport.share(context, diagnosis: 'antiDpiAutoFailed');
-      }
-    } finally {
-      _dialogOpen = false;
-    }
+    _timer?.cancel();
+    _timer = null;
+    await _openMarsik();
   }
 
   @override
@@ -183,7 +153,14 @@ class _ConnectionWatchdogState extends State<ConnectionWatchdog> {
   Future<void> _onStuck() async {
     _timer = null;
     final state = _state;
-    if (!mounted || _dialogOpen || state == VpnState.connected || state == VpnState.disconnected) {
+    if (state == VpnState.connected || state == VpnState.disconnected) {
+      return;
+    }
+    await _openMarsik();
+  }
+
+  Future<void> _openMarsik() async {
+    if (!mounted || _dialogOpen) {
       return;
     }
 

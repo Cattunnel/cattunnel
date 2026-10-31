@@ -18,6 +18,7 @@ import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_state.dart';
 import 'package:trusttunnel/feature/vpn/domain/server_tls.dart';
+import 'package:vpn_plugin/models/connect_failure.dart';
 import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 enum DiagnosisStep { internet, server, tls, access }
@@ -289,6 +290,11 @@ class ConnectionDiagnostics {
     return diagnosis;
   }
 
+  /// How long the engine's own failed attempt (ConnectFailures) stands for
+  /// the server's state: the engine retries within seconds, so an older one
+  /// says little.
+  static const engineFailureWindow = Duration(seconds: 30);
+
   /// Whether the engine's verdict says the path to the server was cut: a
   /// frozen address, a cut after a fixed number of bytes, a session that
   /// went silent. An error from the server is not the network's doing.
@@ -354,7 +360,20 @@ class ConnectionDiagnostics {
         onStep(DiagnosisStep.internet, DiagnosisStepStatus.skipped);
     }
 
-    // 2. TCP to the server itself.
+    // 2. What the engine itself got from the server a moment ago. The
+    // engine keeps trying underneath this window: our own ClientHello now
+    // would be a second handshake to the same address at the same time,
+    // which is what a filter's "freeze" keys on (task 41). So a handshake
+    // the engine already saw reset is the answer, without asking again.
+    final engineFailure = ConnectFailures.recent(server.id, within: engineFailureWindow);
+    if (engineFailure == ConnectFailure.helloReset) {
+      onStep(DiagnosisStep.server, DiagnosisStepStatus.ok);
+
+      return networkFailure(DiagnosisStep.tls, DiagnosisVerdict.tlsBlocked);
+    }
+
+    // 3. TCP to the server itself: a TCP connect carries no handshake and
+    // no name, and tells a refusal from silence.
     onStep(DiagnosisStep.server, DiagnosisStepStatus.running);
     final (host, port) = ServerLatencyTester.parseAddress(server.serverData.ipAddress);
     final tcp = await _tcp(host, port);
@@ -366,7 +385,7 @@ class ConnectionDiagnostics {
     }
     onStep(DiagnosisStep.server, DiagnosisStepStatus.ok);
 
-    // 3. TLS with our SNI, to our server only. Whether the filter keys on
+    // 4. TLS with our SNI, to our server only. Whether the filter keys on
     // the name or on the address is not asked: that would take our name to
     // someone else's host. The certificate it shows also tells whether the
     // device clock is off (the clock has no other honest source here).
@@ -385,7 +404,7 @@ class ConnectionDiagnostics {
     onStep(DiagnosisStep.tls, DiagnosisStepStatus.ok);
     final auth = probe.auth;
 
-    // 4. The path is clear - ask the server whether it takes our keys.
+    // 5. The path is clear - ask the server whether it takes our keys.
     onStep(DiagnosisStep.access, DiagnosisStepStatus.running);
     if (auth == _AuthOutcome.accepted) {
       onStep(DiagnosisStep.access, DiagnosisStepStatus.ok);
