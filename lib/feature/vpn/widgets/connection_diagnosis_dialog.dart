@@ -563,8 +563,10 @@ class _StepRow extends StatelessWidget {
           Expanded(
             child: AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
+              // neutralDark, not neutralLight: dimmed still has to be read
+              // (4.5:1; neutralLight was 2:1 on the dialog, task 38 #10).
               style: (context.textTheme.bodyMedium ?? const TextStyle()).copyWith(
-                color: dimmed ? context.colors.neutralLight : null,
+                color: dimmed ? context.colors.neutralDark : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,7 +578,7 @@ class _StepRow extends StatelessWidget {
                   if (status == DiagnosisStepStatus.skipped)
                     Text(
                       context.ln.diagStepNotChecked,
-                      style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralLight),
+                      style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
                     ),
                 ],
               ),

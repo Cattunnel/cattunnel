@@ -206,7 +206,7 @@ class ThemePalette {
     neutralLightHover: Color(0xFF8997A9),
     neutralLightPressed: Color(0xFF74869C),
     neutralLightDisabled: Color(0x3330353B),
-    neutralDark: Color(0xFF74869C),
+    neutralDark: Color(0xFF56677B),
     neutralDarkHover: Color(0xFF5C6E84),
     neutralDarkPressed: Color(0xFF465567),
     neutralDarkDisabled: Color(0x4D30353B),
