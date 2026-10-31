@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/controller/controller/controller.dart';
@@ -14,6 +12,7 @@ import 'package:trusttunnel/common/logging/enum/logging_security_type.dart';
 import 'package:trusttunnel/common/logging/observers/logging_controller_observer.dart';
 import 'package:trusttunnel/common/logging/sanitizer/log_sanitizer.dart';
 import 'package:trusttunnel/common/logging/utils/containment_file_util.dart';
+import 'package:trusttunnel/common/utils/device_orientation_policy.dart';
 import 'package:trusttunnel/data/repository/logging_settings_repository.dart';
 import 'package:trusttunnel/di/model/dependency_factory.dart';
 import 'package:trusttunnel/di/model/initialization_result.dart';
@@ -158,18 +157,6 @@ class InitializationHelperIo extends InitializationHelper {
   }
 
   Future<void> _updateDeviceOrientation() async {
-    final isWideScreen = PlatformDispatcher.instance.views.every(
-      (view) => (view.physicalSize.shortestSide / view.devicePixelRatio) >= 600,
-    );
-    final legalOrientations = [
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      if (isWideScreen) ...[
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ],
-    ];
-
-    await SystemChrome.setPreferredOrientations(legalOrientations);
+    await DeviceOrientationPolicy.apply();
   }
 }

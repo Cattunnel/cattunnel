@@ -8,6 +8,7 @@ import 'package:trusttunnel/common/localization/app_locale_preferences.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/logging/observers/logging_navigator_observer.dart';
 import 'package:trusttunnel/common/theme/appearance_preferences.dart';
+import 'package:trusttunnel/common/utils/device_orientation_policy.dart';
 import 'package:trusttunnel/feature/app/widgets/app_system_ui_shell.dart';
 import 'package:trusttunnel/feature/navigation/navigation_screen.dart';
 import 'package:trusttunnel/feature/security/domain/security_platform.dart';
@@ -25,10 +26,14 @@ class App extends StatefulWidget {
   State<App> createState() => _AppState();
 }
 
-class _AppState extends State<App> {
+class _AppState extends State<App> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(DeviceOrientationPolicy.apply());
+    });
     AppLocalePreferences.load(context.dependencyFactory.sharedPreferences);
     AppearancePreferences.load(context.dependencyFactory.sharedPreferences);
     SecureScreen.allowScreenshots = SecuritySettings(context.dependencyFactory.sharedPreferences).allowScreenshots;
@@ -44,6 +49,18 @@ class _AppState extends State<App> {
     if (disguised != settings.disguise) {
       await settings.setDisguise(disguised);
     }
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    unawaited(DeviceOrientationPolicy.apply());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
