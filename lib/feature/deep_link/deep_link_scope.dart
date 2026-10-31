@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/router/deeplink/deep_link_source.dart';
+import 'package:trusttunnel/common/utils/subscription_share_link.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/deep_link/controller/deep_link_controller.dart';
 
@@ -81,7 +82,32 @@ class _DeepLinkScopeState extends State<DeepLinkScope> {
       if (defaultTargetPlatform != TargetPlatform.android && defaultTargetPlatform != TargetPlatform.iOS) {
         unawaited(context.dependencyFactory.appWindowController.showMainWindow());
       }
+      // Одноразовая ссылка: в ней код, а не адрес подписки. Меняем код на
+      // постоянную подписку (и заодно регистрируем ключ устройства).
+      final codeLink = SubscriptionShareLink.tryDecodeCode(link.toString());
+      if (codeLink != null) {
+        unawaited(_exchangeSubscriptionCode(codeLink.code, codeLink.base));
+
+        return;
+      }
       _controller.onDeepLinkReceived(link);
+    }
+  }
+
+  Future<void> _exchangeSubscriptionCode(String code, String base) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final syncService = context.dependencyFactory.subscriptionSyncService;
+    final repository = context.repositoryFactory.subscriptionRepository;
+    try {
+      final subscription = await syncService.exchangeCode(code, base);
+      await repository.addSubscription(request: subscription);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Подписка добавлена')),
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Ссылка не сработала: $e')),
+      );
     }
   }
 

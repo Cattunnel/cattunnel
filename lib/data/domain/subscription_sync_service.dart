@@ -13,6 +13,7 @@ import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
+import 'package:trusttunnel/data/domain/device_identity.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
@@ -185,6 +186,9 @@ class SubscriptionSyncService {
       // No redirects: a 3xx could otherwise hop the request (and later the
       // credentials) over to plain http or another host.
       final request = http.Request('GET', Uri.parse(url))..followRedirects = false;
+      // Ключ устройства и его признаки: сервер по ним знает, кто пришёл, и
+      // выдаёт подписку с логином и паролем этого устройства.
+      request.headers.addAll(await _deviceHeaders());
       final response = await client.send(request).timeout(_mirrorConnectTimeout);
 
       if (response.statusCode != 200) {
@@ -224,7 +228,15 @@ class SubscriptionSyncService {
   /// the subscription URL sees only opaque ciphertext, never the server
   /// list. Both the binary and the ASCII-armored age formats are accepted.
   Future<String> _decode(Uint8List bytes, SubscriptionData subscription) async {
-    final agePrivateKey = subscription.agePrivateKey;
+    // Сначала ключ устройства: под ним сервер шифрует ответ, когда ключ
+    // устройства прислали. Иначе - старый ключ пользователя.
+    String? agePrivateKey;
+    try {
+      agePrivateKey = (await DeviceIdentity.load()).privateKey;
+    } catch (e) {
+      debugPrint('SubscriptionSyncService: the device key is not available: $e');
+    }
+    agePrivateKey ??= subscription.agePrivateKey;
     if (agePrivateKey == null || agePrivateKey.isEmpty) {
       return utf8.decode(bytes);
     }
@@ -243,6 +255,84 @@ class SubscriptionSyncService {
     } catch (_) {
       throw const SubscriptionFetchException('Failed to decrypt subscription - check the age key');
     }
+  }
+
+  /// Обмен одноразового кода на постоянную подписку.
+  ///
+  /// Код живёт несколько минут и сгорает после обмена. Возвращает подписку с
+  /// постоянным адресом (и зеркалами) - её уже можно сохранить в приложении.
+  Future<SubscriptionData> exchangeCode(String code, String base) async {
+    final identity = await DeviceIdentity.load();
+    final uri = Uri.parse(base).replace(path: '/api/ct/exchange');
+    final client = http.Client();
+    try {
+      final response = await client
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              ...await _deviceHeaders(),
+            },
+            body: jsonEncode({
+              'code': code,
+              'device_key': identity.publicKey,
+              'device_id': identity.id,
+              'platform': identity.os,
+              'model': identity.model,
+              'os_version': identity.osVersion,
+            }),
+          )
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) {
+        throw SubscriptionFetchException(
+          'The one-time link is not valid any more (HTTP ${response.statusCode})',
+          statusCode: response.statusCode,
+        );
+      }
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final mirrors = (data['mirrors'] as List<dynamic>? ?? []).map((m) => '$m').toList();
+      final subscription = '${data['subscription'] ?? ''}';
+      final urls = mirrors.isNotEmpty ? mirrors : [subscription];
+      if (urls.isEmpty || urls.first.isEmpty) {
+        throw const SubscriptionFetchException('The server did not return a subscription');
+      }
+
+      return SubscriptionData(
+        name: 'CatTunnel',
+        url: SubscriptionData.joinUrls(urls),
+      );
+    } on SocketException catch (e) {
+      throw SubscriptionFetchException('Could not reach the server: ${e.message}');
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Заголовки запроса подписки: ключ устройства, его признаки и
+  /// User-Agent с именем приложения и версией.
+  static Future<Map<String, String>> _deviceHeaders() async {
+    final headers = <String, String>{
+      'User-Agent': 'CatTunnel/${_appVersion()}',
+    };
+    try {
+      final identity = await DeviceIdentity.load();
+      headers.addAll(identity.subscriptionHeaders);
+    } catch (e) {
+      // Без ключа устройства сервер отдаст подписку в старом режиме
+      // (совместимость): лучше так, чем не отдать вовсе.
+      debugPrint('SubscriptionSyncService: the device key is not available: $e');
+    }
+
+    return headers;
+  }
+
+  static String _version = '';
+
+  static String _appVersion() => _version;
+
+  /// Версия приложения (для User-Agent и x-app-version).
+  static void setAppVersion(String version) {
+    _version = version;
   }
 
   /// Builds an HTTP client scoped to a single subscription.
