@@ -349,7 +349,20 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (MediaQuery.of(context).disableAnimations) {
+    _syncSpin();
+  }
+
+  @override
+  void didUpdateWidget(AeroConnectButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) _syncSpin();
+  }
+
+  /// Only the ring turns, and only while there is a ring (connected or
+  /// busy): an idle button draws no frames.
+  void _syncSpin() {
+    final ring = widget.state == VpnState.connected || widget.state == VpnState.connecting || _trouble;
+    if (!ring || MediaQuery.of(context).disableAnimations) {
       _spin.stop();
     } else if (!_spin.isAnimating) {
       unawaited(_spin.repeat());
@@ -403,7 +416,6 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
               animation: _spin,
               builder: (context, child) {
                 final t = _spin.value;
-                final wobble = 1 + 0.012 * math.sin(t * 2 * math.pi);
 
                 return Stack(
                   alignment: Alignment.center,
@@ -438,7 +450,9 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
                           foregroundDecoration: _RingDecoration(ring),
                         ),
                       ),
-                    Transform.scale(scale: wobble, child: child),
+                    // No "breathing" scale: the button is a button, and a
+                    // size that never settles read as a broken layout.
+                    child!,
                   ],
                 );
               },
