@@ -11,6 +11,7 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/routing/routing/widgets/scope/routing_scope.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
+import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
@@ -153,7 +154,7 @@ class _AutoFailoverScopeState extends State<AutoFailoverScope> {
     final next = AutoFailoverScope.nextServer(ServersScope.controllerOf(context, listen: false).servers, current);
     if (next == null) return;
     // The device's own internet first: without it every server looks dead.
-    if (!await _hasInternet() || !mounted) {
+    if (!await _hasInternet(next) || !mounted) {
       _onState(); // re-arm while still failing
 
       return;
@@ -210,8 +211,11 @@ class _AutoFailoverScopeState extends State<AutoFailoverScope> {
   ///
   /// The system knows whether the network reaches the internet (Android
   /// checks that itself), and saying so costs no handshake. The desktop has
-  /// no such signal, and asks the reference host.
-  static Future<bool> _hasInternet() async {
+  /// no such signal: there a TCP connect to [next] answers instead. It is a
+  /// server of the person's own subscription, so nothing goes to a host we
+  /// would not connect to anyway, and if it does not answer either,
+  /// switching to it would not help.
+  static Future<bool> _hasInternet(Server next) async {
     switch (await NetworkStates.current()) {
       case NetworkState.none:
       case NetworkState.captivePortal:
@@ -223,8 +227,9 @@ class _AutoFailoverScopeState extends State<AutoFailoverScope> {
         break;
     }
 
+    final (host, port) = ServerLatencyTester.parseAddress(next.serverData.ipAddress);
     try {
-      final socket = await PhysicalNet.connect('ya.ru', 443, timeout: const Duration(seconds: 5));
+      final socket = await PhysicalNet.connect(host, port, timeout: const Duration(seconds: 5));
       socket.destroy();
 
       return true;

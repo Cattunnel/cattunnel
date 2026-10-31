@@ -70,7 +70,7 @@ Map<DiagnosisStep, DiagnosisStepStatus> _verdictSteps(DiagnosisVerdict verdict) 
     tls: DiagnosisStepStatus.skipped,
     access: DiagnosisStepStatus.skipped,
   ),
-  DiagnosisVerdict.sniBlocked || DiagnosisVerdict.tlsBlocked => _steps(
+  DiagnosisVerdict.tlsBlocked => _steps(
     tls: DiagnosisStepStatus.failed,
     access: DiagnosisStepStatus.skipped,
   ),
@@ -313,7 +313,6 @@ void main() {
       DiagnosisVerdict.networkCuts,
       DiagnosisVerdict.serverTimeout,
       DiagnosisVerdict.serverRefused,
-      DiagnosisVerdict.sniBlocked,
       DiagnosisVerdict.tlsBlocked,
       DiagnosisVerdict.trafficBlocked,
       DiagnosisVerdict.addressFrozen,

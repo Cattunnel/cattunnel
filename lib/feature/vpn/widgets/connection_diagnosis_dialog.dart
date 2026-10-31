@@ -249,7 +249,6 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       DiagnosisVerdict.tlsBlocked ||
       DiagnosisVerdict.trafficBlocked => AssetImages.catWires,
       DiagnosisVerdict.serverRefused || DiagnosisVerdict.accessEnded => AssetImages.catAlert,
-      DiagnosisVerdict.sniBlocked => AssetImages.catMagnifier,
       DiagnosisVerdict.keysUpdated => AssetImages.catShield,
       DiagnosisVerdict.keysRejected => AssetImages.catGear,
       DiagnosisVerdict.inconclusive => AssetImages.catFace,
@@ -265,7 +264,6 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.bypassNeeded => context.ln.diagVerdictBypassNeeded,
     DiagnosisVerdict.serverTimeout => context.ln.diagVerdictServerTimeout,
     DiagnosisVerdict.serverRefused => context.ln.diagVerdictServerRefused,
-    DiagnosisVerdict.sniBlocked => context.ln.diagVerdictSniBlocked,
     DiagnosisVerdict.tlsBlocked => context.ln.diagVerdictTlsBlocked,
     DiagnosisVerdict.trafficBlocked => context.ln.diagVerdictTrafficBlocked,
     DiagnosisVerdict.accessEnded => context.ln.diagVerdictAccessEnded,

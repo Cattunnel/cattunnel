@@ -529,7 +529,6 @@
   "diagVerdictNetworkCuts": "The network is there and the internet works, but the path to the server is cut. The engine saw the connection freeze or die at the same place.",
   "diagVerdictServerTimeout": "The server is silent - the wires got tangled somewhere along the way. Its IP is probably blocked, or the server is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
-  "diagVerdictSniBlocked": "Found it! Your provider cuts the connection by the server name (SNI) - that's DPI. With another name the same server answers fine.",
   "diagVerdictTlsBlocked": "The server answers, but your provider drops any secure connection to it. That happens on mobile networks with whitelists.",
   "diagVerdictAccessEnded": "The network is fine, but the subscription can't be found anymore. Access has probably ended or the link was disabled - check the bot.",
   "diagVerdictKeysUpdated": "The keys have changed - I already took the new ones from the subscription. Reconnecting!",

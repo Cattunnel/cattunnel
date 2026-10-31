@@ -415,7 +415,7 @@ class _VpnScopeState extends State<VpnScope> {
     _autoAntiDpiMode = null;
     _autoServerId = null;
     // Windows: diagnostics must reach these while the tunnel owns DNS.
-    await PhysicalNet.prime([ServerLatencyTester.parseAddress(server.serverData.ipAddress).$1, 'ya.ru']);
+    await PhysicalNet.prime([ServerLatencyTester.parseAddress(server.serverData.ipAddress).$1]);
 
     final data = server.serverData;
     if (data.antiDpi && data.antiDpiMode == ServerData.antiDpiAuto) {

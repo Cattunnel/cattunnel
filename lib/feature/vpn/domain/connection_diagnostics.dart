@@ -25,7 +25,7 @@ enum DiagnosisStep { internet, server, tls, access }
 enum DiagnosisStepStatus { pending, running, ok, failed, skipped }
 
 enum DiagnosisVerdict {
-  /// Even a well-known domestic host is unreachable.
+  /// The system says there is no network.
   noInternet,
 
   /// The network is there, but it needs a login before it lets anything
@@ -48,13 +48,10 @@ enum DiagnosisVerdict {
   /// The server host actively refused TCP - it's up, but nothing listens.
   serverRefused,
 
-  /// TLS to the server dies, and so does a handshake carrying the server's
-  /// SNI sent to an unrelated, reachable host - the name itself is filtered
-  /// (DPI).
-  sniBlocked,
-
-  /// TLS to the server dies, but its SNI passes fine elsewhere - encrypted
-  /// traffic to this particular IP is cut (e.g. mobile "whitelist" mode).
+  /// TCP to the server connects, but the TLS handshake dies or goes silent:
+  /// a filter cuts the secure connection to it (by name or by address -
+  /// telling these apart would take a handshake with our name to someone
+  /// else's host, which is itself a probe through the filter).
   tlsBlocked,
 
   /// The server accepted our credentials, yet the tunnel doesn't come up -
@@ -77,9 +74,9 @@ enum DiagnosisVerdict {
   /// subscription gave a clear answer about the credentials.
   inconclusive,
 
-  /// The device clock is off by more than [ConnectionDiagnostics.clockSkewLimit]
-  /// from a reference server's time: certificate checks can fail on that alone
-  /// ("not yet valid" / "expired"). Turning on automatic date and time fixes it.
+  /// The device clock is outside the validity of our own server's
+  /// certificate: certificate checks fail on that alone ("not yet valid" /
+  /// "expired"). Turning on automatic date and time fixes it.
   clockWrong,
 
   /// The engine's ClientHello to this server got no answer a moment ago
@@ -94,8 +91,8 @@ class ConnectionDiagnosis {
   /// The same server with refreshed credentials ([DiagnosisVerdict.keysUpdated]).
   final Server? updatedServer;
 
-  /// Another saved server that passed TCP + TLS right now, offered when the
-  /// current one looks blocked.
+  /// Another server of the same subscription that accepted a TCP connection
+  /// right now, offered when the current one looks blocked.
   final Server? alternative;
 
   /// What the engine said about the last session to this server, when it
@@ -121,10 +118,30 @@ enum _AuthOutcome { accepted, rejected, unknown }
 
 enum _SubscriptionOutcome { notFound, updated, unchanged, failed }
 
+/// What one handshake with our server showed.
+class _ServerProbe {
+  /// The server answered the handshake (a TLS alert or an untrusted
+  /// certificate count too).
+  final bool reached;
+
+  /// Whether the server accepted our credentials, when it got that far.
+  final _AuthOutcome auth;
+
+  /// The device clock is outside the validity of the certificate it showed.
+  final bool clockWrong;
+
+  const _ServerProbe({required this.reached, this.auth = _AuthOutcome.unknown, this.clockWrong = false});
+}
+
 /// {@template connection_diagnostics}
 /// Works out *why* a VPN connection is stuck, one layer at a time: internet
-/// at all -> TCP to the server -> TLS with its SNI -> credentials (asked
-/// from the server itself, then from the subscription).
+/// at all (the system's word) -> TCP to the server -> TLS with its SNI ->
+/// credentials (asked from the server itself, then from the subscription).
+///
+/// Packets go only where the app connects anyway: the server itself, other
+/// servers of the same subscription, the subscription host. No reference
+/// hosts: a probe to someone else's host carrying our server's name is a
+/// probe through the filter and tells it our name.
 ///
 /// Runs over the plain network even while the tunnel is still trying: the
 /// vendor VPN service excludes CatTunnel's own package from the tunnel
@@ -139,8 +156,6 @@ enum _SubscriptionOutcome { notFound, updated, unchanged, failed }
 /// `auth_failure_status_code` (one of 403/404/405/407).
 /// {@endtemplate}
 class ConnectionDiagnostics {
-  static const _referenceDnsIp = '77.88.8.8';
-
   static const _tcpTimeout = Duration(seconds: 5);
   static const _tlsTimeout = Duration(seconds: 6);
 
@@ -169,7 +184,6 @@ class ConnectionDiagnostics {
   static const _networkVerdicts = {
     DiagnosisVerdict.serverTimeout,
     DiagnosisVerdict.serverRefused,
-    DiagnosisVerdict.sniBlocked,
     DiagnosisVerdict.tlsBlocked,
     DiagnosisVerdict.trafficBlocked,
   };
@@ -183,26 +197,15 @@ class ConnectionDiagnostics {
   /// the plain connection.
   final SharedPreferences? _preferences;
 
-  /// Reachable from any Russian network, including mobile whitelist modes.
-  /// Used as the "is there internet" probe, and as the unrelated host that
-  /// the server's SNI is sent to when checking for SNI filtering - ya.ru
-  /// completes a handshake for any SNI. Overridable for tests only.
-  final String _referenceHost;
-  final int _referencePort;
-
   const ConnectionDiagnostics({
     required SubscriptionRepository subscriptionRepository,
     required ServerRepository serverRepository,
     bool trustUserCas = false,
     SharedPreferences? preferences,
-    @visibleForTesting String referenceHost = 'ya.ru',
-    @visibleForTesting int referencePort = 443,
   }) : _subscriptionRepository = subscriptionRepository,
        _serverRepository = serverRepository,
        _trustUserCas = trustUserCas,
-       _preferences = preferences,
-       _referenceHost = referenceHost,
-       _referencePort = referencePort;
+       _preferences = preferences;
 
   /// {@macro connection_diagnostics}
   ///
@@ -327,48 +330,28 @@ class ConnectionDiagnostics {
       );
     }
 
-    // 1. Internet at all.
+    // 1. Internet at all: the system's word, and only the system's.
     //
-    // The system checks the network itself (Android knows whether it
-    // reaches the internet and whether it is a login page), and its word is
-    // worth more than our probe: it tells "no network" from "the network
-    // needs a login" apart, and it costs no handshake. Where the system
-    // has not checked (or could not), the reference host is asked, as on
-    // the desktop.
+    // Android checks the network itself (whether it reaches the internet,
+    // whether it is a login page) and that costs no packet of ours. Where
+    // the system has not checked, or there is no such signal (the desktop),
+    // the step says "not checked" and the server itself is asked next: a
+    // probe to a reference host would be a packet to someone else's host.
     onStep(DiagnosisStep.internet, DiagnosisStepStatus.running);
     final network = await NetworkStates.current();
-    final internet = switch (network) {
-      // There is no network, or the network is a login page.
-      NetworkState.none || NetworkState.captivePortal => false,
-      // The system checked the network and it reaches the internet.
-      NetworkState.validated => true,
-      // The system has not checked (or could not): the reference host is
-      // the control group, without it a dead uplink would look like a
-      // blocked server.
-      NetworkState.unvalidated || NetworkState.unknown =>
-        await _tcp(_referenceHost, _referencePort) == _ProbeOutcome.ok ||
-            await _tcp(_referenceDnsIp, 53) == _ProbeOutcome.ok,
-    };
-    if (!internet) {
-      onStep(DiagnosisStep.internet, DiagnosisStepStatus.failed);
-      skipFrom(DiagnosisStep.internet);
+    switch (network) {
+      case NetworkState.none || NetworkState.captivePortal:
+        onStep(DiagnosisStep.internet, DiagnosisStepStatus.failed);
+        skipFrom(DiagnosisStep.internet);
 
-      // No network: another server would not help either, and every probe
-      // of it is a handshake for nothing.
-      return ConnectionDiagnosis(
-        verdict: network == NetworkState.captivePortal ? DiagnosisVerdict.captivePortal : DiagnosisVerdict.noInternet,
-      );
-    }
-    onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
-
-    // 1a. The device clock: a clock that is days off breaks every certificate
-    // check (the tunnel's included) while everything else looks fine. Plain
-    // HTTP on purpose - TLS itself would fail on a wrong clock.
-    final skew = await _clockSkew(_referenceHost);
-    if (skew != null && skew.abs() > clockSkewLimit) {
-      skipFrom(DiagnosisStep.internet);
-
-      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.clockWrong);
+        // No network: another server would not help either.
+        return ConnectionDiagnosis(
+          verdict: network == NetworkState.captivePortal ? DiagnosisVerdict.captivePortal : DiagnosisVerdict.noInternet,
+        );
+      case NetworkState.validated:
+        onStep(DiagnosisStep.internet, DiagnosisStepStatus.ok);
+      case NetworkState.unvalidated || NetworkState.unknown:
+        onStep(DiagnosisStep.internet, DiagnosisStepStatus.skipped);
     }
 
     // 2. TCP to the server itself.
@@ -383,24 +366,24 @@ class ConnectionDiagnostics {
     }
     onStep(DiagnosisStep.server, DiagnosisStepStatus.ok);
 
-    // 3. TLS with our SNI. If it dies, send the same SNI to an unrelated
-    // host: dying there too means the name itself is filtered - but only if
-    // that host still takes its *own* SNI (control), otherwise the reference
-    // is just unreachable and says nothing about our name.
+    // 3. TLS with our SNI, to our server only. Whether the filter keys on
+    // the name or on the address is not asked: that would take our name to
+    // someone else's host. The certificate it shows also tells whether the
+    // device clock is off (the clock has no other honest source here).
     onStep(DiagnosisStep.tls, DiagnosisStepStatus.running);
     final sni = ServerTls.sniOf(server);
-    final (reached, auth) = await _probeServer(server, host, port, sni: sni);
-    if (!reached) {
-      final sniFiltered =
-          !await _tls(_referenceHost, _referencePort, sni: sni) &&
-          await _tls(_referenceHost, _referencePort, sni: _referenceHost);
+    final probe = await _probeServer(server, host, port, sni: sni);
+    if (probe.clockWrong) {
+      onStep(DiagnosisStep.tls, DiagnosisStepStatus.failed);
+      skipFrom(DiagnosisStep.tls);
 
-      return networkFailure(
-        DiagnosisStep.tls,
-        sniFiltered ? DiagnosisVerdict.sniBlocked : DiagnosisVerdict.tlsBlocked,
-      );
+      return const ConnectionDiagnosis(verdict: DiagnosisVerdict.clockWrong);
+    }
+    if (!probe.reached) {
+      return networkFailure(DiagnosisStep.tls, DiagnosisVerdict.tlsBlocked);
     }
     onStep(DiagnosisStep.tls, DiagnosisStepStatus.ok);
+    final auth = probe.auth;
 
     // 4. The path is clear - ask the server whether it takes our keys.
     onStep(DiagnosisStep.access, DiagnosisStepStatus.running);
@@ -489,63 +472,35 @@ class ConnectionDiagnostics {
     }
   }
 
-  /// First of [candidates] that passes TCP + TLS right now (probed in
-  /// parallel), in their original order.
+  /// First of [candidates] that accepts a TCP connection right now (probed
+  /// in parallel, one connect each), in their original order. No TLS: a
+  /// handshake carries the name, and these servers are not the ones the
+  /// person is connecting to.
   Future<Server?> _findWorkingServer(List<Server> candidates) async {
     final results = await Future.wait(
       candidates.map((candidate) async {
         final (host, port) = ServerLatencyTester.parseAddress(candidate.serverData.ipAddress);
-        if (await _tcp(host, port) != _ProbeOutcome.ok) {
-          return false;
-        }
 
-        return _tls(host, port, sni: ServerTls.sniOf(candidate));
+        return await _tcp(host, port) == _ProbeOutcome.ok;
       }),
     );
 
     return candidates.whereIndexed((index, _) => results[index]).firstOrNull;
   }
 
-  /// How far the device clock may be from a reference server's before the
-  /// diagnosis blames it. Certificates of a renewed server can be "not yet
-  /// valid" for a clock that is behind by hours, so an hour is the line.
-  static const clockSkewLimit = Duration(hours: 1);
-
-  /// Device time minus the `Date` of a plain HTTP answer from [host] (over the
-  /// physical network, like the other probes); null when there is no answer.
-  Future<Duration?> _clockSkew(String host) async {
-    Socket? socket;
-    try {
-      socket = await PhysicalNet.connect(host, 80, timeout: _tcpTimeout);
-      socket.write('HEAD / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n');
-      final head = await socket.cast<List<int>>().transform(latin1.decoder).join().timeout(_tlsTimeout);
-      final serverTime = httpDateOf(head);
-
-      return serverTime == null ? null : DateTime.now().toUtc().difference(serverTime);
-    } catch (_) {
-      return null;
-    } finally {
-      socket?.destroy();
-    }
-  }
-
-  /// The `Date:` header of an HTTP response head, or null.
+  /// Whether the device clock explains a certificate our own server showed:
+  /// [now] is before the certificate's start or after its end. Our
+  /// certificates are renewed well before they end, so outside the window
+  /// it is the clock, not the certificate.
   @visibleForTesting
-  static DateTime? httpDateOf(String responseHead) {
-    for (final line in const LineSplitter().convert(responseHead)) {
-      if (line.isEmpty) break;
-      final colon = line.indexOf(':');
-      if (colon > 0 && line.substring(0, colon).trim().toLowerCase() == 'date') {
-        try {
-          return HttpDate.parse(line.substring(colon + 1).trim());
-        } on Object {
-          return null;
-        }
-      }
-    }
+  static bool clockOutside({required DateTime notBefore, required DateTime notAfter, required DateTime now}) =>
+      now.isBefore(notBefore) || now.isAfter(notAfter);
 
-    return null;
-  }
+  static bool _clockWrongFor(X509Certificate certificate) => clockOutside(
+    notBefore: certificate.startValidity,
+    notAfter: certificate.endValidity,
+    now: DateTime.now(),
+  );
 
   Future<_ProbeOutcome> _tcp(String host, int port) async {
     final pinned = await PhysicalNet.probeTcp(host, port, timeout: _tcpTimeout);
@@ -588,23 +543,34 @@ class ConnectionDiagnostics {
   /// connection mid-handshake ("Connection terminated during handshake" -
   /// also a [HandshakeException], so only alerts count) or silently drop it
   /// (timeout).
-  Future<bool> _tls(String host, int port, {required String sni}) async {
+  Future<_ServerProbe> _tls(String host, int port, {required String sni}) async {
     Socket? socket;
+    var clockWrong = false;
     try {
       socket = await PhysicalNet.connect(host, port, timeout: _tcpTimeout);
       final secure = await SecureSocket.secure(
         socket,
         host: sni,
-        onBadCertificate: (_) => true,
+        onBadCertificate: (certificate) {
+          clockWrong = _clockWrongFor(certificate);
+
+          return true;
+        },
         supportedProtocols: _tunnelAlpn,
       ).timeout(_tlsTimeout);
+      final certificate = secure.peerCertificate;
+      if (certificate != null && _clockWrongFor(certificate)) {
+        clockWrong = true;
+      }
       secure.destroy();
 
-      return true;
+      return _ServerProbe(reached: true, clockWrong: clockWrong);
     } on HandshakeException catch (e) {
-      return '${e.message} ${e.osError?.message ?? ''}'.toUpperCase().contains('ALERT');
+      final alert = '${e.message} ${e.osError?.message ?? ''}'.toUpperCase().contains('ALERT');
+
+      return _ServerProbe(reached: alert, clockWrong: clockWrong);
     } catch (_) {
-      return false;
+      return _ServerProbe(reached: false, clockWrong: clockWrong);
     } finally {
       socket?.destroy();
     }
@@ -627,38 +593,45 @@ class ConnectionDiagnostics {
   /// is ambiguous (the server also drops an ALPN it doesn't serve, and we
   /// offered just http/1.1 here), so only then one more unverified
   /// handshake offering both tunnel ALPNs decides.
-  Future<(bool, _AuthOutcome)> _probeServer(Server server, String host, int port, {required String sni}) async {
+  Future<_ServerProbe> _probeServer(Server server, String host, int port, {required String sni}) async {
     final context = await ServerTls.contextFor(server, trustUserCas: _trustUserCas);
     if (context == null) {
-      return (await _tls(host, port, sni: sni), _AuthOutcome.unknown);
+      return _tls(host, port, sni: sni);
     }
 
     Socket? socket;
     SecureSocket? secure;
+    var clockWrong = false;
     try {
       socket = await PhysicalNet.connect(host, port, timeout: _tcpTimeout);
       secure = await SecureSocket.secure(
         socket,
         host: sni,
         context: context,
+        // Called only when verification failed; the answer stays "no".
+        onBadCertificate: (certificate) {
+          clockWrong = _clockWrongFor(certificate);
+
+          return false;
+        },
         supportedProtocols: const ['http/1.1'],
       ).timeout(_tlsTimeout);
     } on HandshakeException catch (e) {
       socket?.destroy();
       final message = '${e.message} ${e.osError?.message ?? ''}'.toUpperCase();
-      if (message.contains('ALERT') || message.contains('CERTIFICATE')) {
-        return (true, _AuthOutcome.unknown);
+      if (clockWrong || message.contains('ALERT') || message.contains('CERTIFICATE')) {
+        return _ServerProbe(reached: true, clockWrong: clockWrong);
       }
 
-      return (await _tls(host, port, sni: sni), _AuthOutcome.unknown);
+      return _tls(host, port, sni: sni);
     } on TimeoutException {
       socket?.destroy();
 
-      return (false, _AuthOutcome.unknown);
+      return const _ServerProbe(reached: false);
     } catch (_) {
       socket?.destroy();
 
-      return (false, _AuthOutcome.unknown);
+      return const _ServerProbe(reached: false);
     }
 
     try {
@@ -674,12 +647,15 @@ class ConnectionDiagnostics {
       final statusLine = await utf8.decoder.bind(secure).transform(const LineSplitter()).first.timeout(_tlsTimeout);
       final status = int.tryParse(statusLine.split(' ').elementAtOrNull(1) ?? '');
       if (status == null) {
-        return (true, _AuthOutcome.unknown);
+        return const _ServerProbe(reached: true);
       }
 
-      return (true, _authRejectedCodes.contains(status) ? _AuthOutcome.rejected : _AuthOutcome.accepted);
+      return _ServerProbe(
+        reached: true,
+        auth: _authRejectedCodes.contains(status) ? _AuthOutcome.rejected : _AuthOutcome.accepted,
+      );
     } catch (_) {
-      return (true, _AuthOutcome.unknown);
+      return const _ServerProbe(reached: true);
     } finally {
       secure.destroy();
       socket.destroy();
