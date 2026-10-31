@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -13,6 +14,7 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/vpn_configuration_log_level.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/routing/routing/widgets/scope/routing_scope.dart';
+import 'package:trusttunnel/feature/security/domain/security_platform.dart';
 import 'package:trusttunnel/feature/security/domain/security_settings.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
@@ -21,6 +23,7 @@ import 'package:trusttunnel/feature/settings/networks/widgets/networks_screen.da
 import 'package:trusttunnel/feature/support/problem_report.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
@@ -48,6 +51,11 @@ class ConnectionDiagnosisDialog extends StatefulWidget {
   @visibleForTesting
   final bool debugSkipDiagnostics;
 
+  /// Test-only: whether the VPN is still trying (the stop button says
+  /// "Cancel" and "Wait" is there) or has given up ("Close" only).
+  @visibleForTesting
+  final bool debugAttemptRunning;
+
   const ConnectionDiagnosisDialog({
     super.key,
     required this.server,
@@ -57,6 +65,7 @@ class ConnectionDiagnosisDialog extends StatefulWidget {
     this.debugNetworkName,
     this.debugConnectedMeanwhile = false,
     this.debugSkipDiagnostics = false,
+    this.debugAttemptRunning = true,
   });
 
   static Future<void> show(
@@ -84,6 +93,10 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
   bool _connectedMeanwhile = false;
   Timer? _autoCloseTimer;
 
+  /// The VPN is still trying to connect: there is something to cancel and
+  /// something to wait for. Once it gave up, the window only closes.
+  bool _attemptRunning = true;
+
   /// The network name for a debug screenshot, when there is no real one.
   String? _debugNetworkName;
 
@@ -107,7 +120,9 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       _result = widget.debugDiagnosis;
       _connectedMeanwhile = widget.debugConnectedMeanwhile;
       _debugNetworkName = widget.debugNetworkName;
+      _attemptRunning = widget.debugAttemptRunning;
     } else {
+      ConnectionDoctor.marsikOpen.value = true;
       _bobController.repeat(reverse: true);
       unawaited(_run());
       unawaited(_loadNetwork());
@@ -131,6 +146,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
     // Slow but fine after all - say so and get out of the way.
     final state = VpnScope.vpnControllerOf(context).state;
+    _attemptRunning = state != VpnState.disconnected;
     if (state == VpnState.connected && !_connectedMeanwhile && _result?.verdict != DiagnosisVerdict.keysUpdated) {
       _connectedMeanwhile = true;
       _autoCloseTimer = Timer(const Duration(milliseconds: 2500), _close);
@@ -139,6 +155,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
   @override
   void dispose() {
+    if (!_debug) ConnectionDoctor.marsikOpen.value = false;
     _bobController.dispose();
     _autoCloseTimer?.cancel();
     super.dispose();
@@ -226,6 +243,15 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     await stopping;
   }
 
+  /// Another server, only where one can help (task 38, problem 12): no
+  /// internet or a refused key follows to every server.
+  Server? get _alternative {
+    final result = _result;
+    if (result == null || !ConnectionDoctor.alternativeHelps(result.verdict)) return null;
+
+    return result.alternative;
+  }
+
   String get _catAsset {
     if (_connectedMeanwhile) {
       return AssetImages.catShield;
@@ -236,7 +262,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       return AssetImages.catMagnifier;
     }
 
-    if (result.alternative != null) {
+    if (_alternative != null) {
       return AssetImages.catWave;
     }
 
@@ -301,6 +327,38 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisStep.access => context.ln.diagStepAccess,
   };
 
+  /// The step being checked now, counted from 1.
+  int get _currentStep {
+    final finished = _statuses.values.where(
+      (status) => status != DiagnosisStepStatus.pending && status != DiagnosisStepStatus.running,
+    );
+
+    return min(finished.length + 1, DiagnosisStep.values.length);
+  }
+
+  Future<void> _act(DoctorAction action) async {
+    switch (action) {
+      case DoctorAction.retry:
+        await _switchTo(widget.server);
+      case DoctorAction.wifiSettings:
+        await SecurityPlatform.openSettings(SecuritySettingsTarget.wifi);
+      case DoctorAction.dateSettings:
+        await SecurityPlatform.openSettings(SecuritySettingsTarget.date);
+      case DoctorAction.messageAdmin:
+        await ProblemReport.share(context, diagnosis: _result?.verdict.name);
+      case DoctorAction.none:
+        break;
+    }
+  }
+
+  String _actionLabel(DoctorAction action) => switch (action) {
+    DoctorAction.retry => context.ln.diagRetry,
+    DoctorAction.wifiSettings => context.ln.diagOpenWifi,
+    DoctorAction.dateSettings => context.ln.diagOpenDate,
+    DoctorAction.messageAdmin => context.ln.diagMessageAdmin,
+    DoctorAction.none => '',
+  };
+
   @override
   Widget build(BuildContext context) {
     final result = _result;
@@ -335,6 +393,16 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
               textAlign: TextAlign.center,
               style: context.textTheme.titleMedium,
             ),
+            // How far along and how long (task 38, problem 6): a spinner
+            // alone gave no idea whether to wait.
+            if (!done) ...[
+              const SizedBox(height: 4),
+              Text(
+                context.ln.diagProgress(_currentStep, DiagnosisStep.values.length),
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
+              ),
+            ],
             const SizedBox(height: 16),
             for (final step in DiagnosisStep.values)
               _StepRow(label: _stepLabel(step), status: _statuses[step]!, okColor: _okColor),
@@ -346,8 +414,8 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
                       padding: const EdgeInsets.only(top: 16),
                       child: _SpeechBubble(
                         text: _connectedMeanwhile ? context.ln.diagConnectedMeanwhile : _verdictText(result!.verdict),
-                        extra: !_connectedMeanwhile && result?.alternative != null
-                            ? context.ln.diagAlternative(result!.alternative!.serverData.name)
+                        extra: !_connectedMeanwhile && _alternative != null
+                            ? context.ln.diagAlternative(_alternative!.serverData.name)
                             : null,
                         engine: _connectedMeanwhile ? null : _engineText(result),
                         auto: _connectedMeanwhile ? null : _autoText(result),
@@ -377,32 +445,53 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       return TextButton(onPressed: _close, child: Text(context.ln.gotIt));
     }
 
-    final alternative = result?.alternative;
+    final alternative = _alternative;
+    final action = result == null
+        ? DoctorAction.none
+        : ConnectionDoctor.actionFor(
+            result.verdict,
+            systemSettings: !_debug ? Platform.isAndroid : true,
+          );
+    // One filled button: the way out that most likely works. Switching to
+    // a server that answers beats trying this one again.
+    final primary = alternative != null
+        ? FilledButton(
+            onPressed: () => _switchTo(alternative),
+            child: Text(context.ln.diagSwitchTo(alternative.serverData.name)),
+          )
+        : action != DoctorAction.none
+        ? FilledButton(onPressed: () => _act(action), child: Text(_actionLabel(action)))
+        : null;
+    final secondary = alternative != null && action != DoctorAction.none
+        ? OutlinedButton(onPressed: () => _act(action), child: Text(_actionLabel(action)))
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (alternative != null) ...[
-          FilledButton(
-            onPressed: () => _switchTo(alternative),
-            child: Text(context.ln.diagSwitchTo(alternative.serverData.name)),
+        if (primary != null) ...[primary, const SizedBox(height: 8)],
+        if (secondary != null) ...[secondary, const SizedBox(height: 8)],
+        // Nothing is connected yet, so nothing to "disconnect" (task 38,
+        // problem 13): while the VPN still tries, the attempt can be
+        // cancelled or waited for; once it gave up, the window just closes.
+        if (_attemptRunning)
+          // Side by side where they fit, one under the other where they
+          // don't (a narrow phone, a large font): never cut off.
+          OverflowBar(
+            alignment: MainAxisAlignment.spaceBetween,
+            overflowAlignment: OverflowBarAlignment.end,
+            children: [
+              TextButton(onPressed: _disconnect, child: Text(context.ln.diagCancel)),
+              if (result != null) TextButton(onPressed: _close, child: Text(context.ln.diagKeepWaiting)),
+            ],
+          )
+        else
+          TextButton(onPressed: _close, child: Text(context.ln.diagClose)),
+        if (action != DoctorAction.messageAdmin)
+          TextButton(
+            onPressed: () => ProblemReport.share(context, diagnosis: _result?.verdict.name),
+            child: Text(context.ln.reportProblem),
           ),
-          const SizedBox(height: 8),
-        ],
-        // Side by side where they fit, one under the other where they don't
-        // (a narrow phone, a large font): never cut off.
-        OverflowBar(
-          alignment: MainAxisAlignment.spaceBetween,
-          overflowAlignment: OverflowBarAlignment.end,
-          children: [
-            TextButton(onPressed: _disconnect, child: Text(context.ln.diagDisconnect)),
-            TextButton(onPressed: _close, child: Text(context.ln.diagKeepWaiting)),
-          ],
-        ),
-        TextButton(
-          onPressed: () => ProblemReport.share(context, diagnosis: _result?.verdict.name),
-          child: Text(context.ln.reportProblem),
-        ),
       ],
     );
   }

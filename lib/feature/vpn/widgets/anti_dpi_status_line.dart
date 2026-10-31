@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
 /// What the anti-DPI "auto" is doing, right under the connect button.
@@ -13,23 +14,27 @@ class AntiDpiStatusLine extends StatelessWidget {
   const AntiDpiStatusLine({super.key});
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<AntiDpiStatus?>(
-    valueListenable: VpnScope.antiDpiStatus,
-    builder: (context, status, _) => AnimatedSize(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([VpnScope.antiDpiStatus, ConnectionDoctor.marsikOpen]),
+    builder: (context, _) => AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
-      child: status == null
+      // While Marsik's window is open he says it: two voices with two
+      // wordings of one moment contradicted each other.
+      child: _shown == null
           ? const SizedBox(width: double.infinity)
           : Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                _text(context, status),
+                _text(context, _shown!),
                 textAlign: TextAlign.center,
                 style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
               ),
             ),
     ),
   );
+
+  AntiDpiStatus? get _shown => ConnectionDoctor.marsikOpen.value ? null : VpnScope.antiDpiStatus.value;
 
   String _text(BuildContext context, AntiDpiStatus status) => switch (status.step) {
     AntiDpiStep.tryingDirect => context.ln.antiDpiStatusDirect,

@@ -526,7 +526,7 @@
   "diagStepAccess": "Access",
   "diagStepNotChecked": "not checked",
   "diagVerdictNoInternet": "Mrrr... Your phone says there is no internet. Check Wi-Fi or mobile data.",
-  "diagVerdictCaptivePortal": "The network wants you to sign in: the internet here is behind a login. Open the browser, sign in, and I'll try again.",
+  "diagVerdictCaptivePortal": "The network wants you to sign in: the internet here is behind a login. Sign in through the Wi-Fi settings or in the browser, and I'll try again.",
   "diagVerdictNetworkCuts": "The internet works, but the path to the server is cut: the connection freezes or dies at the same place.",
   "diagVerdictServerTimeout": "The server is silent. Its address is probably blocked, or the server itself is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
@@ -551,8 +551,24 @@
       }
     }
   },
-  "diagDisconnect": "Disconnect",
   "diagKeepWaiting": "Wait",
+  "diagCancel": "Cancel",
+  "diagClose": "Close",
+  "diagRetry": "Try again",
+  "diagOpenWifi": "Wi-Fi settings",
+  "diagOpenDate": "Date and time settings",
+  "diagMessageAdmin": "Message the admin",
+  "diagProgress": "Step {step} of {total}. Usually under 30 seconds.",
+  "@diagProgress": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
   "diagVerdictTrafficBlocked": "The server answers and accepts your key, but the connection still won't come up. Looks like your provider chokes the traffic after sign-in.",
   "diagVerdictAddressFrozen": "The server doesn't answer the connection. The provider's filter seems to have frozen its address for 2 minutes. Every new attempt extends the freeze, so it's better to wait or switch to another server.",
   "diagVerdictClockWrong": "Meow! The device clock is way off. Certificate checks fail because of that - for the VPN and for websites. Turn on automatic date and time in the settings and connect again.",

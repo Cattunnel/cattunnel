@@ -62,7 +62,7 @@ class VpnNetworkReport {
   bool get ipv6Leak => vpnActive && underlyingHasGlobalIpv6 && !defaultRouteV6;
 }
 
-enum SecuritySettingsTarget { vpn, security, network, developer, battery, lock }
+enum SecuritySettingsTarget { vpn, security, network, developer, battery, lock, wifi, date }
 
 /// Dart side of `cattunnel/security` (android/.../SecurityChannel.kt).
 /// Every call degrades to a neutral answer off Android.

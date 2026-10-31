@@ -193,6 +193,9 @@ class SecurityChannel(private val context: Context, messenger: BinaryMessenger) 
             // manifest permission; the list screen doesn't.
             "battery" -> Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
             "lock" -> Intent(Settings.ACTION_SECURITY_SETTINGS)
+            // Marsik's buttons: a network behind a login page, a clock that is off.
+            "wifi" -> Intent(Settings.ACTION_WIFI_SETTINGS)
+            "date" -> Intent(Settings.ACTION_DATE_SETTINGS)
             else -> return false
         }
 
