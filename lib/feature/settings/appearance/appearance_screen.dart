@@ -21,6 +21,7 @@ class AppearanceScreen extends StatefulWidget {
     AppStyle.cozy => context.ln.appearanceStyleCozy,
     AppStyle.y2k => context.ln.appearanceStyleY2k,
     AppStyle.aero => context.ln.appearanceStyleAero,
+    AppStyle.cityPop => context.ln.appearanceStyleCityPop,
   };
 
   static String _themeName(BuildContext context, ThemeMode mode) => switch (mode) {

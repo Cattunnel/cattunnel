@@ -789,6 +789,8 @@
   "appearanceStyleCozyDescription": "A big connect button with Marsik, the session timer and a server card.",
   "appearanceStyleY2k": "Y2K",
   "appearanceStyleY2kDescription": "Early-2000s look: deep navy, electric blue, chrome and shards. Always dark.",
+  "appearanceStyleCityPop": "City pop",
+  "appearanceStyleCityPopDescription": "A Tokyo street of the 80s: glass towers, neon signs, wet asphalt and a bay. A cassette panel, the time of day follows the phone's clock, always night in the dark theme.",
   "appearanceStyleAero": "Aero",
   "appearanceStyleAeroDescription": "Frutiger Aero: sky, grass, glass and bubbles. Morning, day, evening and night follow the phone's clock.",
   "appearanceUseStyle": "Use {name}",

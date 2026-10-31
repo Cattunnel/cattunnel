@@ -92,6 +92,8 @@ flutter_launcher_icons:
 flutter:
   generate: true
   uses-material-design: true
+  shaders:
+    - shaders/city.frag
   assets:
     - assets/images/
     - assets/images/tray/
@@ -138,6 +140,19 @@ flutter:
           weight: 800
         - asset: assets/fonts/aero/Nunito-Black.ttf
           weight: 900
+    # «City pop» style: Dela Gothic One for display, M PLUS 1p for the interface
+    # (SIL OFL 1.1). Cyrillic and kana come from the files themselves; the
+    # kanji of the signs fall back to the system's Japanese font.
+    - family: DelaGothicOne
+      fonts:
+        - asset: assets/fonts/citypop/DelaGothicOne-Regular.ttf
+          weight: 400
+    - family: MPlus1p
+      fonts:
+        - asset: assets/fonts/citypop/MPLUS1p-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/citypop/MPLUS1p-ExtraBold.ttf
+          weight: 800
     - family: Roboto
       fonts:
         - asset: assets/fonts/roboto/Roboto-Thin.ttf

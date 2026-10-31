@@ -48,6 +48,8 @@ const _entries = <(List<String>, String)>[
   (['Exo 2 (font)'], 'font_exo2.txt'),
   // Font of the Aero style
   (['Nunito (font)'], 'font_nunito.txt'),
+  // Fonts of the City pop style
+  (['Dela Gothic One (font)', 'M PLUS 1p (font)'], 'font_citypop.txt'),
 ];
 
 void registerThirdPartyLicenses() {

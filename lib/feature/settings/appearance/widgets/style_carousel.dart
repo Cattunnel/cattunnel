@@ -21,7 +21,7 @@ class StyleCarousel extends StatefulWidget {
 }
 
 class _StyleCarouselState extends State<StyleCarousel> {
-  static const _order = [AppStyle.aero, AppStyle.y2k, AppStyle.cozy, AppStyle.minimal];
+  static const _order = [AppStyle.cityPop, AppStyle.aero, AppStyle.y2k, AppStyle.cozy, AppStyle.minimal];
 
   late int _page = math.max(0, _order.indexOf(widget.initial));
   late final PageController _controller = PageController(viewportFraction: 0.78, initialPage: _page);
@@ -42,6 +42,11 @@ class _StyleCarouselState extends State<StyleCarousel> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final names = {
+      AppStyle.cityPop: (
+        context.ln.appearanceStyleCityPop,
+        context.ln.appearanceStyleCityPopDescription,
+        const _CityPopPreview(),
+      ),
       AppStyle.aero: (context.ln.appearanceStyleAero, context.ln.appearanceStyleAeroDescription, const _AeroPreview()),
       AppStyle.y2k: (context.ln.appearanceStyleY2k, context.ln.appearanceStyleY2kDescription, const _Y2kPreview()),
       AppStyle.cozy: (context.ln.appearanceStyleCozy, context.ln.appearanceStyleCozyDescription, const _CozyPreview()),
@@ -238,6 +243,48 @@ class _MinimalPreview extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Tiny sketch of «City pop»: dusk sky, a striped sun, a skyline and a red band.
+class _CityPopPreview extends StatelessWidget {
+  const _CityPopPreview();
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+    borderRadius: BorderRadius.circular(12),
+    child: DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF3A2470), Color(0xFFD65A9A), Color(0xFFFFB27A), Color(0xFF2A1A44), Color(0xFF1A1236)],
+          stops: [0, 0.42, 0.62, 0.62, 1],
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 40,
+            child: Container(
+              width: 46,
+              height: 46,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFFFF0B0), Color(0xFFFF9A5A), Color(0xFFFF4F80)],
+                ),
+              ),
+            ),
+          ),
+          Positioned(left: 0, right: 0, bottom: 22, child: Container(height: 5, color: const Color(0xFFD2342F))),
+          Positioned(bottom: 6, child: SizedBox(width: 56, height: 52, child: Image.asset(AssetImages.catShield))),
+        ],
+      ),
+    ),
+  );
 }
 
 /// Tiny sketch of «Аэро»: sky over a green hill, a glass bubble with Marsik.

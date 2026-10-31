@@ -23,6 +23,7 @@ import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
+import 'package:trusttunnel/widgets/citypop/city_home.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
@@ -47,7 +48,10 @@ class CozyServersView extends StatefulWidget {
   /// The «Аэро» look (AppStyle.aero).
   final bool aero;
 
-  const CozyServersView({super.key, this.deepLinkData, this.y2k = false, this.aero = false});
+  /// The «City pop» look (AppStyle.cityPop): the live street scene and a cassette panel.
+  final bool cityPop;
+
+  const CozyServersView({super.key, this.deepLinkData, this.y2k = false, this.aero = false, this.cityPop = false});
 
   /// The connect button on a phone grows with the screen: a fixed size
   /// looked small on a wide phone (about 480 dp) and right on a 360 dp one.
@@ -126,6 +130,10 @@ class _CozyServersViewState extends State<CozyServersView> {
 
     _trackSession(state);
     if (current != null) _pingOnce(current);
+
+    if (widget.cityPop && current != null && !CozyServersView.useWideLayout(context)) {
+      return _buildCityPop(context, servers, current, state);
+    }
 
     final y2k = widget.y2k;
     final aero = widget.aero;
@@ -284,6 +292,60 @@ class _CozyServersViewState extends State<CozyServersView> {
         child: scaffold,
       ),
     );
+  }
+
+  /// «City pop» on a phone: the scene is the page, the cassette panel holds the
+  /// server and the keys. The same connect/switch code as the other looks.
+  Widget _buildCityPop(BuildContext context, List<Server> servers, Server current, VpnState state) {
+    final latency = ServerLatencyScope.of(context).resultFor(current.id);
+    final since = _connectedSince;
+
+    return ScaffoldWrapper(
+      readable: false,
+      y2kLoud: true,
+      child: ScaffoldMessenger(
+        key: _scaffoldMessengerKey,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          body: CityHomeBody(
+            state: state,
+            serverName: current.serverData.name,
+            serverSub: current.serverData.ipAddress,
+            pingMs: latency?.latency?.inMilliseconds,
+            unreachable: latency != null && !latency.reachable,
+            session: since == null ? null : DateTime.now().difference(since),
+            onPlay: () {
+              if (state == VpnState.disconnected) {
+                unawaited(ServerConnectionActions.connect(context, current));
+              } else if (cityIsTrouble(state)) {
+                unawaited(_reconnect(context, current));
+              }
+            },
+            onStop: () {
+              if (state != VpnState.disconnected) unawaited(ServerConnectionActions.disconnect(context));
+            },
+            onPickServer: () => _openPicker(context, servers, current, state),
+            topActions: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CatPettingButton(),
+                const SizedBox(width: 8),
+                _CityRoundButton(
+                  icon: Icons.add_rounded,
+                  tooltip: context.ln.addServers,
+                  onTap: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _reconnect(BuildContext context, Server server) async {
+    await ServerConnectionActions.disconnect(context);
+    if (context.mounted) await ServerConnectionActions.connect(context, server);
   }
 
   Future<void> _onConnectTap(BuildContext context, Server server, VpnState state) => state == VpnState.disconnected
@@ -610,6 +672,29 @@ class _Y2kTechCell extends StatelessWidget {
 }
 
 /// «Аэро»: the current server on frosted glass, with a glossy globe.
+/// The small round "+" on the City pop home (add servers).
+class _CityRoundButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _CityRoundButton({required this.icon, required this.tooltip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: Material(
+      color: context.colors.backgroundElevated,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(width: 48, height: 48, child: Icon(icon, color: context.colors.neutralBlack)),
+      ),
+    ),
+  );
+}
+
 class _AeroServerCard extends StatelessWidget {
   final Server server;
   final VoidCallback onTap;
