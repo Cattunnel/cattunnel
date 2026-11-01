@@ -67,6 +67,10 @@ Third-party code and assets included in this repository:
 - assets/fonts/aero/: Nunito (Copyright 2014 The Nunito Project Authors),
   SIL Open Font License 1.1 (assets/licenses/font_nunito.txt); static weights
   cut from the variable font with fontTools' instancer, unmodified otherwise.
+- assets/fonts/citypop/: Dela Gothic One (Copyright 2020 The Dela Gothic One
+  Project Authors) and M PLUS 1p (Copyright 2016 The M+ FONTS Project
+  Authors), SIL Open Font License 1.1 (assets/licenses/font_citypop.txt),
+  unmodified full files as published on Google Fonts.
 - packages/window_manager: from leanflutter/window_manager, Copyright (c) 2022
   LiJianying, MIT License (packages/window_manager/LICENSE), as carried by the
   upstream repository.

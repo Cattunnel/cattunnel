@@ -635,6 +635,8 @@
   "appearanceStyleCozyDescription": "Большая кнопка с Марсиком, таймер сеанса и карточка сервера.",
   "appearanceStyleY2k": "Y2K",
   "appearanceStyleY2kDescription": "Дизайн начала 2000-х: тёмно-синий, электрик, хром и «осколки». Всегда тёмная тема.",
+  "appearanceStyleCityPop": "City pop",
+  "appearanceStyleCityPopDescription": "Токийская улица 80-х: стеклянные башни, неоновые вывески, мокрый асфальт и залив. Кассетная панель, время суток по часам телефона, в тёмной теме всегда ночь.",
   "appearanceStyleAero": "Аэро",
   "appearanceStyleAeroDescription": "Frutiger Aero: небо, трава, стекло и пузыри. Утро, день, вечер и ночь — по часам телефона.",
   "appearanceUseStyle": "Включить «{name}»",

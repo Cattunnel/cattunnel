@@ -81,6 +81,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   // from 21 to 5, the light one the rest of the day.
   bool get _aero => AppearancePreferences.style.value == AppStyle.aero;
 
+  bool get _cityPop => AppearancePreferences.style.value == AppStyle.cityPop;
+
   ThemeData? get _ownTheme {
     final factory = context.dependencyFactory;
     if (_y2k) return factory.y2kThemeData;
@@ -101,8 +103,10 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   }
 
   Widget _materialApp(BuildContext context, Locale locale, ThemeData? own) => MaterialApp(
-    theme: own ?? context.dependencyFactory.lightThemeData,
-    darkTheme: own ?? context.dependencyFactory.darkThemeData,
+    // «City pop» keeps the light/dark setting: its paper theme or its night one.
+    theme: own ?? (_cityPop ? context.dependencyFactory.cityPopThemeData : context.dependencyFactory.lightThemeData),
+    darkTheme:
+        own ?? (_cityPop ? context.dependencyFactory.cityPopNightThemeData : context.dependencyFactory.darkThemeData),
     themeMode: own != null ? ThemeMode.dark : AppearancePreferences.themeMode.value,
     navigatorObservers: [
       LoggingNavigatorObserver(
