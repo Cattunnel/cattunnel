@@ -12,6 +12,7 @@ import 'package:trusttunnel/common/theme/app_theme.dart';
 import 'package:trusttunnel/common/theme/theme_palette.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/widgets/citypop/city_home.dart';
+import 'package:trusttunnel/widgets/citypop/city_scene.dart';
 import 'package:trusttunnel/widgets/citypop/city_style.dart';
 
 /// Screenshots of the «City pop» style, for people to look at (not goldens):
@@ -289,6 +290,9 @@ void main() {
   setUpAll(_loadFonts);
 
   testWidgets('City pop home: four states at day, dusk and night', (tester) async {
+    // A shader that fails to compile loads as null and the scene falls back to
+    // flat colours, while every screenshot still gets written. Fail loudly.
+    expect(await tester.runAsync(cityShaderLoads), isTrue, reason: 'shaders/city.frag did not compile');
     final states = {
       'off': VpnState.disconnected,
       'connecting': VpnState.connecting,
