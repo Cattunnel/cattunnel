@@ -799,43 +799,7 @@ class CityWorld {
   double debugLetterGlow(int blade, int letter, double t) =>
       blade == _starterBlade && letter == _starterLetter ? cityStarterGlow(t) : 1.0;
 
-  /// The word on a shop's painted board, laid on the wall plane in the same
-  /// perspective as the wall. It is paint on a board, not neon: it does not
-  /// glow at night, it only gets dark with the street.
-  void _boardWord(Canvas canvas, _Fac f) {
-    const xf = -6.6;
-    final sa = f.s0 + (f.s1 - f.s0) * 0.1, sb = f.s1 - (f.s1 - f.s0) * 0.1;
-    final q = _qsz(xf, sa, sb, 3.7, 4.9);
-    final pxm = _k / ((f.s0 + f.s1) / 2);
-    if (pxm * 1.2 < 7) return;
-    final chars = f.word.runes.map(String.fromCharCode).toList();
-    const scale = 60.0;
-    final w0 = (sb - sa) * scale, h0 = 1.2 * scale;
-    final fs = math.min(h0 * 0.78, w0 * 0.92 / chars.length);
-    final a = q[0], bb = q[1], d = q[3];
-    final m = Float64List.fromList([
-      (bb.dx - a.dx) / w0, (bb.dy - a.dy) / w0, 0, 0, //
-      (d.dx - a.dx) / h0, (d.dy - a.dy) / h0, 0, 0, //
-      0, 0, 1, 0, //
-      a.dx, a.dy, 0, 1,
-    ]);
-    final col = _c(_mixc(const [244.0, 236.0, 214.0], const [70.0, 56.0, 96.0], 0.55 * _night));
-    canvas.save();
-    canvas.transform(m);
-    var x = (w0 - fs * chars.length) / 2;
-    for (final ch in chars) {
-      final tp = _tp(ch, fs, col);
-      tp.paint(canvas, Offset(x + (fs - tp.width) / 2, (h0 - fs) / 2));
-      x += fs;
-    }
-    canvas.restore();
-  }
-
   void _paintSigns(Canvas canvas) {
-    const xf = -6.6;
-    for (final f in _fac) {
-      if (f.shop && _pt(xf, 0, f.s0).dx >= -0.2 * _size.width) _boardWord(canvas, f);
-    }
     for (var bi = 0; bi < _blades.length; bi++) {
       final b = _blades[bi];
       final d = 1 / b.s, m = _k * d;
@@ -1148,13 +1112,13 @@ class CityWorld {
       );
     }
     final body = Paint()..color = bodyColor;
-    // far wing and far stabiliser behind the fuselage, then the fuselage, fin, near wing
+    // Side elevation: the span is foreshortened, rather than a plan-view V.
     canvas.drawPath(
       poly(const [
-        [1.5, -1.0],
-        [-3.2, -5.2],
-        [-6.0, -5.4],
-        [-2.8, -1.0],
+        [2.4, 0.0],
+        [-3.8, -0.85],
+        [-5.5, -0.85],
+        [-1.5, 0.5],
       ]),
       Paint()..color = farColor,
     );
@@ -1165,52 +1129,56 @@ class CityWorld {
     }
 
     // The fuselage outline: a rounded nose, a long barrel, an up-swept tail cone.
-    final nose = at(11.2, 0.2), noseTop = at(8.4, -1.25), noseCtl = at(10.4, -0.9);
+    // 23.1 q / 2.1 q = 11:1, matching the 54.9 m / 5 m barrel proportions.
+    final nose = at(11.2, 0.2), noseTop = at(8.4, -1.05), noseCtl = at(10.1, -1.05);
     fus.moveTo(nose.dx, nose.dy);
     fus.quadraticBezierTo(noseCtl.dx, noseCtl.dy, noseTop.dx, noseTop.dy);
-    m(fus, -5, -1.25);
-    final t1 = at(-8, -1.25), t2 = at(-10, -1.0), t3 = at(-11.5, -0.9);
+    m(fus, -7.1, -1.05);
+    final t1 = at(-9, -1.05), t2 = at(-10.4, -0.55), t3 = at(-11.9, -0.4);
     fus.cubicTo(t1.dx, t1.dy, t2.dx, t2.dy, t3.dx, t3.dy);
-    m(fus, -11.9, -0.2);
-    final b1 = at(-10, 0.2), b2 = at(-8, 0.9), b3 = at(-5, 1.2);
+    final b1 = at(-10, 0.0), b2 = at(-8, 1.05), b3 = at(-5.5, 1.05);
     fus.cubicTo(b1.dx, b1.dy, b2.dx, b2.dy, b3.dx, b3.dy);
-    m(fus, 7.5, 1.2);
-    final n1 = at(10.5, 1.1);
+    m(fus, 7.5, 1.05);
+    final n1 = at(10.3, 1.05);
     fus.quadraticBezierTo(n1.dx, n1.dy, nose.dx, nose.dy);
     canvas.drawPath(fus, body);
     canvas.drawPath(
       poly(const [
-        [-3.5, -1.2],
-        [-9.2, -6.8],
-        [-11.7, -6.8],
-        [-11.5, -0.8],
+        [-7.1, -1.05],
+        [-10.1, -4.2],
+        [-11.3, -4.2],
+        [-10.5, -0.65],
       ]),
       body,
     );
     canvas.drawPath(
       poly(const [
-        [-8.5, 0.2],
-        [-12.6, 1.9],
-        [-13.8, 1.9],
-        [-11.4, -0.1],
+        [-8.5, -0.05],
+        [-11.7, -0.9],
+        [-12.0, -0.9],
+        [-10.6, 0.35],
       ]),
       body,
     );
     canvas.drawPath(
       poly(const [
-        [3.0, 0.9],
-        [-2.8, 1.2],
-        [-7.2, 5.5],
-        [-4.6, 5.5],
+        [3.0, 0.25],
+        [-3.6, -0.7],
+        [-5.7, -0.7],
+        [-1.1, 0.65],
       ]),
-      body,
-    );
-    // engine under the near wing
-    final e0 = at(1.0, 1.0), e1 = at(4.8, 2.5);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromPoints(e0, e1), Radius.circular(0.7 * q)),
       Paint()..color = farColor,
     );
+    // engine under the near wing
+    // Build the nacelle in aircraft coordinates so it follows the pitch too.
+    final engine = Path();
+    m(engine, 3.5, 0.65, first: true);
+    m(engine, 1.1, 0.65);
+    final e0 = at(0.6, 1.3), e1 = at(1.1, 1.95);
+    engine.quadraticBezierTo(e0.dx, e0.dy, e1.dx, e1.dy);
+    m(engine, 3.5, 1.85);
+    engine.close();
+    canvas.drawPath(engine, Paint()..color = farColor);
     // landing gear: a nose leg and a main leg with two wheels
     if (pose.gear > 0.02) {
       final leg = Paint()
@@ -1218,13 +1186,14 @@ class CityWorld {
         ..strokeWidth = math.max(0.8, 0.28 * q)
         ..strokeCap = StrokeCap.round;
       final g = pose.gear;
-      final n0 = at(8.0, 1.2), n1 = at(8.0, 1.2 + 1.6 * g);
+      // Fin to main-wheel bottom: 6.65 q / 23.1 q, about 15.8 m / 54.9 m.
+      final n0 = at(8.0, 1.05), n1 = at(8.0, 1.05 + 0.85 * g);
       canvas.drawLine(n0, n1, leg);
-      canvas.drawCircle(n1, 0.5 * q * g, body);
-      final g0 = at(-1.0, 1.2), g1 = at(-1.0, 1.2 + 2.0 * g);
+      canvas.drawCircle(n1, 0.25 * q * g, body);
+      final g0 = at(-1.0, 1.05), g1 = at(-1.0, 1.05 + 1.08 * g);
       canvas.drawLine(g0, g1, leg);
-      for (final dv in const [-0.55, 0.55]) {
-        canvas.drawCircle(at(-1.0 + dv, 1.2 + 2.2 * g), 0.55 * q * g, body);
+      for (final dv in const [-0.32, 0.32]) {
+        canvas.drawCircle(at(-1.0 + dv, 1.05 + 1.13 * g), 0.27 * q * g, body);
       }
     }
     // cabin windows: a thin row of lit dots at night, nothing by day
@@ -1244,7 +1213,7 @@ class CityWorld {
     // wingtip of the near wing (flying left we see the left side, red; right,
     // green), white on the tail, red beacons above and below the fuselage,
     // white strobes on the wingtip and the tail.
-    final wingTip = at(-5.9, 5.4);
+    final wingTip = at(-5.7, -0.7);
     final nav = _planeDir < 0 ? const [255.0, 40.0, 40.0] : const [40.0, 255.0, 90.0];
     void dot(Offset c, List<double> col, double glow, double a) {
       _glow(canvas, c, glow * u, col, 0.6 * a * lights);

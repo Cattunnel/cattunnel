@@ -224,9 +224,12 @@ extension _FarGen on CityWorld {
   /// Roof equipment: a water tank, a billboard, an antenna or boxes.
   void _roofGen(_Far b, math.Random r, double span, {double left = 0}) {
     final u = _u, top = -b.h;
+    // The rectangle includes the supports: its bottom must meet the roof.
+    // Narrow setback roofs also constrain the drum's width.
+    final tankWidth = math.min(3.6 * u, span * 0.38);
     final pick = r.nextDouble();
     if (pick < 0.3) {
-      b.decos.add(_Deco(0, Rect.fromLTWH(left + span * 0.15, top - 5.2 * u, 3.6 * u, 4.2 * u)));
+      b.decos.add(_Deco(0, Rect.fromLTWH(left + span * 0.15, top - 5.2 * u, tankWidth, 5.2 * u)));
       b.decos.add(_Deco(2, Rect.fromLTWH(left + span * 0.62, top - 2.4 * u, 4 * u, 2.4 * u)));
     } else if (pick < 0.6) {
       final face = Rect.fromLTWH(left + span * 0.08, top - 7.4 * u, span * 0.7, 4.6 * u);
@@ -237,7 +240,7 @@ extension _FarGen on CityWorld {
       b.decos.add(_Deco(2, Rect.fromLTWH(left + span * 0.1, top - 2.6 * u, 4.4 * u, 2.6 * u)));
     } else {
       b.decos.add(_Deco(2, Rect.fromLTWH(left + span * 0.1, top - 2.6 * u, 5 * u, 2.6 * u)));
-      b.decos.add(_Deco(0, Rect.fromLTWH(left + span * 0.55, top - 5.2 * u, 3.6 * u, 4.2 * u)));
+      b.decos.add(_Deco(0, Rect.fromLTWH(left + span * 0.55, top - 5.2 * u, tankWidth, 5.2 * u)));
       b.decos.add(_Deco(1, Rect.fromLTWH(left + span * 0.9, top - 8 * u, 0.8 * u, 8 * u)));
     }
   }
@@ -949,7 +952,11 @@ extension _FacGen on CityWorld {
       case 4: // spandrel band under a ribbon window
         _quad(canvas, q, _c(_mixc(col, const [10, 8, 30], 0.22)));
       case 5: // roof water tank
-        _quad(canvas, q, metal);
+        final base = b.z0 + 0.45;
+        _quad(canvas, _qsz(b.x, b.sa, b.sb, base, b.z1), metal);
+        for (final s in [b.sa + (b.sb - b.sa) * 0.15, b.sb - (b.sb - b.sa) * 0.15]) {
+          _quad(canvas, _qsz(b.x, s - 0.07, s + 0.07, b.z0, base), metal);
+        }
         _quad(canvas, [_pt(b.x, b.z1 + 0.8, (b.sa + b.sb) / 2), _pt(b.x, b.z1, b.sb), _pt(b.x, b.z1, b.sa)], metal);
       case 6: // antenna
         _quad(canvas, q, metal);
@@ -999,7 +1006,7 @@ extension _FacGen on CityWorld {
         _pt(xo, 2.75, a),
       ], _c([c[0] * awnDim, c[1] * awnDim, c[2] * awnDim * (1 + 0.15 * _night)]));
     }
-    // painted board above the awning (neon at night is drawn on top)
+    // Unlettered painted board above the awning.
     _quad(canvas, [
       _pt(xf, 5.0, s0),
       _pt(xf, 5.0, s1),
