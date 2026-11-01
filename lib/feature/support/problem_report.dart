@@ -15,6 +15,7 @@ import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.da
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope_controller.dart';
 import 'package:trusttunnel/feature/support/detailed_log.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
@@ -131,8 +132,12 @@ abstract final class ProblemReport {
       if (android) ...[
         '${d('manufacturer') ?? '?'} ${d('model') ?? ''} (${d('device') ?? '?'}), Android ${d('android') ?? '?'} / API ${d('sdk') ?? '?'}',
         if (d('firmware') != null) 'Firmware: ${d('firmware')}, patch ${d('securityPatch') ?? '?'}, ${d('abi') ?? '?'}',
-        'SIM (for reference): ${_or(d('simOperator'))} ${d('simCountry') ?? ''}, cellular operator now: '
-            '${_or(d('operator'))} (${_or(d('operatorCode'))})${device['roaming'] == true ? ', ROAMING' : ''}',
+        // Without a SIM the line was "SIM (for reference): - , cellular operator now: - (-)".
+        if (_has(d('simOperator')) || _has(d('operator')))
+          'SIM (for reference): ${_or(d('simOperator'))} ${d('simCountry') ?? ''}, cellular operator now: '
+              '${_or(d('operator'))} (${_or(d('operatorCode'))})${device['roaming'] == true ? ', ROAMING' : ''}'
+        else
+          'SIM: none',
         'Network: ${d('network') ?? '?'}, private DNS: ${d('privateDns') ?? '?'}'
             '${device['powerSave'] == true ? ', power saving ON' : ''}'
             '${device['batteryUnrestricted'] == false ? ', battery restricted' : ''}',
@@ -164,7 +169,12 @@ abstract final class ProblemReport {
 
     final logLines = detailed ? _detailedLogLines : _logLines;
     final log = await _engineLog(dependencies.vpnPlugin, logLines);
-    final full = '$summary\n\n--- engine log, last $logLines lines ---\n${sanitize(log)}\n';
+    final doctor = DoctorTrace.lines;
+    final full =
+        '$summary\n\n--- connection steps (this app session) ---\n'
+        '${doctor.isEmpty ? '(none)' : sanitize(doctor.join('\n'))}\n\n'
+        '--- engine log since the app started, at most $logLines lines'
+        '${detailed ? '' : ' (quiet: the detailed log is off)'} ---\n${sanitize(log)}\n';
 
     return (summary, full);
   }
@@ -209,7 +219,11 @@ abstract final class ProblemReport {
 
   static Future<String> _engineLog(VpnPlugin vpnPlugin, int logLines) async {
     try {
-      final records = await vpnPlugin.exportLogsFor(await vpnPlugin.fetchLogsPath());
+      final all = await vpnPlugin.exportLogsFor(await vpnPlugin.fetchLogsPath());
+      // The file keeps weeks of starts and stops; the report of 01.11 was 300
+      // lines of October and 4 of the attempt it was about.
+      final since = all.lastIndexWhere((r) => r.message.contains('Native logging initialized'));
+      final records = since < 0 ? all : all.sublist(since);
       final tail = records.length > logLines ? records.sublist(records.length - logLines) : records;
 
       return tail.map((r) => '${r.dateTime.toIso8601String()} ${r.level.name} ${r.message}').join('\n');
@@ -246,6 +260,8 @@ abstract final class ProblemReport {
   }
 
   static String _or(String? value) => value == null || value.isEmpty ? '-' : value;
+
+  static bool _has(String? value) => value != null && value.trim().isNotEmpty && value.trim() != '-';
 
   static String _onOff(bool? value) => value == null ? '?' : (value ? 'on' : 'off');
 

@@ -173,6 +173,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       widget.server,
       otherServers: widget.otherServers,
       onStep: (step, status) {
+        DoctorTrace.add('Marsik ${step.name}: ${status.name}');
         if (mounted) {
           setState(() => _statuses[step] = status);
         }
@@ -184,6 +185,13 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     }
 
     _bobController.stop();
+    final engine = result.engine;
+    DoctorTrace.add(
+      'Marsik verdict ${result.verdict.name} on ${_fingerprint?.kind ?? '?'}'
+      '${engine == null ? '' : ', engine ${engine.symptom}'}'
+      '${result.alternative == null ? '' : ', alternative "${result.alternative!.serverData.name}"'}'
+      ', VPN ${VpnScope.vpnControllerOf(context, listen: false).state.name}',
+    );
     setState(() => _result = result);
 
     final updatedServer = result.updatedServer;
@@ -290,6 +298,9 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DiagnosisVerdict.bypassNeeded => context.ln.diagVerdictBypassNeeded,
     DiagnosisVerdict.serverTimeout => context.ln.diagVerdictServerTimeout,
     DiagnosisVerdict.serverRefused => context.ln.diagVerdictServerRefused,
+    // The white lists are a mobile thing; at home the name of the server is cut.
+    DiagnosisVerdict.tlsBlocked when _fingerprint != null && _fingerprint!.kind != 'mobile' =>
+      context.ln.diagVerdictTlsBlockedWired,
     DiagnosisVerdict.tlsBlocked => context.ln.diagVerdictTlsBlocked,
     DiagnosisVerdict.trafficBlocked => context.ln.diagVerdictTrafficBlocked,
     DiagnosisVerdict.accessEnded => context.ln.diagVerdictAccessEnded,
@@ -367,85 +378,100 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     return Dialog(
       backgroundColor: context.hasOwnStyle ? null : context.colors.backgroundSystem,
       shape: context.hasOwnStyle ? null : RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedBuilder(
-              animation: _bobController,
-              builder: (_, child) => Transform.translate(
-                offset: Offset(0, sin(_bobController.value * pi) * -6),
-                child: child,
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => ScaleTransition(
-                  scale: Tween(begin: 0.85, end: 1.0).animate(animation),
-                  child: FadeTransition(opacity: animation, child: child),
-                ),
-                child: MarsikImage(_catAsset, key: ValueKey(_catAsset), height: 130),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              done ? context.ln.diagTitleDone : context.ln.diagTitleChecking,
-              textAlign: TextAlign.center,
-              style: context.textTheme.titleMedium,
-            ),
-            // How far along and how long (task 38, problem 6): a spinner
-            // alone gave no idea whether to wait.
-            if (!done) ...[
-              const SizedBox(height: 4),
-              Text(
-                switch (_currentStep) {
-                  final step? => context.ln.diagProgress(step, DiagnosisStep.values.length),
-                  // Between steps (waiting for the bypass round, asking other
-                  // servers after a failed one): no step number to claim.
-                  null => context.ln.diagProgressUsually,
-                },
-                textAlign: TextAlign.center,
-                style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
-              ),
-            ],
-            const SizedBox(height: 16),
-            for (final step in DiagnosisStep.values)
-              _StepRow(label: _stepLabel(step), status: _statuses[step]!, okColor: _okColor),
-            // Every check before it passed, yet nothing works: the traffic is
-            // cut after sign-in. Without this row the list showed four green
-            // steps under a negative verdict (task 38, problem 4).
-            if (result?.verdict == DiagnosisVerdict.trafficBlocked)
-              _StepRow(label: context.ln.diagStepTraffic, status: DiagnosisStepStatus.failed, okColor: _okColor),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOut,
-              child: done
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: _SpeechBubble(
-                        text: _connectedMeanwhile ? context.ln.diagConnectedMeanwhile : _verdictText(result!.verdict),
-                        extra: !_connectedMeanwhile && _alternative != null
-                            ? context.ln.diagAlternative(_alternative!.serverData.name)
-                            : null,
-                        engine: _connectedMeanwhile ? null : _engineText(result),
-                        auto: _connectedMeanwhile ? null : _autoText(result),
+      // The buttons stay under the scrolling part: inside it the last one
+      // was cut by the rounded edge, and nothing said there was more below
+      // (S22, 01.11).
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedBuilder(
+                    animation: _bobController,
+                    builder: (_, child) => Transform.translate(
+                      offset: Offset(0, sin(_bobController.value * pi) * -6),
+                      child: child,
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) => ScaleTransition(
+                        scale: Tween(begin: 0.85, end: 1.0).animate(animation),
+                        child: FadeTransition(opacity: animation, child: child),
                       ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            const SizedBox(height: 16),
-            if (_fingerprint != null || _debugNetworkName != null) ...[
-              _NetworkRow(
-                name:
-                    _debugNetworkName ??
-                    networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
-                onOpen: _openNetworks,
+                      child: MarsikImage(_catAsset, key: ValueKey(_catAsset), height: 130),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    done ? context.ln.diagTitleDone : context.ln.diagTitleChecking,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.titleMedium,
+                  ),
+                  // How far along and how long (task 38, problem 6): a spinner
+                  // alone gave no idea whether to wait.
+                  if (!done) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      switch (_currentStep) {
+                        final step? => context.ln.diagProgress(step, DiagnosisStep.values.length),
+                        // Between steps (waiting for the bypass round, asking other
+                        // servers after a failed one): no step number to claim.
+                        null => context.ln.diagProgressUsually,
+                      },
+                      textAlign: TextAlign.center,
+                      style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  for (final step in DiagnosisStep.values)
+                    _StepRow(label: _stepLabel(step), status: _statuses[step]!, okColor: _okColor),
+                  // Every check before it passed, yet nothing works: the traffic is
+                  // cut after sign-in. Without this row the list showed four green
+                  // steps under a negative verdict (task 38, problem 4).
+                  if (result?.verdict == DiagnosisVerdict.trafficBlocked)
+                    _StepRow(label: context.ln.diagStepTraffic, status: DiagnosisStepStatus.failed, okColor: _okColor),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    child: done
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: _SpeechBubble(
+                              text: _connectedMeanwhile
+                                  ? context.ln.diagConnectedMeanwhile
+                                  : _verdictText(result!.verdict),
+                              extra: !_connectedMeanwhile && _alternative != null
+                                  ? context.ln.diagAlternative(_alternative!.serverData.name)
+                                  : null,
+                              engine: _connectedMeanwhile ? null : _engineText(result),
+                              auto: _connectedMeanwhile ? null : _autoText(result),
+                            ),
+                          )
+                        : const SizedBox(width: double.infinity),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_fingerprint != null || _debugNetworkName != null) ...[
+                    _NetworkRow(
+                      name:
+                          _debugNetworkName ??
+                          networkName(context.ln, context.dependencyFactory.sharedPreferences, _fingerprint!),
+                      onOpen: _openNetworks,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
               ),
-              const SizedBox(height: 8),
-            ],
-            _buildActions(context, result),
-          ],
-        ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            child: _buildActions(context, result),
+          ),
+        ],
       ),
     );
   }

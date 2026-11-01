@@ -530,6 +530,7 @@
   "diagVerdictServerTimeout": "The server is silent. Its address is probably blocked, or the server itself is down.",
   "diagVerdictServerRefused": "The server is there, but the door is locked: it refuses connections. The service probably crashed - contact your server admin.",
   "diagVerdictTlsBlocked": "The server answers, but your provider drops the secure connection to it. That happens on mobile networks that only let allowed sites through.",
+  "diagVerdictTlsBlockedWired": "The server answers, but your provider drops the secure connection to it. Some providers cut the connection by the server's name; another server usually gets through.",
   "diagVerdictAccessEnded": "The network is fine, but the subscription can't be found anymore. Access has probably ended or the link was disabled - check the bot.",
   "diagVerdictKeysUpdated": "The keys have changed - I already took the new ones from the subscription. Reconnecting!",
   "diagVerdictKeysRejected": "The network is fine and the server answers, but it doesn't accept the keys. Access may have been disabled - contact your server admin.",

@@ -78,7 +78,7 @@ class NetworkFingerprint {
   /// A short piece of the key, for the automatic name of a network. Empty
   /// when there was nothing to hash: the key is then the kind itself, and
   /// a mobile network is named after its operator instead.
-  String get shortId => kind == 'mobile' || isEmpty || key.length <= 4 ? '' : key.substring(0, 4);
+  String get shortId => kind == 'mobile' || isEmpty || key.length <= 5 ? '' : key.replaceFirst('-', '').substring(0, 4);
 
   /// The name the person gave this network, if they did.
   static String? customName(SharedPreferences preferences, String key) {

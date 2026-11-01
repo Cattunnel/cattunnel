@@ -22,6 +22,7 @@ import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.
 import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
@@ -409,6 +410,8 @@ class _VpnScopeState extends State<VpnScope> {
     final now = DateTime.now();
     final recent = now.difference(_lastStartAt) < _sameStartWindow;
     if (recent && (key == _lastStartKey || server.id == _preparingServerId)) {
+      DoctorTrace.add('start of "${server.serverData.name}" again within ${_sameStartWindow.inSeconds} s: skipped');
+
       return;
     }
 
@@ -425,6 +428,7 @@ class _VpnScopeState extends State<VpnScope> {
     }
 
     final attempt = ++_startAttempt;
+    DoctorTrace.add('start "${server.serverData.name}" (${server.serverData.vpnProtocol.name}), attempt $attempt');
     _leftDisconnectedSinceStart = false;
     _lastServerName = server.serverData.name;
     _currentServerId = server.id;
@@ -651,6 +655,7 @@ class _VpnScopeState extends State<VpnScope> {
       ),
       hideAfter: const Duration(seconds: 12),
     );
+    DoctorTrace.add('round failed: ${planned.join(', ')} tried, the VPN stops');
     await _stop();
     VpnScope.antiDpiAutoFailed.value = true;
   }
@@ -704,12 +709,21 @@ class _VpnScopeState extends State<VpnScope> {
       _waitForState(VpnState.connected, attempt, AntiDpiAuto.attemptTimeout),
       failure,
     ]);
+    final label = technique == 0 ? 'plain' : 'mode $technique';
     if (outcome == true) {
+      DoctorTrace.add('$label: connected');
+
       return _TechniqueOutcome.connected;
     }
     if (outcome == ConnectFailure.helloReset || outcome == ConnectFailure.helloNoAnswer) {
+      DoctorTrace.add('$label: ${(outcome! as ConnectFailure).name}, path cut');
+
       return _TechniqueOutcome.cut;
     }
+    DoctorTrace.add(
+      '$label: ${outcome is ConnectFailure ? outcome.name : 'no answer in ${AntiDpiAuto.attemptTimeout.inSeconds} s'}, '
+      'round ends, the engine goes on (state ${_stateNotifier.value.name})',
+    );
 
     return _TechniqueOutcome.unreachable;
   }

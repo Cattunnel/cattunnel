@@ -1,3 +1,4 @@
+import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_diagnostics.dart';
 
@@ -62,4 +63,29 @@ abstract final class ConnectionDoctor {
     DiagnosisVerdict.keysUpdated => DoctorAction.none,
     _ => DoctorAction.retry,
   };
+}
+
+/// What the start and Marsik did, step by step, for the problem report and
+/// the app log. The report of 01.11 said "Marsik: tlsBlocked" and nothing
+/// about how he got there.
+abstract final class DoctorTrace {
+  static const _max = 80;
+  static final _lines = <String>[];
+
+  /// The lines of this app session, oldest first, with the local time.
+  static List<String> get lines => List.unmodifiable(_lines);
+
+  static void add(String line) {
+    final time = DateTime.now().toIso8601String().substring(11, 23);
+    _lines.add('$time $line');
+    if (_lines.length > _max) _lines.removeAt(0);
+    try {
+      logger.logInfo(line, additionalTags: ['doctor']);
+    } on Object {
+      // No logger in a test or a windowless engine: the list is enough.
+    }
+  }
+
+  @visibleForTesting
+  static void clear() => _lines.clear();
 }

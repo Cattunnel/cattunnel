@@ -23,8 +23,10 @@ String networkNameByKey(AppLocalizations ln, SharedPreferences preferences, Stri
 
   final kindName = networkKindName(ln, kind);
   // The key of a network with a fingerprint is a hash; without one it is
-  // the kind itself, and there is nothing to tell it apart with.
-  final short = key.length > 4 ? key.substring(0, 4) : '';
+  // the kind itself, and there is nothing to tell it apart with. The hash
+  // is a signed number: its minus read as a dash in "Wi-Fi -6a0".
+  final digits = key.replaceFirst('-', '');
+  final short = key == kind || digits.length <= 4 ? '' : digits.substring(0, 4);
 
   return short.isEmpty ? kindName : '$kindName $short';
 }
