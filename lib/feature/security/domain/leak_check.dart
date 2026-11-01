@@ -142,8 +142,7 @@ abstract final class LeakCheck {
   }
 
   static TraceInfo? _parse(String text) {
-    String? value(String key) =>
-        RegExp('^$key=(.+)\$', multiLine: true).firstMatch(text)?.group(1)?.trim();
+    String? value(String key) => RegExp('^$key=(.+)\$', multiLine: true).firstMatch(text)?.group(1)?.trim();
 
     final ip = value('ip');
 

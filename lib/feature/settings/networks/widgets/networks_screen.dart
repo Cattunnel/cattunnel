@@ -112,7 +112,10 @@ class _NetworksScreenState extends State<NetworksScreen> {
         content: Text(dialogContext.ln.networksForgetDescription),
         actionsBuilder: (_) => [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(dialogContext.ln.cancel)),
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(dialogContext.ln.networksForget)),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(dialogContext.ln.networksForget),
+          ),
         ],
       ),
     );

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/painting.dart';
 
 part 'city_buildings.dart';
@@ -160,6 +161,33 @@ class CityWorld {
   final Map<String, TextPainter> _text = {};
 
   int get carCount => _cars.length;
+
+  /// How many buildings of each kind the street has: far shore types 0..4 as
+  /// `far0`..`far4`, street facade kinds as `fac0`..`fac3`.
+  @visibleForTesting
+  Map<String, int> get debugBuildingKinds {
+    final m = <String, int>{};
+    for (final b in _far) {
+      m.update('far${b.type}', (v) => v + 1, ifAbsent: () => 1);
+    }
+    for (final f in _fac) {
+      m.update('fac${f.kind}', (v) => v + 1, ifAbsent: () => 1);
+    }
+
+    return m;
+  }
+
+  /// Far-shore buildings as rectangles (top-left origin) and the windows lit in
+  /// the last painted frame.
+  @visibleForTesting
+  List<Rect> get debugFarBuildings => [for (final b in _far) Rect.fromLTWH(b.x, _hy - b.h, b.w, b.h)];
+
+  @visibleForTesting
+  List<Rect> get debugLitFarWindows => [for (final l in _litWin) ...l];
+
+  /// Forces every far-shore window on (true) or off (false); null: normal.
+  @visibleForTesting
+  bool? debugForceFarWindows;
 
   void resize(Size size) {
     if (size == _size) return;

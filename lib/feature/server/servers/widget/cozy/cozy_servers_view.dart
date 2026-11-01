@@ -62,8 +62,7 @@ class CozyServersView extends StatefulWidget {
   /// gets the phone layout instead of a cramped two-pane view.
   static const double wideLayoutBreakpoint = 840;
 
-  static bool useWideLayout(BuildContext context) =>
-      MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint;
+  static bool useWideLayout(BuildContext context) => MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint;
 
   @override
   State<CozyServersView> createState() => _CozyServersViewState();
@@ -836,25 +835,25 @@ class CozyWideLayoutView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: leftChildren,
-                    ),
-                  ),
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Expanded(
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: leftChildren,
                 ),
-                if (corner != null) Positioned(left: 16, bottom: 16, child: corner!),
-              ],
+              ),
             ),
-          ),
-          serverPanel,
-        ],
-      );
+            if (corner != null) Positioned(left: 16, bottom: 16, child: corner!),
+          ],
+        ),
+      ),
+      serverPanel,
+    ],
+  );
 }

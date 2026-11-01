@@ -19,7 +19,10 @@ class ServersEmptyPlaceholder extends StatelessWidget {
     imagePath: AssetImages.catShield,
     buttonText: context.ln.create,
     buttonKey: onboardingAddServerButtonKey,
-    onButtonPressed: () => presentAddServerFlow(context, pushServerDetails: ({preloadedData}) => _pushServerDetailsScreen(context, preloadedData: preloadedData)),
+    onButtonPressed: () => presentAddServerFlow(
+      context,
+      pushServerDetails: ({preloadedData}) => _pushServerDetailsScreen(context, preloadedData: preloadedData),
+    ),
   );
 
   Future<void> _pushServerDetailsScreen(BuildContext context, {ServerData? preloadedData}) async {

@@ -289,8 +289,7 @@ class _InheritedLaunchAndConnectionScope extends InheritedModel<LaunchAndConnect
               isAutoConnectOnLaunchLoading != oldWidget.isAutoConnectOnLaunchLoading,
         LaunchAndConnectionScopeAspect.killSwitch =>
           isKillSwitchEnabled != oldWidget.isKillSwitchEnabled || isKillSwitchLoading != oldWidget.isKillSwitchLoading,
-        LaunchAndConnectionScopeAspect.mtu =>
-          mtuValue != oldWidget.mtuValue || isMtuLoading != oldWidget.isMtuLoading,
+        LaunchAndConnectionScopeAspect.mtu => mtuValue != oldWidget.mtuValue || isMtuLoading != oldWidget.isMtuLoading,
       };
 
       if (hasAnyChanges) {

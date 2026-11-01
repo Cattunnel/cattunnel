@@ -389,9 +389,25 @@ class RuListsService {
   /// third-party list stays in the VPN: a poisoned list could otherwise make
   /// torproject.org or protonmail.com "Russian" (security audit run-2, #6).
   static const _verifiedForeignDomains = <String>{
-    'vk.com', 'vk.me', 'vkontakte.com', 'userapi.com', 'vkuser.net', 'vk-cdn.net', 'mycdn.me',
-    'yandex.com', 'yandex.net', 'yastatic.net', 'yandexcloud.net', 'yandex.cloud', 'yandex.st',
-    'sberbank.com', 'avito.st', 'kaspersky.com', '2gis.com', 'deepseek.com', 'checkip.amazonaws.com',
+    'vk.com',
+    'vk.me',
+    'vkontakte.com',
+    'userapi.com',
+    'vkuser.net',
+    'vk-cdn.net',
+    'mycdn.me',
+    'yandex.com',
+    'yandex.net',
+    'yastatic.net',
+    'yandexcloud.net',
+    'yandex.cloud',
+    'yandex.st',
+    'sberbank.com',
+    'avito.st',
+    'kaspersky.com',
+    '2gis.com',
+    'deepseek.com',
+    'checkip.amazonaws.com',
   };
 
   /// Whether a downloaded domain rule may be used as a bypass rule.

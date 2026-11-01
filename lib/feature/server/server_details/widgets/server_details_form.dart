@@ -64,7 +64,8 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
   static const _keepaliveDefaultSecs = 60;
 
   /// Where each field the validator can flag lives, to open its group.
-  static const _sectionOf = {    PresentationFieldName.antiDpiDesync: _Section.bypass,
+  static const _sectionOf = {
+    PresentationFieldName.antiDpiDesync: _Section.bypass,
     PresentationFieldName.dnsServers: _Section.routing,
     PresentationFieldName.ipAddress: _Section.key,
     PresentationFieldName.domain: _Section.key,
@@ -815,7 +816,8 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     _ => context.ln.expertKeepaliveSignalCheck,
   };
 
-  RoutingProfile _getSelectedRoutingProfile(List<RoutingProfile> availableRoutingProfiles, String routingProfileId) =>      availableRoutingProfiles.firstWhereOrNull((profile) => profile.id == routingProfileId) ??
+  RoutingProfile _getSelectedRoutingProfile(List<RoutingProfile> availableRoutingProfiles, String routingProfileId) =>
+      availableRoutingProfiles.firstWhereOrNull((profile) => profile.id == routingProfileId) ??
       availableRoutingProfiles.firstWhere((profile) => profile.id == RoutingProfileUtils.defaultRoutingProfileId);
 
   void _onSelectPemCertificatePressed(

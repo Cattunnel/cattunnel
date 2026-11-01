@@ -178,17 +178,15 @@ class RepositoryFactoryImpl implements RepositoryFactory {
       );
 
   @override
-  SubscriptionRepository get subscriptionRepository =>
-      _subscriptionRepository ??= SubscriptionRepositoryImpl(
-        dataSource: _dependencyFactory.subscriptionDataSource,
-        syncService: _dependencyFactory.subscriptionSyncService,
-      );
+  SubscriptionRepository get subscriptionRepository => _subscriptionRepository ??= SubscriptionRepositoryImpl(
+    dataSource: _dependencyFactory.subscriptionDataSource,
+    syncService: _dependencyFactory.subscriptionSyncService,
+  );
 
   @override
-  MtuSettingsRepository get mtuSettingsRepository =>
-      _mtuSettingsRepository ??= MtuSettingsRepositoryImpl(
-        dataSource: _dependencyFactory.mtuSettingsDataSource,
-      );
+  MtuSettingsRepository get mtuSettingsRepository => _mtuSettingsRepository ??= MtuSettingsRepositoryImpl(
+    dataSource: _dependencyFactory.mtuSettingsDataSource,
+  );
 
   @override
   ServerSortPreferenceRepository get serverSortPreferenceRepository =>

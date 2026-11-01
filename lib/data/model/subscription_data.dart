@@ -87,8 +87,7 @@ class SubscriptionData {
           other.agePrivateKey == agePrivateKey;
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, url, skipVerification, lastUpdatedAt, autoRefreshEnabled, agePrivateKey);
+  int get hashCode => Object.hash(id, name, url, skipVerification, lastUpdatedAt, autoRefreshEnabled, agePrivateKey);
 
   @override
   /// The URL itself is a bearer secret (e.g. `/api/ct/<token>`), and this

@@ -7,17 +7,16 @@ class DeviceOrientationPolicy {
 
   static const double tabletShortSideDp = 600;
 
-  static bool isWideScreen(Iterable<Size> views) =>
-      views.every((view) => view.shortestSide >= tabletShortSideDp);
+  static bool isWideScreen(Iterable<Size> views) => views.every((view) => view.shortestSide >= tabletShortSideDp);
 
   static List<DeviceOrientation> allowedOrientations(Iterable<Size> views) => [
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        if (isWideScreen(views)) ...[
-          DeviceOrientation.landscapeLeft,
-          DeviceOrientation.landscapeRight,
-        ],
-      ];
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    if (isWideScreen(views)) ...[
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ],
+  ];
 
   static List<DeviceOrientation>? _lastApplied;
 

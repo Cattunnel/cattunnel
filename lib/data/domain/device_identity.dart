@@ -105,13 +105,13 @@ class DeviceIdentity {
 
   /// Заголовки запроса подписки: по ним сервер знает, кто пришёл.
   Map<String, String> get subscriptionHeaders => {
-        'x-device-key': publicKey,
-        'x-hwid': id,
-        'x-device-os': os,
-        'x-device-model': model,
-        'x-ver-os': osVersion,
-        'x-app-version': _appVersion,
-      };
+    'x-device-key': publicKey,
+    'x-hwid': id,
+    'x-device-os': os,
+    'x-device-model': model,
+    'x-ver-os': osVersion,
+    'x-app-version': _appVersion,
+  };
 
   static String _appVersion = '';
 

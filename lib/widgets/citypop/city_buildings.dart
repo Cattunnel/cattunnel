@@ -424,7 +424,7 @@ extension _FarGen on CityWorld {
         final on = wn.k == 2
             ? _ih(b.id, 41 + wn.row) < 0.9 * lit * warm
             : _ih(b.id * 131 + wn.col * 7 + wn.row, (_time / per + rr * 9).floor()) < d;
-        if (on) _litWin[(rr * 4).floor() % 4].add(wn.r.shift(off));
+        if (debugForceFarWindows ?? on) _litWin[(rr * 4).floor() % 4].add(wn.r.shift(off));
       }
       final nk = _neonK;
       if (nk > 0.05) {
@@ -619,6 +619,10 @@ extension _FacGen on CityWorld {
         kind = p < 0.36 ? 0 : (p < 0.6 ? 1 : (p < 0.76 ? 2 : 3));
         if (kind != prev || kind == 2) break;
       }
+      // The first lots are fixed so that every kind is always on the street;
+      // a low tiled-roof house comes again further on.
+      if (idx < 4) kind = const [3, 0, 1, 2][idx];
+      if (idx == 7) kind = 2;
       prev = kind;
       final zTop = switch (kind) {
         0 => 26 + r.nextDouble() * 34,

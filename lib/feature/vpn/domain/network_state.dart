@@ -58,6 +58,5 @@ abstract final class NetworkStates {
 
   /// Whether the network is there and reaches the internet: the system's
   /// word, and only the system's word.
-  static bool isUsable(NetworkState state) =>
-      state == NetworkState.validated || state == NetworkState.unvalidated;
+  static bool isUsable(NetworkState state) => state == NetworkState.validated || state == NetworkState.unvalidated;
 }

@@ -115,31 +115,33 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
   /// out of range means the person typed something wrong, and the save must
   /// stop before the engine gets it.
   PresentationField? _validateExpertSettings(ServerData data) {
-    var outOfRange = data.h2PaddingFrames < 0 ||
-        data.h2PaddingFrames > ConfigurationCodecKeys.h2PaddingFramesMax;
+    var outOfRange = data.h2PaddingFrames < 0 || data.h2PaddingFrames > ConfigurationCodecKeys.h2PaddingFramesMax;
 
     if (data.h2PaddingFrames > 0) {
-      outOfRange = outOfRange ||
+      outOfRange =
+          outOfRange ||
           data.h2PaddingFramesMin < 0 ||
           data.h2PaddingFramesMin > ConfigurationCodecKeys.h2PaddingFramesMinMax;
-      outOfRange = outOfRange ||
-          data.h2PaddingMinBytes < 0 ||
-          data.h2PaddingMinBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
-      outOfRange = outOfRange ||
-          data.h2PaddingMaxBytes < 0 ||
-          data.h2PaddingMaxBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
-      outOfRange = outOfRange ||
+      outOfRange =
+          outOfRange || data.h2PaddingMinBytes < 0 || data.h2PaddingMinBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
+      outOfRange =
+          outOfRange || data.h2PaddingMaxBytes < 0 || data.h2PaddingMaxBytes > ConfigurationCodecKeys.h2PaddingBytesMax;
+      outOfRange =
+          outOfRange ||
           data.h2PaddingStreamBytes < 0 ||
           data.h2PaddingStreamBytes > ConfigurationCodecKeys.h2PaddingBytesBudgetMax;
-      outOfRange = outOfRange ||
+      outOfRange =
+          outOfRange ||
           data.h2PaddingSessionBytes < 0 ||
           data.h2PaddingSessionBytes > ConfigurationCodecKeys.h2PaddingBytesBudgetMax;
     }
 
-    outOfRange = outOfRange ||
+    outOfRange =
+        outOfRange ||
         data.keepaliveIntervalSecs < 0 ||
         data.keepaliveIntervalSecs > ConfigurationCodecKeys.keepaliveIntervalSecsMax;
-    outOfRange = outOfRange ||
+    outOfRange =
+        outOfRange ||
         data.sessionLifetimeSecs < 0 ||
         data.sessionLifetimeSecs > ConfigurationCodecKeys.sessionLifetimeSecsMax;
 

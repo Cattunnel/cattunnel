@@ -31,7 +31,8 @@ sealed class SubscriptionsState {
     required PresentationException exception,
   }) = _ErrorSubscriptionsState;
 
-  PresentationException? get error => this is _ErrorSubscriptionsState ? (this as _ErrorSubscriptionsState).exception : null;
+  PresentationException? get error =>
+      this is _ErrorSubscriptionsState ? (this as _ErrorSubscriptionsState).exception : null;
 
   bool get loading => this is _LoadingSubscriptionsState;
 

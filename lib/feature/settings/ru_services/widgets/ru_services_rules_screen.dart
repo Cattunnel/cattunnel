@@ -87,7 +87,9 @@ class _RuServicesRulesScreenState extends State<RuServicesRulesScreen> {
                     ),
                   ),
                   Column(
-                    crossAxisAlignment: context.isMobileBreakpoint ? CrossAxisAlignment.stretch : CrossAxisAlignment.end,
+                    crossAxisAlignment: context.isMobileBreakpoint
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.end,
                     children: [
                       const Divider(),
                       Padding(

@@ -28,6 +28,5 @@ abstract final class NetDiagnostics {
   }
 
   /// The last verdict for [serverId], if it is still fresh.
-  static NetDiagnostic? fresh(String serverId, {DateTime? now}) =>
-      recent(serverId, within: freshWindow, now: now);
+  static NetDiagnostic? fresh(String serverId, {DateTime? now}) => recent(serverId, within: freshWindow, now: now);
 }
