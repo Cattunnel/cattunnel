@@ -420,23 +420,6 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
                 return Stack(
                   alignment: Alignment.center,
                   children: [
-                    // A soft shadow on the grass under the bubble.
-                    Positioned(
-                      bottom: 6,
-                      child: Container(
-                        width: size * 0.7,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.all(Radius.elliptical(200, 22)),
-                          gradient: RadialGradient(
-                            colors: [
-                              (night ? lime : const Color(0xFF00461E)).withValues(alpha: night ? 0.22 : 0.3),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                     if (on || busy)
                       Transform.rotate(
                         angle: t * 2 * math.pi * (busy ? 3 : 1),
@@ -509,7 +492,8 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
                             ),
                           ),
                         ),
-                        // The wet highlight on top and the soft one at the bottom.
+                        // The wet highlight on top. No spot at the bottom and no shadow under
+                        // the bubble: on a phone both read as stray dots.
                         Positioned(
                           top: size * 0.035,
                           left: size * 0.14,
@@ -528,21 +512,6 @@ class _AeroConnectButtonState extends State<AeroConnectButton> with SingleTicker
                                     Colors.white.withValues(alpha: 0),
                                   ],
                                   stops: const [0, 0.85, 1],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: size * 0.05,
-                          child: IgnorePointer(
-                            child: Container(
-                              width: size * 0.48,
-                              height: size * 0.1,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.all(Radius.elliptical(size, size * 0.1)),
-                                gradient: RadialGradient(
-                                  colors: [Colors.white.withValues(alpha: 0.55), Colors.white.withValues(alpha: 0)],
                                 ),
                               ),
                             ),
