@@ -14,9 +14,10 @@ import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope_controller.dart';
+import 'package:trusttunnel/feature/support/desktop_report.dart';
 import 'package:trusttunnel/feature/support/detailed_log.dart';
-import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
@@ -61,6 +62,32 @@ abstract final class ProblemReport {
       return;
     }
 
+    if (Platform.isWindows || Platform.isLinux) {
+      try {
+        final path = await DesktopReport().save(report);
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 20),
+            content: Text(context.ln.reportDesktopSaved(path)),
+            action: SnackBarAction(
+              label: context.ln.reportOpenFolder,
+              onPressed: () async {
+                try {
+                  await DesktopReport.openFolder(path);
+                } on Object {
+                  if (context.mounted) _showError(context);
+                }
+              },
+            ),
+          ),
+        );
+      } on Object {
+        if (context.mounted) _showError(context);
+      }
+      return;
+    }
+
     final stamp = DateTime.now().toIso8601String().substring(0, 19).replaceAll(':', '-');
     final temp = await getTemporaryDirectory();
     // Earlier reports stay in the cache otherwise (the share target may
@@ -84,6 +111,10 @@ abstract final class ProblemReport {
       ),
     );
   }
+
+  static void _showError(BuildContext context) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(context.ln.reportExportFailed)),
+  );
 
   static Future<(String, String)> _build(
     BuildContext context, {
@@ -331,6 +362,7 @@ class _ReportDialogState extends State<_ReportDialog> {
         FutureBuilder<(String, String)>(
           future: _report,
           builder: (context, snapshot) {
+            if (snapshot.hasError) return Text(context.ln.reportExportFailed);
             final summary = snapshot.data?.$1;
 
             return summary == null
@@ -355,7 +387,13 @@ class _ReportDialogState extends State<_ReportDialog> {
       TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.ln.cancel)),
       TextButton(
         onPressed: () async {
-          final report = await _report;
+          late (String, String) report;
+          try {
+            report = await _report;
+          } on Object {
+            if (context.mounted) ProblemReport._showError(context);
+            return;
+          }
           if (!context.mounted) {
             return;
           }

@@ -8,6 +8,7 @@ import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:trusttunnel/data/domain/device_model.dart';
 import 'package:win32/win32.dart';
 
 /// Ключ устройства: свой age-ключ X25519 и идентификатор устройства.
@@ -148,17 +149,18 @@ class DeviceIdentity {
   }
 
   static Future<({String os, String model, String osVersion})> _platformInfo() async {
+    final model = await DeviceModel.read();
     if (Platform.isAndroid) {
-      return (os: 'Android', model: '', osVersion: Platform.operatingSystemVersion);
+      return (os: 'Android', model: model, osVersion: Platform.operatingSystemVersion);
     }
     if (Platform.isWindows) {
-      return (os: 'Windows', model: '', osVersion: Platform.operatingSystemVersion);
+      return (os: 'Windows', model: model, osVersion: Platform.operatingSystemVersion);
     }
     if (Platform.isMacOS) {
       return (os: 'macOS', model: '', osVersion: Platform.operatingSystemVersion);
     }
 
-    return (os: 'Linux', model: '', osVersion: Platform.operatingSystemVersion);
+    return (os: 'Linux', model: model, osVersion: Platform.operatingSystemVersion);
   }
 
   static Future<Uint8List> _lock(Uint8List data) async {
