@@ -181,6 +181,16 @@ class CityWorld {
   final List<_Ped> _peds = [];
   final List<_Ped> _crossers = [];
 
+  // The metro train on the viaduct at the far shore (city_buildings.dart).
+  bool _trainActive = false;
+  double _trainT0 = 0, _trainNext = 4;
+  int _trainDir = -1, _trainCars = 8, _trainsRun = 0;
+  final List<Rect> _litTrain = [];
+
+  @visibleForTesting
+  ({bool active, int cars, int dir, double t0}) get debugTrain =>
+      (active: _trainActive, cars: _trainCars, dir: _trainDir, t0: _trainT0);
+
   /// The signal cycle, seconds. Cars: green (the Japanese «blue») 0-8,
   /// yellow 8-10.5, red 10.5-20. Pedestrians: red man, walk 12-17.5, walk
   /// blinking 17.5-19.5. The 1.5 s of red for everybody on either side empty
@@ -216,7 +226,7 @@ class CityWorld {
   bool planeForce = false;
 
   // cached static layer
-  ui.Picture? _static, _staticFar;
+  ui.Picture? _static, _staticFar, _staticRail;
   Size _staticSize = Size.zero;
   int _staticBucket = -1;
 
@@ -266,6 +276,10 @@ class CityWorld {
     _build();
     _text.clear();
     _static = null;
+    _trainActive = false;
+    _trainNext = 4;
+    _trainDir = -1;
+    _trainsRun = 0;
     _planeNext = 8 + 14 * math.Random(seed + 5).nextDouble();
     _cars.clear();
     _simT = 0;
@@ -408,6 +422,7 @@ class CityWorld {
     }
     _cars.removeWhere((c) => c.s < 0.7 || c.s > 27);
     _stepCrossers(dt);
+    _stepTrain();
     for (final pd in _peds) {
       pd.s += pd.v * dt * math.max(0.3, pd.s * 0.25);
       if (pd.s < 1.15) pd.s = 21;
@@ -507,6 +522,9 @@ class CityWorld {
       final recFar = ui.PictureRecorder();
       _paintFarStatic(Canvas(recFar));
       _staticFar = recFar.endRecording();
+      final recRail = ui.PictureRecorder();
+      _paintRailStatic(Canvas(recRail));
+      _staticRail = recRail.endRecording();
       final rec = ui.PictureRecorder();
       _paintNearStatic(Canvas(rec));
       _static = rec.endRecording();
@@ -515,8 +533,10 @@ class CityWorld {
     }
     canvas.drawPicture(_staticFar!);
     _paintFarLit(canvas);
-    _paintReflection(canvas);
     _paintRadioTower(canvas);
+    canvas.drawPicture(_staticRail!);
+    _paintTrain(canvas);
+    _paintReflection(canvas);
     canvas.drawPicture(_static!);
     _paintNearLit(canvas);
     _paintSigns(canvas);

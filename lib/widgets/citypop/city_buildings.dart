@@ -534,6 +534,9 @@ extension _FarGen on CityWorld {
       return p;
     }
 
+    if (_litTrain.isNotEmpty) {
+      canvas.drawPath(mirror(_litTrain, 1), fade(_c(_winColors[3]), 0.40, plus: true));
+    }
     final lampK = (0.12 + 0.88 * _p.alive) * (1 - 0.5 * _p.fault);
     for (var i = 0; i < 4; i++) {
       if (_litWin[i].isEmpty) continue;
@@ -1137,6 +1140,167 @@ extension _Quay on CityWorld {
         canvas.drawLine(qa, qb, bar);
       }
       first = false;
+    }
+  }
+}
+
+// ------------------------------------------------------------------- metro
+/// A Tokyo Metro Chiyoda line train (green, symbol C), 6000 series of the
+/// 1980s, on a concrete viaduct along the far shore.
+///
+/// Sizes, from the far shore beside it: one floor of a far building is 5 u and
+/// about 3.3 m, so 1 m = 1.5 u. A car is 20 m long (30 u) and 4 m high (6 u),
+/// the viaduct deck lies 9 m (13.5 u) above the water, its girder is 2 m (3 u)
+/// deep. A train of 6-10 cars is 120-200 m (180-300 u). It runs at 21 m/s
+/// (32 u/s), so it crosses the screen in about 19 s; the next one comes 5-15 s
+/// after it has left, in the other direction.
+extension _Rail on CityWorld {
+  static const _mToU = 1.5, _carM = 20.0, _speedU = 32.0;
+
+  double get _deckTop => _hy - 8.5 * _u;
+  double get _waterY => _hy + 5 * _u;
+
+  void _stepTrain() {
+    final u = _u;
+    if (!_trainActive) {
+      if (_simT >= _trainNext) {
+        _trainActive = true;
+        _trainT0 = _simT;
+        _trainDir = -_trainDir;
+        _trainCars = _trainsRun == 0 ? 8 : 6 + _r.nextInt(5);
+        _trainsRun++;
+      }
+      return;
+    }
+    final len = _trainCars * _carM * _mToU * u + _trainCars * 0.8 * u;
+    if ((_simT - _trainT0) * _speedU * u > _size.width + len + 20 * u) {
+      _trainActive = false;
+      _trainNext = _simT + 5 + 10 * _r.nextDouble();
+    }
+  }
+
+  void _paintRailStatic(Canvas canvas) {
+    final u = _u, w = _size.width, top = _deckTop;
+    final concrete = _c(_mixc(_p3([172, 168, 178], [108, 68, 116], [28, 22, 54], _tod), _hz, 0.18));
+    final shade = _c(_mixc(_p3([138, 134, 148], [80, 48, 92], [18, 14, 40], _tod), _hz, 0.18));
+    final steel = _c(_p3([84, 80, 94], [54, 34, 72], [16, 12, 36], _tod));
+    // piers and their caps
+    for (var x = 12 * u; x < w + 40 * u; x += 38 * u) {
+      canvas.drawRect(Rect.fromLTRB(x - 1.5 * u, top + 3 * u, x + 1.5 * u, _waterY), Paint()..color = concrete);
+      canvas.drawRect(Rect.fromLTRB(x + 0.2 * u, top + 3 * u, x + 1.5 * u, _waterY), Paint()..color = shade);
+      canvas.drawRect(Rect.fromLTRB(x - 2.6 * u, top + 3 * u, x + 2.6 * u, top + 4.3 * u), Paint()..color = concrete);
+    }
+    // girder with a darker underside, ballast and the rail on top
+    canvas.drawRect(Rect.fromLTRB(-10 * u, top, w + 10 * u, top + 3 * u), Paint()..color = concrete);
+    canvas.drawRect(Rect.fromLTRB(-10 * u, top + 2.1 * u, w + 10 * u, top + 3 * u), Paint()..color = shade);
+    canvas.drawRect(Rect.fromLTRB(-10 * u, top - 0.5 * u, w + 10 * u, top), Paint()..color = steel);
+    // overhead line: poles and a wire
+    final wireY = top - 8.5 * u;
+    for (var x = 31 * u; x < w + 40 * u; x += 38 * u) {
+      canvas.drawRect(Rect.fromLTRB(x - 0.3 * u, wireY, x + 0.3 * u, top - 0.5 * u), Paint()..color = steel);
+      canvas.drawRect(Rect.fromLTRB(x - 1.6 * u, wireY, x + 1.6 * u, wireY + 0.4 * u), Paint()..color = steel);
+    }
+    canvas.drawRect(
+      Rect.fromLTRB(-10 * u, wireY + 0.5 * u, w + 10 * u, wireY + 0.5 * u + math.max(0.6, 0.25 * u)),
+      Paint()..color = steel,
+    );
+  }
+
+  void _paintTrain(Canvas canvas) {
+    _litTrain.clear();
+    if (!_trainActive) return;
+    final u = _u, w = _size.width;
+    final cl = _carM * _mToU * u, gap = 0.8 * u, ch = 4 * _mToU * u;
+    final dir = _trainDir.toDouble();
+    final xf = _trainDir > 0 ? (_simT - _trainT0) * _speedU * u : w - (_simT - _trainT0) * _speedU * u;
+    final bottom = _deckTop - 0.5 * u, top = bottom - ch;
+    final silver = _c(_mixc(_p3([210, 216, 224], [160, 116, 156], [56, 48, 88], _tod), _hz, 0.1));
+    final roof = _c(_mixc(_p3([172, 178, 190], [120, 84, 124], [38, 32, 66], _tod), _hz, 0.1));
+    final skirt = _c(_p3([70, 74, 86], [44, 30, 62], [14, 12, 30], _tod));
+    final green = _c(_mixc(_p3([0, 176, 128], [0, 120, 110], [0, 70, 70], _tod), _hz, 0.05));
+    final glass = _c(_p3([60, 84, 100], [50, 40, 90], [14, 14, 40], _tod));
+    final doorC = _c(_mixc(_p3([188, 194, 204], [140, 100, 140], [48, 42, 78], _tod), _hz, 0.1));
+    final lights = _sm(0.2, 0.6, _tod);
+    final litWin = <Rect>[];
+    for (var i = 0; i < _trainCars; i++) {
+      final xa = xf - dir * i * (cl + gap), xb = xa - dir * cl;
+      final l = math.min(xa, xb), r = math.max(xa, xb);
+      if (r < -5 || l > w + 5) continue;
+      final frontEnd = i == 0, rearEnd = i == _trainCars - 1;
+      final leftCab = (dir > 0 && rearEnd) || (dir < 0 && frontEnd);
+      final rightCab = (dir > 0 && frontEnd) || (dir < 0 && rearEnd);
+      // Cab ends are slanted: the roof line is cut back, the nose juts out below.
+      final cut = 2.4 * u;
+      final body = Path()
+        ..moveTo(leftCab ? l + cut : l, top)
+        ..lineTo(rightCab ? r - cut : r, top)
+        ..lineTo(r, rightCab ? top + 1.6 * u : top)
+        ..lineTo(r, bottom)
+        ..lineTo(l, bottom)
+        ..lineTo(l, leftCab ? top + 1.6 * u : top)
+        ..close();
+      canvas.drawPath(body, Paint()..color = silver);
+      canvas.drawRect(
+        Rect.fromLTRB(l + (leftCab ? cut : 0), top, r - (rightCab ? cut : 0), top + 0.8 * u),
+        Paint()..color = roof,
+      );
+      canvas.drawRect(Rect.fromLTRB(l, bottom - 0.9 * u, r, bottom), Paint()..color = skirt);
+      canvas.drawRect(Rect.fromLTRB(l, bottom - 2.5 * u, r, bottom - 1.6 * u), Paint()..color = green);
+      // doors and windows
+      for (final f in const [0.13, 0.37, 0.63, 0.87]) {
+        final cx = l + cl * f;
+        canvas.drawRect(
+          Rect.fromLTRB(cx - 1.3 * u, top + 1.1 * u, cx + 1.3 * u, bottom - 0.9 * u),
+          Paint()..color = doorC,
+        );
+        canvas.drawRect(
+          Rect.fromLTRB(cx - 0.9 * u, top + 1.6 * u, cx + 0.9 * u, top + 3.8 * u),
+          Paint()..color = glass,
+        );
+        litWin.add(Rect.fromLTRB(cx - 0.9 * u, top + 1.6 * u, cx + 0.9 * u, top + 3.8 * u));
+      }
+      for (final f in const [0.25, 0.5, 0.75]) {
+        final cx = l + cl * f;
+        final rc = Rect.fromLTRB(cx - 1.8 * u, top + 1.4 * u, cx + 1.8 * u, top + 3.8 * u);
+        canvas.drawRect(rc, Paint()..color = glass);
+        litWin.add(rc);
+      }
+      for (final cab in [if (leftCab) l, if (rightCab) r]) {
+        // windscreen on the slanted face, asymmetric: wider on the side of the door
+        final o = cab == l ? 1.0 : -1.0;
+        canvas.drawRect(
+          Rect.fromPoints(Offset(cab + o * 0.4 * u, top + 1.2 * u), Offset(cab + o * 3.2 * u, top + 3.8 * u)),
+          Paint()..color = glass,
+        );
+        canvas.drawRect(
+          Rect.fromPoints(Offset(cab + o * 3.5 * u, top + 1.2 * u), Offset(cab + o * 4.6 * u, top + 3.6 * u)),
+          Paint()..color = doorC,
+        );
+      }
+      // head and tail lamps: white at the front, red at the rear
+      if (frontEnd || rearEnd) {
+        final outer = frontEnd ? xa : xb;
+        final white = frontEnd;
+        final col = white ? const [255.0, 248.0, 220.0] : const [255.0, 40.0, 40.0];
+        for (final dy in const [1.2, 2.2]) {
+          final c = Offset(outer - (frontEnd ? dir : -dir) * 0.5 * u, bottom - dy * u - 0.6 * u);
+          final on = white ? 0.55 + 0.45 * lights : 0.45 + 0.55 * lights;
+          canvas.drawRect(Rect.fromCenter(center: c, width: 1.1 * u, height: 0.9 * u), Paint()..color = _c(col, on));
+          if (lights > 0.05) {
+            _glow(canvas, c, (white ? 6 : 4) * u, col, (white ? 0.8 : 0.6) * lights);
+            _litTrain.add(Rect.fromCenter(center: c, width: 1.6 * u, height: 1.0 * u));
+          }
+        }
+      }
+    }
+    // lit windows: tube light inside, all night
+    if (lights > 0.02) {
+      final path = Path();
+      for (final r in litWin) {
+        path.addRect(r);
+        _litTrain.add(r);
+      }
+      canvas.drawPath(path, Paint()..color = _c(const [255, 246, 214], 0.95 * lights));
     }
   }
 }

@@ -195,4 +195,36 @@ void main() {
       );
     }
   });
+
+  group('metro train', () {
+    for (final cfg in [(0.0, 0.0), (1.0, 1.0)]) {
+      test('a train of 6-10 cars comes every 20-40 s, in turn from each side (alive ${cfg.$1}, fault ${cfg.$2})', () {
+        final w = CityWorld()..resize(const Size(360, 800));
+        final p = CityParams(tod: 1, alive: cfg.$1, fault: cfg.$2);
+        final starts = <double>[];
+        final dirs = <int>[];
+        final cars = <int>[];
+        var lastT0 = -1.0;
+        for (var i = 0; i < 20 * 600; i++) {
+          w.step(0.05, p);
+          final t = w.debugTrain;
+          if (t.active && t.t0 != lastT0) {
+            lastT0 = t.t0;
+            starts.add(t.t0);
+            dirs.add(t.dir);
+            cars.add(t.cars);
+          }
+        }
+        expect(starts.length, greaterThan(14), reason: '600 s must bring at least 15 trains: $starts');
+        for (var i = 1; i < starts.length; i++) {
+          final d = starts[i] - starts[i - 1];
+          expect(d, inInclusiveRange(20, 40), reason: 'interval $d between train ${i - 1} and $i');
+          expect(dirs[i], -dirs[i - 1], reason: 'trains must alternate direction');
+        }
+        for (final c in cars) {
+          expect(c, inInclusiveRange(6, 10));
+        }
+      });
+    }
+  });
 }
