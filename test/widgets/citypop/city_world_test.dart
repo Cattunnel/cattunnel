@@ -140,4 +140,59 @@ void main() {
       }
     });
   });
+
+  group('traffic signal', () {
+    test('the signal cycles through green, yellow and red for cars, and pedestrians only walk on red', () {
+      final seen = <int>{};
+      for (var t = 0.0; t < 40; t += 0.05) {
+        final s = CityWorld.signalAt(t);
+        seen.add(s.car);
+        // pedestrians never have the walk phase while cars may go
+        if (s.ped != 0) expect(s.car, 2, reason: 'ped walk while cars go at $t');
+        // and a 1.5 s all-red gap before the walk and after it
+        if (s.car == 2 && t % 20 < 12) expect(s.ped, 0);
+      }
+      expect(seen, {0, 1, 2});
+    });
+
+    for (final cfg in [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]) {
+      test(
+        'cars never enter the zebra on red, pedestrians cross only in their phase (alive ${cfg.$1}, fault ${cfg.$2})',
+        () {
+          final w = CityWorld()..resize(const Size(360, 800));
+          final p = CityParams(tod: 1, alive: cfg.$1, fault: cfg.$2);
+          var prev = <int, double>{};
+          var entered = 0, crossedWhileWalk = 0, carsSeen = 0;
+          var crossersWalked = 0;
+          for (var i = 0; i < 20 * 400; i++) {
+            w.step(0.05, p);
+            final t = w.debugSimTime;
+            final sig = CityWorld.signalAt(t);
+            final now = {for (final c in w.debugCars) c.id: c.s};
+            carsSeen = carsSeen < now.length ? now.length : carsSeen;
+            for (final c in w.debugCars) {
+              final before = prev[c.id];
+              if (before == null) continue;
+              final inside = c.s > CityWorld.zebraNear && c.s < CityWorld.zebraFar;
+              final wasInside = before > CityWorld.zebraNear && before < CityWorld.zebraFar;
+              if (inside && !wasInside && sig.car == 2) entered++;
+            }
+            prev = now;
+            final walking = w.debugCrossers.where((c) => !c.waiting).toList();
+            if (walking.isNotEmpty) {
+              crossersWalked++;
+              // somebody is on the road: no car on the zebra, and the walk phase began
+              if (w.debugCars.any((c) => c.s > CityWorld.zebraNear && c.s < CityWorld.zebraFar)) crossedWhileWalk++;
+              expect(t % 20, greaterThan(11.9), reason: 'pedestrian on the road before the walk phase');
+              expect(t % 20, lessThan(19.5), reason: 'pedestrian still on the road when cars go');
+            }
+          }
+          expect(entered, 0, reason: 'cars entered the zebra on red');
+          expect(crossedWhileWalk, 0, reason: 'a car stood on the zebra with people on it');
+          expect(crossersWalked, greaterThan(100), reason: 'pedestrians never crossed');
+          expect(carsSeen, greaterThan(0));
+        },
+      );
+    }
+  });
 }
