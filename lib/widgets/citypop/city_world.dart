@@ -24,6 +24,21 @@ class CityParams {
   const CityParams({required this.tod, required this.alive, required this.fault, this.grade = 1});
 }
 
+/// Glow of the one tube that starts like an old gas-discharge lamp: every 30
+/// seconds it blinks three times in a row (short flashes that die away), then
+/// burns evenly until the next time. 0 dark, 1 full.
+double cityStarterGlow(double t) {
+  final p = t % 30;
+  if (p >= 1.4) return 1;
+  const starts = [0.0, 0.42, 0.86], amps = [0.55, 0.75, 0.95];
+  for (var i = 0; i < 3; i++) {
+    final u = p - starts[i];
+    if (u >= 0 && u < 0.22) return amps[i] * (1 - u / 0.22 * 0.6) * (u < 0.04 ? u / 0.04 : 1);
+  }
+
+  return 0;
+}
+
 double _mix(double a, double b, double t) => a + (b - a) * t;
 double _cl(double x, [double a = 0, double b = 1]) => x < a ? a : (x > b ? b : x);
 double _sm(double a, double b, double x) {
@@ -93,8 +108,7 @@ class _Blade {
   final List<double> neon, paintCol;
   final double pos;
   final bool dk;
-  final int dead;
-  _Blade(this.s, this.x, this.z0, this.wid, this.text, this.neon, this.paintCol, this.pos, this.dk, this.dead);
+  _Blade(this.s, this.x, this.z0, this.wid, this.text, this.neon, this.paintCol, this.pos, this.dk);
 }
 
 class _Car {
@@ -230,7 +244,6 @@ class CityWorld {
           _paint[(i * 2 + 1) % _paint.length],
           0.1 + bs[i] / 28,
           i % 3 == 1,
-          (_ih(i, seed) * t.runes.length).floor(),
         ),
       );
     }
@@ -625,53 +638,55 @@ class CityWorld {
     return g;
   }
 
-  /// Letters of [text] in a row, each one lit or dark, with a soft glow.
-  void _letters(
-    Canvas canvas,
-    String text,
-    Offset c,
-    double size,
-    List<double> neonCol,
-    double nk,
-    List<double> paintCol,
-    int id,
-  ) {
-    final chars = text.runes.map(String.fromCharCode).toList();
-    final adv = size * 1.0;
-    var x = c.dx - adv * chars.length / 2;
-    for (var i = 0; i < chars.length; i++) {
-      final dead = _ih(id * 7 + i, 5) < 0.12;
-      var on = nk;
-      if (dead) on *= _ih(id + i, (_time * 6).floor()) < 0.18 ? 1 : 0;
-      final off = _c(_mixc(paintCol, _mixc(neonCol, [10, 6, 24], 0.82), _neonK));
-      _tp(chars[i], size, off).paint(canvas, Offset(x + (adv - _tp(chars[i], size, off).width) / 2, c.dy - size / 2));
-      if (on > 0.05) {
-        final lit = _c(_mixc(neonCol, [255, 255, 255], 0.45), 0.55 + 0.45 * on);
-        final glow = Paint()
-          ..blendMode = BlendMode.plus
-          ..color = _c(neonCol, 0.5 * on)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.5, size * 0.35));
-        canvas.drawCircle(Offset(x + adv / 2, c.dy), size * 0.55, glow);
-        final tp = _tp(chars[i], size, lit);
-        tp.paint(canvas, Offset(x + (adv - tp.width) / 2, c.dy - size / 2));
-      }
-      x += adv;
+  /// Which letter of which blade sign has the old starter-lit tube.
+  static const _starterBlade = 2, _starterLetter = 1;
+
+  /// How lit a letter of blade sign [blade] is at [t] seconds, for a lit
+  /// sign (1 = steadily on). All letters burn all the time; only the starter
+  /// letter flickers (see [cityStarterGlow]).
+  @visibleForTesting
+  double debugLetterGlow(int blade, int letter, double t) =>
+      blade == _starterBlade && letter == _starterLetter ? cityStarterGlow(t) : 1.0;
+
+  /// The word on a shop's painted board, laid on the wall plane in the same
+  /// perspective as the wall. It is paint on a board, not neon: it does not
+  /// glow at night, it only gets dark with the street.
+  void _boardWord(Canvas canvas, _Fac f) {
+    const xf = -6.6;
+    final sa = f.s0 + (f.s1 - f.s0) * 0.1, sb = f.s1 - (f.s1 - f.s0) * 0.1;
+    final q = _qsz(xf, sa, sb, 3.7, 4.9);
+    final pxm = _k / ((f.s0 + f.s1) / 2);
+    if (pxm * 1.2 < 7) return;
+    final chars = f.word.runes.map(String.fromCharCode).toList();
+    const scale = 60.0;
+    final w0 = (sb - sa) * scale, h0 = 1.2 * scale;
+    final fs = math.min(h0 * 0.78, w0 * 0.92 / chars.length);
+    final a = q[0], bb = q[1], d = q[3];
+    final m = Float64List.fromList([
+      (bb.dx - a.dx) / w0, (bb.dy - a.dy) / w0, 0, 0, //
+      (d.dx - a.dx) / h0, (d.dy - a.dy) / h0, 0, 0, //
+      0, 0, 1, 0, //
+      a.dx, a.dy, 0, 1,
+    ]);
+    final col = _c(_mixc(const [244.0, 236.0, 214.0], const [70.0, 56.0, 96.0], 0.55 * _night));
+    canvas.save();
+    canvas.transform(m);
+    var x = (w0 - fs * chars.length) / 2;
+    for (final ch in chars) {
+      final tp = _tp(ch, fs, col);
+      tp.paint(canvas, Offset(x + (fs - tp.width) / 2, (h0 - fs) / 2));
+      x += fs;
     }
+    canvas.restore();
   }
 
   void _paintSigns(Canvas canvas) {
     const xf = -6.6;
     for (final f in _fac) {
-      if (!f.shop || _pt(xf, 0, f.s0).dx < -0.2 * _size.width) continue;
-      final a = _pt(xf, 4.3, (f.s0 + f.s1) / 2), m = _k * 2 / (f.s0 + f.s1);
-      if (m < 3) continue;
-      final nk = _neonK * _signGate(f.dk, f.pos, f.idx);
-      final len = f.word.runes.length;
-      final size = math.min(m * 1.1, (f.s1 - f.s0) * _k / (f.s0 * 0.5 + f.s1 * 0.5) * 1.1 / math.max(1, len * 0.5));
-      if (size < 3) continue;
-      _letters(canvas, f.word, a.translate(0, -m * 0.2), size, f.wordNeon, nk, const [244, 236, 214], f.idx);
+      if (f.shop && _pt(xf, 0, f.s0).dx >= -0.2 * _size.width) _boardWord(canvas, f);
     }
-    for (final b in _blades) {
+    for (var bi = 0; bi < _blades.length; bi++) {
+      final b = _blades[bi];
       final d = 1 / b.s, m = _k * d;
       if (m < 1.2) continue;
       final p = _pt(b.x, b.z0, b.s);
@@ -700,7 +715,7 @@ class CityWorld {
       for (var i = 0; i < runes.length; i++) {
         final cy = y + (0.25 + (i + 0.5) * 0.95) * m;
         var on = nk;
-        if (i == b.dead) on *= _ih(i, (_time * 5).floor()) < 0.2 ? 1 : 0;
+        on *= debugLetterGlow(bi, i, _time);
         // Never wider than the blade: 映 lost its left half and read as 央.
         final size = math.max(4.0, math.min(0.82 * m, 0.78 * w));
         final off = _c(_mixc([244, 236, 214], _mixc(b.neon, [10, 6, 24], 0.82), _neonK));

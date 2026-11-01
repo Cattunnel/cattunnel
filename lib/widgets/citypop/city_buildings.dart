@@ -1078,8 +1078,7 @@ extension _FacGen on CityWorld {
     canvas.save();
     canvas.transform(m);
     for (var i = 0; i < chars.length; i++) {
-      var on = nk;
-      if (_ih(b.ci * 7 + i, 5) < 0.1) on *= _ih(i + b.ci, (_time * 5).floor()) < 0.2 ? 1 : 0;
+      final on = nk;
       final off = _c(_mixc([244, 236, 214], _mixc(_neon[b.ci], [10, 6, 24], 0.82), _neonK));
       final tp = _tp(chars[i], fs, off);
       final pos = Offset((w0 - tp.width) / 2, top + i * fs);

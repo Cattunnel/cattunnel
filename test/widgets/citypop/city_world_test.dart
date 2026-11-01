@@ -108,4 +108,36 @@ void main() {
       }
     }
   });
+
+  group('sign letters', () {
+    test('the starter tube blinks three times at the start of every 30 s and burns evenly after', () {
+      for (final base in [0.0, 30.0, 60.0, 600.0]) {
+        // three separate flashes with dark between them
+        var flashes = 0;
+        var prev = 0.0;
+        for (var t = 0.0; t < 1.39; t += 0.01) {
+          final g = cityStarterGlow(base + t);
+          if (g > 0.3 && prev <= 0.3) flashes++;
+          prev = g;
+        }
+        expect(flashes, 3, reason: 'at $base');
+        for (var t = 1.5; t < 30; t += 0.25) {
+          expect(cityStarterGlow(base + t), 1.0, reason: 'at ${base + t}');
+        }
+      }
+    });
+
+    test('every other letter of every sign is lit all the time', () {
+      final w = CityWorld()..resize(const Size(360, 800));
+      for (var blade = 0; blade < 7; blade++) {
+        for (var letter = 0; letter < 6; letter++) {
+          for (var t = 0.0; t < 90; t += 0.37) {
+            final g = w.debugLetterGlow(blade, letter, t);
+            if (blade == 2 && letter == 1) continue;
+            expect(g, 1.0, reason: 'blade $blade letter $letter at $t');
+          }
+        }
+      }
+    });
+  });
 }
