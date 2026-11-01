@@ -915,13 +915,40 @@ class CityWorld {
   }
 
   // ------------------------------------------------------------------- plane
+  /// For screenshots: the next plane flies in [planeForceDir] (1 right = takes
+  /// off, -1 left = lands), already [planeForceAge] seconds into its flight.
+  int planeForceDir = -1;
+  double planeForceAge = 7;
+
+  /// The plane's flight: position of the fuselage centre, pitch of the nose
+  /// (radians, up positive), the climb path as dy per px of forward travel and
+  /// how far the landing gear is down (1 down, 0 retracted).
+  /// To the right it takes off: nose about 9 degrees up, a gentle climb, gear
+  /// up two or three seconds after the start. To the left it lands: a 3 degree
+  /// glide slope, nose 2.5 degrees up, gear down.
+  ({double x, double y, double pitch, double slope, double gear}) _planePose(double uu, double t) {
+    final w = _size.width, h = _size.height;
+    if (_planeDir > 0) {
+      final x = _mix(-0.08 * w, 1.08 * w, uu);
+      final y = 0.30 * h - 0.13 * w * math.pow(uu, 1.35);
+      final slope = -0.13 * w * 1.35 * math.pow(math.max(uu, 0.001), 0.35) / (1.16 * w);
+      final age = uu * 17;
+
+      return (x: x, y: y, pitch: 9 * math.pi / 180, slope: slope, gear: 1 - _sm(2.2, 3.6, age));
+    }
+    final x = _mix(1.08 * w, -0.08 * w, uu);
+    final tan3 = math.tan(3 * math.pi / 180);
+
+    return (x: x, y: 0.27 * h + uu * 1.16 * w * tan3, pitch: 2.5 * math.pi / 180, slope: tan3, gear: 1);
+  }
+
   void _paintPlane(Canvas canvas) {
-    final w = _size.width, h = _size.height, u = _u, t = _time;
+    final u = _u, t = _time;
     if (planeForce) {
-      _planeT0 = t - 7;
+      _planeT0 = t - planeForceAge;
       _planeNext = 1e9;
       planeForce = false;
-      _planeDir = -1;
+      _planeDir = planeForceDir;
     }
     if (_planeT0 < 0 && t > _planeNext) {
       _planeT0 = t;
@@ -934,13 +961,29 @@ class CityWorld {
       _planeNext = t + 20 + _r.nextDouble() * 20;
       return;
     }
-    final x = _planeDir > 0 ? _mix(-0.08 * w, 1.08 * w, uu) : _mix(1.08 * w, -0.08 * w, uu);
-    final y = 0.255 * h - uu * 0.02 * h;
-    final half = 11 * u;
+    final pose = _planePose(uu, t);
+    final dir = _planeDir.toDouble();
+    final q = 1.4 * u;
+    final cs = math.cos(pose.pitch), sn = math.sin(pose.pitch);
+    // Fuselage coordinates (forward, down) in units of q to the screen.
+    Offset at(double v, double y) => Offset(pose.x + dir * (v * cs + y * sn) * q, pose.y + (-v * sn + y * cs) * q);
+    Path poly(List<List<double>> pts) {
+      final path = Path();
+      for (var i = 0; i < pts.length; i++) {
+        final o = at(pts[i][0], pts[i][1]);
+        i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+      }
+
+      return path..close();
+    }
+
     final lights = _sm(0.3, 0.6, _tod);
     final bodyA = 0.9 * (1 - _night * 0.85);
+    final bodyColor = _c(_mixc(const [240, 238, 240], const [48, 24, 70], _tod > 0.4 ? 0.9 : 0), bodyA);
+    final farColor = _c(_mixc(const [214, 212, 220], const [40, 20, 62], _tod > 0.4 ? 0.9 : 0), bodyA);
+    final tail = at(-11.8, -0.4);
     if (_dayK > 0.15) {
-      final p0 = Offset(x, y), p1 = Offset(x - _planeDir * 160 * u, y + 3 * u);
+      final p0 = tail, p1 = Offset(tail.dx - dir * 160 * u, tail.dy - pose.slope * 160 * u);
       canvas.drawLine(
         p0,
         p1,
@@ -952,30 +995,104 @@ class CityWorld {
           ]),
       );
     }
-    final bodyColor = _c(_mixc(const [240, 238, 240], const [48, 24, 70], _tod > 0.4 ? 0.9 : 0), bodyA);
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(x, y), width: half * 1.9, height: 3.2 * u),
-      Paint()..color = bodyColor,
+    final body = Paint()..color = bodyColor;
+    // far wing and far stabiliser behind the fuselage, then the fuselage, fin, near wing
+    canvas.drawPath(
+      poly(const [
+        [1.5, -1.0],
+        [-3.2, -5.2],
+        [-6.0, -5.4],
+        [-2.8, -1.0],
+      ]),
+      Paint()..color = farColor,
+    );
+    final fus = Path();
+    void m(Path pth, double v, double y, {bool first = false}) {
+      final o = at(v, y);
+      first ? pth.moveTo(o.dx, o.dy) : pth.lineTo(o.dx, o.dy);
+    }
+
+    // The fuselage outline: a rounded nose, a long barrel, an up-swept tail cone.
+    final nose = at(11.2, 0.2), noseTop = at(8.4, -1.25), noseCtl = at(10.4, -0.9);
+    fus.moveTo(nose.dx, nose.dy);
+    fus.quadraticBezierTo(noseCtl.dx, noseCtl.dy, noseTop.dx, noseTop.dy);
+    m(fus, -5, -1.25);
+    final t1 = at(-8, -1.25), t2 = at(-10, -1.0), t3 = at(-11.5, -0.9);
+    fus.cubicTo(t1.dx, t1.dy, t2.dx, t2.dy, t3.dx, t3.dy);
+    m(fus, -11.9, -0.2);
+    final b1 = at(-10, 0.2), b2 = at(-8, 0.9), b3 = at(-5, 1.2);
+    fus.cubicTo(b1.dx, b1.dy, b2.dx, b2.dy, b3.dx, b3.dy);
+    m(fus, 7.5, 1.2);
+    final n1 = at(10.5, 1.1);
+    fus.quadraticBezierTo(n1.dx, n1.dy, nose.dx, nose.dy);
+    canvas.drawPath(fus, body);
+    canvas.drawPath(
+      poly(const [
+        [-3.5, -1.2],
+        [-9.2, -6.8],
+        [-11.7, -6.8],
+        [-11.5, -0.8],
+      ]),
+      body,
     );
     canvas.drawPath(
-      Path()
-        ..moveTo(x - 3 * u, y)
-        ..lineTo(x + 2 * u, y + 0.2 * u)
-        ..lineTo(x - _planeDir * 2 * u, y + 4.8 * u)
-        ..close(),
-      Paint()..color = bodyColor,
+      poly(const [
+        [-8.5, 0.2],
+        [-12.6, 1.9],
+        [-13.8, 1.9],
+        [-11.4, -0.1],
+      ]),
+      body,
     );
+    canvas.drawPath(
+      poly(const [
+        [3.0, 0.9],
+        [-2.8, 1.2],
+        [-7.2, 5.5],
+        [-4.6, 5.5],
+      ]),
+      body,
+    );
+    // engine under the near wing
+    final e0 = at(1.0, 1.0), e1 = at(4.8, 2.5);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromPoints(e0, e1), Radius.circular(0.7 * q)),
+      Paint()..color = farColor,
+    );
+    // landing gear: a nose leg and a main leg with two wheels
+    if (pose.gear > 0.02) {
+      final leg = Paint()
+        ..color = bodyColor
+        ..strokeWidth = math.max(0.8, 0.28 * q)
+        ..strokeCap = StrokeCap.round;
+      final g = pose.gear;
+      final n0 = at(8.0, 1.2), n1 = at(8.0, 1.2 + 1.6 * g);
+      canvas.drawLine(n0, n1, leg);
+      canvas.drawCircle(n1, 0.5 * q * g, body);
+      final g0 = at(-1.0, 1.2), g1 = at(-1.0, 1.2 + 2.0 * g);
+      canvas.drawLine(g0, g1, leg);
+      for (final dv in const [-0.55, 0.55]) {
+        canvas.drawCircle(at(-1.0 + dv, 1.2 + 2.2 * g), 0.55 * q * g, body);
+      }
+    }
+    // cabin windows: a thin row of lit dots at night, nothing by day
+    if (_neonK > 0.1) {
+      final win = Paint()
+        ..blendMode = BlendMode.plus
+        ..color = _c(const [255, 236, 190], 0.85 * _neonK);
+      for (var v = 8.2; v > -8.5; v -= 0.62) {
+        canvas.drawCircle(at(v, -0.35), math.max(0.35, 0.16 * q), win);
+      }
+    }
     if (lights < 0.02) return;
     final ph = (t * 0.83) % 1;
     final strobe = ph < 0.05 || (ph > 0.14 && ph < 0.19); // double flash like an Airbus
     final beacon = ((t * 1.1 + 0.3) % 1.5) < 0.18;
-    // Lights as on an Airbus seen from the side (owner 01.11: not red and
-    // green at the nose and the tail). The navigation light sits on the
-    // wingtip of the near wing: flying left we see the left side, red;
-    // flying right, green. White on the tail. Red beacons flash on top and
-    // under the fuselage, white strobes on the wingtip and the tail.
-    final wingTip = Offset(x - _planeDir * 2 * u, y + 4.5 * u);
-    final tail = Offset(x - _planeDir * half, y - 0.4 * u);
+    // Lights as on an Airbus seen from the side: the navigation light on the
+    // wingtip of the near wing (flying left we see the left side, red; right,
+    // green), white on the tail, red beacons above and below the fuselage,
+    // white strobes on the wingtip and the tail.
+    final wingTip = at(-5.9, 5.4);
     final nav = _planeDir < 0 ? const [255.0, 40.0, 40.0] : const [40.0, 255.0, 90.0];
     void dot(Offset c, List<double> col, double glow, double a) {
       _glow(canvas, c, glow * u, col, 0.6 * a * lights);
@@ -990,7 +1107,7 @@ class CityWorld {
       }
     }
     if (beacon) {
-      for (final c in [Offset(x, y - 1.7 * u), Offset(x, y + 1.7 * u)]) {
+      for (final c in [at(1.0, -1.6), at(1.0, 1.6)]) {
         dot(c, const [255.0, 40.0, 40.0], 11, 1.1);
       }
     }
