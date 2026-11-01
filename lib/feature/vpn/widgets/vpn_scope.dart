@@ -321,6 +321,13 @@ class _VpnScopeState extends State<VpnScope> {
   /// handshake milliseconds after the first, a freeze trigger.
   int? _lastStartKey;
   DateTime _lastStartAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// The server whose start is still before its first engine start. The two
+  /// calls of a switch can differ in the key (the button passes the server
+  /// after the subscription refresh), so the server alone is enough here.
+  /// Two engine starts 60 ms apart left the VPN in "connecting" for minutes
+  /// (S22, 01.11).
+  String? _preparingServerId;
   static const _sameStartWindow = Duration(seconds: 3);
 
   Timer? _antiDpiStatusTimer;
@@ -400,13 +407,22 @@ class _VpnScopeState extends State<VpnScope> {
     _clearAntiDpiStatus();
     final key = Object.hash(server, routingProfile, Object.hashAll(excludedRoutes), logLevel);
     final now = DateTime.now();
-    if (key == _lastStartKey && now.difference(_lastStartAt) < _sameStartWindow) {
+    final recent = now.difference(_lastStartAt) < _sameStartWindow;
+    if (recent && (key == _lastStartKey || server.id == _preparingServerId)) {
       return;
     }
 
-    await _stop();
+    // Marked before the stop: a second call arrives while the first one is
+    // still stopping.
     _lastStartKey = key;
     _lastStartAt = now;
+    _preparingServerId = server.id;
+    try {
+      await _stop(fromStart: true);
+    } catch (_) {
+      _preparingServerId = null;
+      rethrow;
+    }
 
     final attempt = ++_startAttempt;
     _leftDisconnectedSinceStart = false;
@@ -734,6 +750,7 @@ class _VpnScopeState extends State<VpnScope> {
   /// stopped/restarted meanwhile or the app isn't in front (e.g. the system
   /// VPN consent dialog is up).
   void _watchStartBegins(int attempt) {
+    _preparingServerId = null;
     unawaited(
       Future<void>.delayed(_startGrace, () {
         final stillThisAttempt = attempt == _startAttempt;
@@ -765,9 +782,12 @@ class _VpnScopeState extends State<VpnScope> {
   );
 
   /// Stops the VPN and immediately changes the state to disconnected.
-  Future<void> _stop() async {
+  Future<void> _stop({bool fromStart = false}) async {
     _startAttempt++;
-    _lastStartKey = null;
+    if (!fromStart) {
+      _lastStartKey = null;
+      _preparingServerId = null;
+    }
     // On Android the stop always reaches the engine: the app can believe
     // the VPN is down while a stuck attempt is still running (Marsik's
     // "Disconnect"), and skipping the stop left that service in the
