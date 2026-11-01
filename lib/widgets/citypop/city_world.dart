@@ -1,7 +1,10 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
+
+part 'city_buildings.dart';
 
 /// What the scene needs to know to draw one frame.
 class CityParams {
@@ -83,52 +86,6 @@ const _winColors = [
 const citySignHorizontal = ['ラーメン', 'コーヒー', 'カラオケ', 'すし', 'やきとり', 'レコード', 'カメラ', 'くすり', '喫茶', 'ホテル', 'マルシク'];
 const citySignVertical = ['ラーメン', 'すし', 'くすり', 'スナック', 'カラオケ', 'そば', '喫茶', '映画', 'マルシク'];
 
-class _Fac {
-  final double s0, s1, z;
-  final int idx, kind; // kind 0 narrow shop tower, 1 glass office, 2 low shops
-  final bool dk, shop;
-  final double pos, col;
-  final List<double> awn;
-  final String word;
-  final List<double> wordNeon, board;
-  _Fac(
-    this.s0,
-    this.s1,
-    this.z,
-    this.idx,
-    this.kind,
-    this.dk,
-    this.shop,
-    this.pos,
-    this.col,
-    this.awn,
-    this.word,
-    this.wordNeon,
-    this.board,
-  );
-}
-
-class _Far {
-  final double x, w, h;
-  final bool tower, beacon, dk;
-  final int id, cols, rows;
-  final double ph, tint, pos;
-  _Far(
-    this.x,
-    this.w,
-    this.h,
-    this.tower,
-    this.beacon,
-    this.dk,
-    this.id,
-    this.cols,
-    this.rows,
-    this.ph,
-    this.tint,
-    this.pos,
-  );
-}
-
 class _Blade {
   final double s, x, z0, wid;
   final String text;
@@ -177,6 +134,9 @@ class CityWorld {
   final List<_Far> _far = [];
   final List<_Fac> _fac = [];
   final List<_Blade> _blades = [];
+  // lit rectangles of the far shore, kept per frame for the reflection
+  final List<List<Rect>> _litWin = List.generate(4, (_) => []);
+  final List<List<Rect>> _litSign = List.generate(5, (_) => []);
   final List<_Car> _cars = [];
   final List<_Car> _parked = [];
   final List<_Ped> _peds = [];
@@ -188,7 +148,7 @@ class CityWorld {
   bool planeForce = false;
 
   // cached static layer
-  ui.Picture? _static;
+  ui.Picture? _static, _staticFar;
   Size _staticSize = Size.zero;
   int _staticBucket = -1;
 
@@ -225,65 +185,8 @@ class CityWorld {
 
   void _build() {
     final r = math.Random(seed);
-    final w = _size.width, h = _size.height, u = _u;
-    _far.clear();
-    var x = -10 * u;
-    var id = 0;
-    while (x < w + 10 * u) {
-      final bw = (9 + r.nextDouble() * 22) * u;
-      final inBay = x > 0.60 * w;
-      final centre = ((x + bw / 2) / w - 0.46).abs() < 0.2;
-      var bh = (14 + r.nextDouble() * 62) * u * (inBay ? 0.55 : 1) * (centre ? 1.5 : 1);
-      final tower = r.nextDouble() < 0.18 && !inBay;
-      if (tower) bh = (95 + r.nextDouble() * 80) * u * (h / 800);
-      bh = math.min(bh, 0.18 * h);
-      _far.add(
-        _Far(
-          x,
-          bw,
-          bh,
-          tower,
-          // Aviation lights belong on the tall buildings only.
-          tower,
-          r.nextDouble() < 0.45,
-          id,
-          math.max(2, (bw / (4.2 * u)).floor()),
-          math.max(2, (bh / (5.6 * u)).floor()),
-          r.nextDouble(),
-          r.nextDouble(),
-          0.15 + 0.5 * (x / w),
-        ),
-      );
-      id++;
-      x += bw + (r.nextDouble() < 0.3 ? 3 * u : 0.5 * u);
-    }
-    _fac.clear();
-    var s = 1.55;
-    var idx = 0;
-    const words = citySignHorizontal;
-    while (s < 26) {
-      final ls = math.max(0.5, s * (0.22 + r.nextDouble() * 0.26));
-      final kind = idx % 3 == 1 ? 1 : (r.nextDouble() < 0.28 ? 2 : 0);
-      _fac.add(
-        _Fac(
-          s,
-          s + ls,
-          28 + r.nextDouble() * 40,
-          idx,
-          kind,
-          r.nextDouble() < 0.4,
-          kind != 1 && r.nextDouble() < 0.92,
-          0.05 + 0.6 * math.min(1, s / 26),
-          r.nextDouble(),
-          _paint[r.nextInt(_paint.length)],
-          words[r.nextInt(words.length)],
-          _neon[r.nextInt(_neon.length)],
-          _paint[r.nextInt(_paint.length)],
-        ),
-      );
-      s += ls;
-      idx++;
-    }
+    _buildFar(r);
+    _buildFac(r);
     _blades.clear();
     const bs = [2.2, 3.1, 4.1, 5.5, 7.4, 10.0, 13.5];
     for (var i = 0; i < bs.length; i++) {
@@ -448,15 +351,24 @@ class CityWorld {
     _paintPlane(canvas);
     final bucket = (p.tod * 24).round() * 100 + (p.grade * 10).round();
     if (_static == null || _staticSize != size || _staticBucket != bucket) {
+      // Two cached layers: the far shore, then the street's facades. The far
+      // shore's lit windows are drawn between them, so they never show
+      // through a facade (they did when both lived in one picture).
+      final recFar = ui.PictureRecorder();
+      _paintFarStatic(Canvas(recFar));
+      _staticFar = recFar.endRecording();
       final rec = ui.PictureRecorder();
-      _paintStatic(Canvas(rec));
+      _paintNearStatic(Canvas(rec));
       _static = rec.endRecording();
       _staticSize = size;
       _staticBucket = bucket;
     }
+    canvas.drawPicture(_staticFar!);
+    _paintFarLit(canvas);
+    _paintReflection(canvas);
+    _paintRadioTower(canvas);
     canvas.drawPicture(_static!);
-    _paintLitWindows(canvas);
-    _paintBeaconsAndTower(canvas);
+    _paintNearLit(canvas);
     _paintSigns(canvas);
     final items = <(double, void Function())>[
       for (final c in _cars) (c.s, () => _paintCar(canvas, c)),
@@ -502,203 +414,12 @@ class CityWorld {
   }
 
   // ------------------------------------------------------------ static layer
-  List<double> get _body => _p3([176, 160, 200], [112, 56, 118], [22, 14, 54], _tod);
   List<double> get _hz => _p3([255, 205, 160], [255, 130, 100], [200, 56, 130], _tod);
 
-  void _paintStatic(Canvas canvas) {
-    final hy = _hy, u = _u;
-    final body = _body, hz = _hz;
-    for (final b in _far) {
-      final col = _mixc(body, hz, 0.28 + 0.15 * (1 - math.min(1, b.h / (90 * u))) + b.tint * 0.06);
-      canvas.drawRect(Rect.fromLTWH(b.x, hy - b.h, b.w, b.h + 1), Paint()..color = _c(col));
-      if (b.tower) {
-        // glass office tower: a lighter curtain wall under the grid of windows
-        canvas.drawRect(
-          Rect.fromLTWH(b.x + b.w * 0.08, hy - b.h + 3 * u, b.w * 0.84, b.h - 3 * u),
-          Paint()..color = _c(_mixc(col, [150, 200, 220], 0.25 * _dayK + 0.1), 0.55),
-        );
-        canvas.drawRect(
-          Rect.fromLTWH(b.x + b.w / 2 - 0.5 * u, hy - b.h - 9 * u, 1 * u, 9 * u),
-          Paint()..color = _c(col),
-        );
-      }
-      if (_dayK > 0.05) {
-        canvas.drawRect(
-          Rect.fromLTWH(b.x + b.w * 0.72, hy - b.h, b.w * 0.28, b.h + 1),
-          Paint()..color = _c([255, 226, 180], 0.35 * _dayK),
-        );
-      }
-      // dark panes (glass) by day
-      if (_dayK > 0.1) {
-        final cw = b.w / b.cols, rh = b.h / b.rows;
-        final paint = Paint()..color = _c([150, 196, 204], 0.45 * _dayK);
-        for (var i = 0; i < b.cols; i++) {
-          for (var j = 0; j < b.rows - 1; j++) {
-            canvas.drawRect(
-              Rect.fromLTWH(b.x + i * cw + cw * 0.25, hy - b.h + (j + 0.5) * rh + rh * 0.1, cw * 0.5, rh * 0.5),
-              paint,
-            );
-          }
-        }
-      }
-    }
-    _paintFacadesStatic(canvas);
-  }
-
-  void _paintFacadesStatic(Canvas canvas) {
-    const xf = -6.6;
-    final hz = _hz;
-    final wall0 = _p3([214, 196, 200], [118, 58, 112], [20, 12, 50], _tod);
-    final wall1 = _p3([188, 170, 188], [88, 42, 96], [14, 8, 38], _tod);
-    final glass0 = _p3([160, 196, 214], [96, 70, 140], [18, 22, 64], _tod);
-    final list = _fac.toList()..sort((a, b) => b.s0.compareTo(a.s0));
-    for (final f in list) {
-      if (_pt(xf, 0, f.s0).dx < -0.4 * _size.width && _pt(xf, 0, f.s1).dx < -0.4 * _size.width) continue;
-      final base = f.kind == 1 ? glass0 : _mixc(wall0, wall1, f.col);
-      final col = _mixc(base, hz, math.min(0.5, 0.05 + 0.6 * math.exp(-3.0 / math.max(f.s0, 0.1) * 1.2)));
-      final pA = _pt(xf, 0, f.s0), pB = _pt(xf, 0, f.s1), tA = _pt(xf, f.z, f.s0), tB = _pt(xf, f.z, f.s1);
-      _quad(canvas, [pA, pB, tB, tA], _c(col));
-      if (_dayK > 0.05) {
-        _quad(canvas, [
-          pA,
-          Offset.lerp(pA, pB, 0.06)!,
-          Offset.lerp(tA, tB, 0.06)!,
-          tA,
-        ], _c([255, 220, 170], 0.3 * _dayK));
-      }
-      // dark panes
-      final cols = math.max(1, ((f.s1 - f.s0) / 0.55).floor());
-      final cw = (f.s1 - f.s0) / cols;
-      final dMid = 2 / (f.s0 + f.s1);
-      final zTop = math.min(f.z - 2, 6 + _hy / (_k * dMid) + 1);
-      if (cw * _k / (f.s1 * f.s1) < 0.6 * _u && f.s0 > 14) continue;
-      final glassTone = f.kind == 1 ? 0.8 : 0.5;
-      final pane = Paint()..color = _c(_mixc([120, 168, 178], [40, 30, 80], _night), glassTone);
-      for (var c = 0; c < cols; c++) {
-        final sa = f.s0 + c * cw + cw * (f.kind == 1 ? 0.06 : 0.18),
-            sb = f.s0 + (c + 1) * cw - cw * (f.kind == 1 ? 0.06 : 0.18);
-        for (var z = 4.6; z < zTop; z += f.kind == 1 ? 2.4 : 3.4) {
-          final hgt = f.kind == 1 ? 1.5 : 1.9;
-          _quad(canvas, [_pt(xf, z + hgt, sa), _pt(xf, z + hgt, sb), _pt(xf, z, sb), _pt(xf, z, sa)], pane.color);
-        }
-      }
-      if (f.shop) _paintShopStatic(canvas, f, xf);
-    }
-  }
-
-  void _paintShopStatic(Canvas canvas, _Fac f, double xf) {
-    final s0 = f.s0 + (f.s1 - f.s0) * 0.06, s1 = f.s1 - (f.s1 - f.s0) * 0.06, dm = 2 / (f.s0 + f.s1);
-    if (_k * dm * 1.2 < 0.7 * _u) return;
-    final glass = _mixc([34, 84, 92], [255, 196, 120], _sm(0.2, 0.9, _tod) * 0.35);
-    _quad(canvas, [_pt(xf, 2.7, s0), _pt(xf, 2.7, s1), _pt(xf, 0.4, s1), _pt(xf, 0.4, s0)], _c(glass, 0.96));
-    if (_dayK > 0.05) {
-      _quad(canvas, [
-        _pt(xf, 2.7, s0),
-        _pt(xf, 2.7, _mix(s0, s1, 0.35)),
-        _pt(xf, 0.4, _mix(s0, s1, 0.2)),
-        _pt(xf, 0.4, s0),
-      ], _c([255, 244, 214], 0.22 * _dayK));
-    }
-    final xo = xf + 1.15;
-    final awnDim = 1 - 0.65 * _night;
-    for (var i = 0; i < 7; i++) {
-      final a = _mix(s0, s1, i / 7), b = _mix(s0, s1, (i + 1) / 7);
-      final c = i.isOdd ? const [236.0, 230.0, 214.0] : f.awn;
-      _quad(canvas, [
-        _pt(xf, 3.5, a),
-        _pt(xf, 3.5, b),
-        _pt(xo, 2.75, b),
-        _pt(xo, 2.75, a),
-      ], _c([c[0] * awnDim, c[1] * awnDim, c[2] * awnDim * (1 + 0.15 * _night)]));
-    }
-    // painted board above the awning (neon at night is drawn on top)
-    _quad(canvas, [
-      _pt(xf, 5.0, s0),
-      _pt(xf, 5.0, s1),
-      _pt(xf, 3.6, s1),
-      _pt(xf, 3.6, s0),
-    ], _c(_mixc(f.board, [14, 8, 36], _neonK)));
-  }
-
-  // ----------------------------------------------------------- lit windows
-  void _paintLitWindows(Canvas canvas) {
-    final hy = _hy;
-    final dens = _mix(0.03, 0.06, _night);
-    final paths = List.generate(4, (_) => Path());
-    for (final b in _far) {
-      final lit = _lit(b.dk, b.pos);
-      final d = dens + 0.62 * lit * _sm(0.15, 0.7, _tod);
-      final cw = b.w / b.cols, rh = b.h / b.rows;
-      for (var i = 0; i < b.cols; i++) {
-        for (var j = 0; j < b.rows - 1; j++) {
-          final rr = _ih(b.id * 977 + i, j + 11), per = 18 + _ih(i, j + b.id) * 50;
-          if (_ih(b.id * 131 + i * 7 + j, (_time / per + rr * 9).floor()) < d) {
-            paths[(rr * 4).floor() % 4].addRect(
-              Rect.fromLTWH(b.x + i * cw + cw * 0.25, hy - b.h + (j + 0.5) * rh + rh * 0.1, cw * 0.5, rh * 0.5),
-            );
-          }
-        }
-      }
-    }
-    const xf = -6.6;
-    final dens2 = _mix(0.02, 0.05, _night);
-    for (final f in _fac) {
-      if (_pt(xf, 0, f.s0).dx < -0.4 * _size.width) continue;
-      final lit = _lit(f.dk, f.pos);
-      final d = dens2 + 0.60 * lit * _sm(0.15, 0.7, _tod);
-      final cols = math.max(1, ((f.s1 - f.s0) / 0.55).floor());
-      final cw = (f.s1 - f.s0) / cols;
-      final dMid = 2 / (f.s0 + f.s1);
-      final zTop = math.min(f.z - 2, 6 + _hy / (_k * dMid) + 1);
-      if (f.s0 > 14) continue;
-      for (var c = 0; c < cols; c++) {
-        final sa = f.s0 + c * cw + cw * 0.18, sb = f.s0 + (c + 1) * cw - cw * 0.18;
-        var row = 0;
-        for (var z = 4.6; z < zTop; z += f.kind == 1 ? 2.4 : 3.4, row++) {
-          final rr = _ih(f.idx * 53 + c, row + 3), per = 20 + _ih(c, row + f.idx) * 60;
-          if (_ih(f.idx * 29 + c * 3 + row, (_time / per + rr * 7).floor()) < d + (f.kind == 1 ? 0.08 * lit : 0)) {
-            final hgt = f.kind == 1 ? 1.5 : 1.9;
-            paths[(rr * 4).floor() % 4].addPath(
-              Path()..addPolygon([_pt(xf, z + hgt, sa), _pt(xf, z + hgt, sb), _pt(xf, z, sb), _pt(xf, z, sa)], true),
-              Offset.zero,
-            );
-          }
-        }
-      }
-    }
-    for (var i = 0; i < 4; i++) {
-      canvas.drawPath(paths[i], Paint()..color = _c(_winColors[i], 0.92));
-    }
-    // Near the camera a few windows glow softly
-    if (_night > 0.3) {
-      for (final f in _fac) {
-        if (f.s0 > 5.5 || f.kind == 1) continue;
-        final lit = _lit(f.dk, f.pos);
-        _glow(canvas, _pt(xf, 8, (f.s0 + f.s1) / 2), 1.4 * _k / ((f.s0 + f.s1) / 2) * 1.6, const [
-          255,
-          190,
-          110,
-        ], 0.18 * lit);
-      }
-    }
-  }
-
   // ----------------------------------------------- tower, beacons, wires etc.
-  void _paintBeaconsAndTower(Canvas canvas) {
+  void _paintRadioTower(Canvas canvas) {
     final hy = _hy, u = _u;
     final vis = (0.25 + 0.75 * _sm(0.25, 0.7, _tod)) * (1 - _p.fault * 0.5);
-    for (final b in _far) {
-      if (!b.beacon) continue;
-      final on = ((_time * 1.0 + b.ph * 3) % 1) < 0.34;
-      if (on) {
-        final c = Offset(b.x + b.w / 2, hy - b.h - 3 * u);
-        _glow(canvas, c, 10 * u, const [255, 30, 30], 0.8 * vis);
-        canvas.drawRect(
-          Rect.fromCenter(center: c, width: 2 * u, height: 2 * u),
-          Paint()..color = _c(const [255, 90, 90], vis),
-        );
-      }
-    }
     // Radio tower: red and white lattice, with lights, on the far shore.
     final tx = _size.width * 0.72, th = 0.26 * _size.height, tw = 24 * u;
     final base = Offset(tx, hy);

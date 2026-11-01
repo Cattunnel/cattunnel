@@ -175,14 +175,8 @@ void main() {
       col += sunRef * (0.25 + 0.9 * streak) * mix(vec3(1.0, 0.9, 0.6), vec3(1.0, 0.45, 0.45), tod * 2.0);
       float moonRef = exp(-pow((fc.x - moonC.x) / (W * (0.02 + 0.08 * d)), 2.0)) * fall * moonV;
       col += moonRef * (0.2 + 0.8 * streak) * vec3(0.95, 0.80, 1.0);
-      // отражения огней города (колонки по x)
-      float cx = floor(fc.x / (7.0 * U));
-      float hc = hash21(vec2(cx, 5.0));
-      float xs = fc.x + sin(d * 70.0 + uTime * 1.4 + cx) * 1.6 * U;
-      float in1 = step(0.38, hc) * (1.0 - smoothstep(2.4 * U, 3.4 * U, abs(fract(xs / (7.0 * U)) * 7.0 * U - 3.5 * U)));
-      float sTr = 0.3 + 0.7 * vnoise(vec2(cx * 3.1, d * 16.0 - uTime * 0.4));
-      float cityLit = (0.12 + 0.88 * uState) * (1.0 - 0.55 * uDim * smoothstep(0.7, 0.2, uv.x));
-      col += neon(hash21(vec2(cx, 9.0))) * in1 * sTr * exp(-d * 2.4) * cityLit * lightK * (0.25 + 0.75 * night) * 0.8;
+      // Reflections of the far shore's lights are drawn by Dart under the real
+      // buildings (city_buildings.dart); random columns here did not match them.
       // набережная: кромка
       float edge = 1.0 - smoothstep(0.0, 0.18, X - QUAY);
       col = mix(col, P3(vec3(0.78, 0.70, 0.72), vec3(0.45, 0.22, 0.45), vec3(0.10, 0.07, 0.22), tod), edge * 0.9);
