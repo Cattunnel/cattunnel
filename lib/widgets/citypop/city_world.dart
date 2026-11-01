@@ -75,11 +75,13 @@ const _winColors = [
   [255.0, 236.0, 190.0],
 ];
 
-/// Real Japanese words for signs, no brands: tea room, coffee, ramen,
-/// karaoke, cinema, bookshop, izakaya, night, cat, pharmacy, hotel, sushi,
-/// electronics, plus our own «Марсик» in katakana.
-const citySignHorizontal = ['喫茶', '珈琲', 'ラーメン', 'カラオケ', '映画', '本屋', '居酒屋', 'ホテル', '寿司', '電器', 'マルシク'];
-const citySignVertical = ['夜', '猫', '薬', '酒', '映画', '喫茶', 'ホテル', '珈琲', 'マルシク'];
+//// Real street words of a Japanese shopping street. Katakana and hiragana
+/// as much as kanji: ramen, coffee, karaoke, sushi, yakitori, records,
+/// camera, pharmacy, snack bar, tea room, hotel, cinema, plus our own
+/// «Марсик» in katakana. Owner 01.11: «везде кандзи - так не
+/// бывает». No 珈琲 on the narrow vertical blades: its wide glyphs got cut.
+const citySignHorizontal = ['ラーメン', 'コーヒー', 'カラオケ', 'すし', 'やきとり', 'レコード', 'カメラ', 'くすり', '喫茶', 'ホテル', 'マルシク'];
+const citySignVertical = ['ラーメン', 'すし', 'くすり', 'スナック', 'カラオケ', 'そば', '喫茶', '映画', 'マルシク'];
 
 class _Fac {
   final double s0, s1, z;
@@ -241,7 +243,8 @@ class CityWorld {
           bw,
           bh,
           tower,
-          tower || r.nextDouble() < 0.2,
+          // Aviation lights belong on the tall buildings only.
+          tower,
           r.nextDouble() < 0.45,
           id,
           math.max(2, (bw / (4.2 * u)).floor()),
@@ -301,10 +304,8 @@ class CityWorld {
       );
     }
     _parked.clear();
-    const ps = [1.9, 3.6, 5.3, 8.4, 12.0];
-    for (var i = 0; i < ps.length; i++) {
-      _parked.add(_mkCar('P', ps[i], 0, i + 100, i.isEven));
-    }
+    // No cars parked along the kerb: in Japan the street is no parking
+    // almost everywhere (owner 01.11).
     _peds.clear();
     final pr = math.Random(seed + 321);
     for (var i = 0; i < 22; i++) {
@@ -334,11 +335,13 @@ class CityWorld {
       s,
       v,
       id,
-      lane == 'A' ? true : front,
+      // Japan drives on the left: A comes towards us on the right half of the
+      // road (headlights), B goes away on the left half (tail lights).
+      lane == 'A' ? true : (lane == 'B' ? false : front),
       col,
       taxi,
       r.nextDouble() < 0.4,
-      lane == 'A' ? -2.9 : (lane == 'B' ? -0.9 : -4.7),
+      lane == 'A' ? -0.9 : (lane == 'B' ? -2.9 : -4.7),
     );
   }
 
@@ -357,7 +360,8 @@ class CityWorld {
       final lane = _r.nextDouble() < 0.55 ? 'A' : 'B';
       final s = lane == 'A' ? 24.0 : 0.78;
       if (!_cars.any((c) => c.lane == lane && (c.s - s).abs() < (lane == 'A' ? 3 : 0.5))) {
-        _cars.add(_mkCar(lane, s, (1.1 + _r.nextDouble() * 0.9) * (lane == 'A' ? -1 : 1), _r.nextInt(1000000), true));
+        // A city street at 30-40 km/h, not a highway.
+        _cars.add(_mkCar(lane, s, (0.5 + _r.nextDouble() * 0.4) * (lane == 'A' ? -1 : 1), _r.nextInt(1000000), true));
       }
     }
     for (final c in _cars) {
@@ -788,18 +792,24 @@ class CityWorld {
     canvas.drawRect(Rect.fromLTWH(top.dx - 1.4 * m, top.dy, 1.4 * m, 0.1 * m), pole);
     final hx = top.dx - 1.45 * m, hy = top.dy + 0.05 * m;
     canvas.drawRect(Rect.fromLTWH(hx - 0.2 * m, hy, 1.2 * m, 0.4 * m), Paint()..color = _c(const [28, 28, 36]));
+    // A Japanese signal: horizontal, «blue» (blue-green), yellow, red from
+    // left to right. It runs on its own cycle whatever the VPN does; only a
+    // failure makes the red one stutter.
     var on = [0, 0, 0];
+    final cyc = _simT % 14;
     if (_p.fault > 0.5) {
-      on = [_ih(1, (_time * 9).floor()) < 0.7 ? 1 : 0, 0, 0];
-    } else if (_p.alive > 0.97) {
+      on = [0, 0, _ih(1, (_time * 9).floor()) < 0.7 ? 1 : 0];
+    } else if (cyc < 7) {
+      on = [1, 0, 0];
+    } else if (cyc < 9.5) {
+      on = [0, 1, 0];
+    } else {
       on = [0, 0, 1];
-    } else if (_p.alive > 0.08) {
-      on = [0, (_time % 1) < 0.5 ? 1 : 0, 0];
     }
     const cols = [
-      [255.0, 60.0, 60.0],
+      [40.0, 210.0, 190.0],
       [255.0, 200.0, 60.0],
-      [90.0, 240.0, 140.0],
+      [255.0, 60.0, 60.0],
     ];
     for (var i = 0; i < 3; i++) {
       final c = Offset(hx + i * 0.4 * m, hy + 0.2 * m);
@@ -936,12 +946,14 @@ class CityWorld {
           ..strokeWidth = math.max(1, 0.07 * m)
           ..color = _c(_mixc([240, 232, 214], b.neon, _neonK), 0.95),
       );
-      final runes = b.text.runes.map(String.fromCharCode).toList();
+      // Written top to bottom, the long vowel mark stands upright.
+      final runes = b.text.runes.map(String.fromCharCode).map((c) => c == 'ー' ? '｜' : c).toList();
       for (var i = 0; i < runes.length; i++) {
         final cy = y + (0.25 + (i + 0.5) * 0.95) * m;
         var on = nk;
         if (i == b.dead) on *= _ih(i, (_time * 5).floor()) < 0.2 ? 1 : 0;
-        final size = math.max(4.0, 0.82 * m);
+        // Never wider than the blade: 映 lost its left half and read as 央.
+        final size = math.max(4.0, math.min(0.82 * m, 0.78 * w));
         final off = _c(_mixc([244, 236, 214], _mixc(b.neon, [10, 6, 24], 0.82), _neonK));
         final tp = _tp(runes[i], size, off);
         tp.paint(canvas, Offset(x - tp.width / 2, cy - size / 2));
@@ -1193,31 +1205,30 @@ class CityWorld {
     final ph = (t * 0.83) % 1;
     final strobe = ph < 0.05 || (ph > 0.14 && ph < 0.19); // double flash like an Airbus
     final beacon = ((t * 1.1 + 0.3) % 1.5) < 0.18;
-    for (final l in [
-      (x - half, const [255.0, 40.0, 40.0]),
-      (x + half, const [40.0, 255.0, 90.0]),
-    ]) {
-      _glow(canvas, Offset(l.$1, y + 1.8 * u), 9 * u, l.$2, 0.55 * lights);
-      canvas.drawRect(
-        Rect.fromCenter(center: Offset(l.$1, y + 1.8 * u), width: 2 * u, height: 2 * u),
-        Paint()..color = _c(l.$2, lights),
-      );
+    // Lights as on an Airbus seen from the side (owner 01.11: not red and
+    // green at the nose and the tail). The navigation light sits on the
+    // wingtip of the near wing: flying left we see the left side, red;
+    // flying right, green. White on the tail. Red beacons flash on top and
+    // under the fuselage, white strobes on the wingtip and the tail.
+    final wingTip = Offset(x - _planeDir * 2 * u, y + 4.5 * u);
+    final tail = Offset(x - _planeDir * half, y - 0.4 * u);
+    final nav = _planeDir < 0 ? const [255.0, 40.0, 40.0] : const [40.0, 255.0, 90.0];
+    void dot(Offset c, List<double> col, double glow, double a) {
+      _glow(canvas, c, glow * u, col, 0.6 * a * lights);
+      canvas.drawRect(Rect.fromCenter(center: c, width: 1.8 * u, height: 1.8 * u), Paint()..color = _c(col, lights));
     }
+
+    dot(wingTip, nav, 8, 0.9);
+    dot(tail, const [255.0, 255.0, 255.0], 6, 0.7);
     if (strobe) {
-      for (final sx in [x - half * 0.97, x + half * 0.97, x - _planeDir * half]) {
-        _glow(canvas, Offset(sx, y + 1.3 * u), 16 * u, const [255, 255, 255], 0.85 * lights);
-        canvas.drawRect(
-          Rect.fromLTWH(sx - 1 * u, y + 0.3 * u, 2.4 * u, 2.4 * u),
-          Paint()..color = _c(const [255, 255, 255], lights),
-        );
+      for (final c in [wingTip, tail]) {
+        dot(c, const [255.0, 255.0, 255.0], 16, 1.4);
       }
     }
     if (beacon) {
-      _glow(canvas, Offset(x, y + 2.4 * u), 11 * u, const [255, 30, 30], 0.7 * lights);
-      canvas.drawRect(
-        Rect.fromLTWH(x - 1 * u, y + 2 * u, 2 * u, 2 * u),
-        Paint()..color = _c(const [255, 70, 70], lights),
-      );
+      for (final c in [Offset(x, y - 1.7 * u), Offset(x, y + 1.7 * u)]) {
+        dot(c, const [255.0, 40.0, 40.0], 11, 1.1);
+      }
     }
   }
 }

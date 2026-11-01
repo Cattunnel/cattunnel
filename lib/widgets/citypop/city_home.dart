@@ -741,8 +741,10 @@ class _CassetteState extends State<_Cassette> with SingleTickerProviderStateMixi
   bool _reduce = false;
 
   Duration? get _period => switch (widget.state) {
-    VpnState.connecting => const Duration(milliseconds: 650),
-    VpnState.connected => const Duration(milliseconds: 3200),
+    // Slower than a real reel on purpose: the owner found 0.65 s / 3.2 s
+    // per turn too fast (01.11).
+    VpnState.connecting => const Duration(milliseconds: 1800),
+    VpnState.connected => const Duration(milliseconds: 6000),
     _ => null,
   };
 

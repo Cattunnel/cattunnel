@@ -133,7 +133,12 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
   void _syncTicker() {
     final run = _resumed && !_reduce && widget.still == null;
     if (run && !_ticker.isActive) {
+      // A restarted ticker counts from zero again. With the old _paintAt the
+      // 30 fps gate below stayed shut for as long as the scene had run before
+      // the pause: a screenshot (the app goes inactive for a moment) froze
+      // every animation (S22, 01.11).
       _last = Duration.zero;
+      _paintAt = Duration.zero;
       _ticker.start();
     } else if (!run && _ticker.isActive) {
       _ticker.stop();
@@ -156,7 +161,7 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
     final dt = ((elapsed - _last).inMicroseconds / 1e6).clamp(0.0, 0.1);
     _last = elapsed;
     _paintAt = elapsed;
-    _time = elapsed.inMicroseconds / 1e6;
+    _time += dt;
     _spring(widget.alive, _alive, _aliveV, 5, 3.6, dt, (x, v) {
       _alive = x;
       _aliveV = v;

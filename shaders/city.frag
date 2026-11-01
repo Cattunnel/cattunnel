@@ -210,12 +210,16 @@ void main() {
       float cityLit = (0.12 + 0.88 * uState) * (1.0 - 0.7 * uDim * smoothstep(-1.0, -5.0, X));
       float sTr = 0.25 + 0.75 * vnoise(vec2(cx * 2.7, S * 0.9 - uTime * 0.2));
       float in1 = step(0.42, hc) * (1.0 - smoothstep(0.30, 0.48, abs(fract(X * 1.4) - 0.5)));
-      col += neon(hash21(vec2(cx, 8.0))) * in1 * sTr * exp(-d * 1.3) * smoothstep(0.03, 0.2, d) * cityLit * lightK * (0.15 + 0.85 * night) * 0.9;
-      // огни движения (общая подсветка полос от фар)
-      float lane = exp(-pow((X + 2.9) / 0.9, 2.0)) * 0.9 + exp(-pow((X + 0.9) / 0.8, 2.0));
-      col += mix(vec3(1.0, 0.9, 0.7), vec3(1.0, 0.25, 0.2), step(-1.9, X)) * lane * uTraffic * night * 0.14 * (0.5 + 0.5 * vnoise(vec2(S * 1.5, X))) * exp(-d * 0.9) * smoothstep(0.03, 0.2, d);
+      // Short wet patches, not columns down the whole road: those read as a
+      // trail that never goes away (owner 01.11).
+      float wetSpot = smoothstep(0.62, 0.85, vnoise(vec2(cx * 1.7, S * 2.2 - uTime * 0.15)));
+      col += neon(hash21(vec2(cx, 8.0))) * in1 * sTr * wetSpot * exp(-d * 1.3) * smoothstep(0.03, 0.2, d) * cityLit * lightK * (0.15 + 0.85 * night) * 0.45;
+      // Подсветки полос от фар здесь больше нет: она горела и без машин,
+      // постоянным шлейфом. Каждая машина светит сама (city_world.dart).
       // днём блик солнца на мокрой дороге
-      col += dayK * 0.10 * smoothstep(0.55, 0.9, vnoise(vec2(X * 0.5, S * 0.4 + 3.0))) * vec3(1.0, 0.9, 0.7);
+      // uTraffic stays in use: an unused uniform may be dropped by the
+      // compiler and shift the indices the Dart side writes to.
+      col += dayK * (0.08 + 0.02 * uTraffic) * smoothstep(0.55, 0.9, vnoise(vec2(X * 0.5, S * 0.4 + 3.0))) * vec3(1.0, 0.9, 0.7);
     }
     // дымка вдали
     col = mix(col, hor, exp(-d * 9.0) * 0.55);
