@@ -827,7 +827,7 @@
     }
   },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• Marsik is clearer: he shows what stops the connection and offers one action: another server, try again, Wi-Fi or date settings, message the admin. He checks only our servers and never knocks on other sites\n• Tablets: the app rotates, and settings and forms no longer stretch across a wide screen\n• Aero: the server card fits a narrow phone, the connect button grows with the screen and no longer sways\n• The app has its own device key for the subscription\n• Engine updated to 1.3.0-rc.2: connections through SOCKS no longer lose requests after being idle\n• Grey text has more contrast and is easier to read",
+  "whatsNewBody": "• New City pop style: a living Tokyo street of the 80s, by day, at dusk and at night. Turn it on in Settings → Appearance\n• Switching servers no longer hangs on \"Connecting\": the engine starts once\n• Marsik is clearer: he shows what stops the connection and offers one action: another server, try again, Wi-Fi or date settings, message the admin. He checks only our servers and never knocks on other sites\n• Tablets: the app rotates, and settings and forms no longer stretch across a wide screen\n• Aero: the server card fits a narrow phone, the connect button grows with the screen and no longer sways\n• The app and routers (OpenWrt, Keenetic) have their own device key for the subscription\n• Engine updated to 1.3.0-rc.2: connections through SOCKS no longer lose requests after being idle\n• Grey text has more contrast and is easier to read",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",
