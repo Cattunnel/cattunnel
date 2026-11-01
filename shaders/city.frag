@@ -20,7 +20,8 @@ layout(location = 0) out vec4 fragColor;
 
 const float VPX   = 0.46;   // точка схода по x (доля ширины)
 const float KERB  = 0.4;    // край проезжей части, м
-const float QUAY  = 1.8;    // кромка набережной, м
+const float QUAY  = 1.8;    // кромка набережной (парапет), м
+const float QW    = 1.9;    // ширина спуска со ступенями до воды, м (city_buildings.dart: те же числа)
 const float ROADL = -5.4;   // левый край проезжей части, м
 
 float hash21(vec2 p) {
@@ -158,7 +159,7 @@ void main() {
     float lightK = mix(0.18, 1.0, smoothstep(0.1, 0.75, tod));   // вывески и фонари
     float fall = exp(-d * 1.1);
 
-    if (X > QUAY) {
+    if (X > QUAY + QW) {
       // ----- вода: днём спокойная с бликами, ночью с отражениями огней -----
       vec3 wDeep = P3(vec3(0.20, 0.52, 0.62), vec3(0.30, 0.14, 0.36), vec3(0.03, 0.025, 0.13), tod);
       vec3 wNear = P3(vec3(0.12, 0.38, 0.50), vec3(0.16, 0.07, 0.24), vec3(0.02, 0.015, 0.09), tod);
@@ -177,9 +178,22 @@ void main() {
       col += moonRef * (0.2 + 0.8 * streak) * vec3(0.95, 0.80, 1.0);
       // Reflections of the far shore's lights are drawn by Dart under the real
       // buildings (city_buildings.dart); random columns here did not match them.
-      // набережная: кромка
-      float edge = 1.0 - smoothstep(0.0, 0.18, X - QUAY);
-      col = mix(col, P3(vec3(0.78, 0.70, 0.72), vec3(0.45, 0.22, 0.45), vec3(0.10, 0.07, 0.22), tod), edge * 0.9);
+      // The water lies below the pavement: dark shadow of the quay wall at its foot.
+      float foot = exp(-(X - QUAY - QW) * 2.4);
+      col = mix(col, col * 0.35 + wNear * 0.2, foot * 0.75);
+    } else if (X > QUAY) {
+      // ----- набережная: парапет сверху, три ступени вниз к воде, тень под ними
+      vec3 sw = P3(vec3(0.84, 0.77, 0.72), vec3(0.52, 0.33, 0.52), vec3(0.11, 0.08, 0.22), tod);
+      vec3 wet = P3(vec3(0.20, 0.42, 0.50), vec3(0.20, 0.10, 0.30), vec3(0.03, 0.025, 0.12), tod);
+      float t = (X - QUAY) / QW;
+      float cap = 1.0 - smoothstep(0.08, 0.13, t);                 // верх парапета, светлый
+      float tt = clamp((t - 0.13) / 0.87, 0.0, 0.999) * 3.0;
+      float si = floor(tt);
+      float sf = fract(tt);
+      col = mix(sw * (0.90 - 0.17 * si), wet, 0.22 * si + 0.1);   // каждая ступень ниже, темнее, мокрее
+      col *= 1.0 - 0.45 * (1.0 - smoothstep(0.0, 0.16, sf));      // тень подступёнка под краем ступени
+      col = mix(col, sw * 1.05, cap * 0.9);
+      col *= 1.0 - 0.30 * smoothstep(0.55, 1.0, t);               // у воды темнее
     } else if (X > KERB || X < ROADL) {
       // ----- тротуар -----
       vec3 sw = P3(vec3(0.86, 0.78, 0.72), vec3(0.55, 0.35, 0.55), vec3(0.11, 0.08, 0.22), tod);
