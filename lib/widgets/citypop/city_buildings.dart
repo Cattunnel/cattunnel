@@ -482,7 +482,7 @@ extension _FarGen on CityWorld {
   void _paintReflection(Canvas canvas) {
     final hy = _hy, u = _u, h = _size.height;
     final reach = 0.15 * h;
-    final xq = _vpx + 1.8 * _k * ((h - hy) / (6 * _k));
+    final xq = _vpx + (1.8 + 1.9) * _k * ((h - hy) / (6 * _k)); // QUAY + QW of the shader
     canvas.save();
     canvas.clipPath(
       Path()
@@ -1093,5 +1093,50 @@ extension _FacGen on CityWorld {
       }
     }
     canvas.restore();
+  }
+}
+
+// ------------------------------------------------------------------- quay
+extension _Quay on CityWorld {
+  /// The quay wall between pavement and water: a low concrete parapet at
+  /// X = 1.8 with a lit cap, and above it a pipe railing on posts. The three
+  /// steps down to the water, the shadow at their foot and the lower water
+  /// level are in the shader (QUAY, QW).
+  void _paintQuayWall(Canvas canvas) {
+    const x0 = 1.8, x1 = 2.0;
+    final concrete = _c(_p3([200, 190, 184], [120, 76, 120], [26, 20, 52], _tod));
+    final face = _c(_p3([164, 154, 154], [88, 52, 96], [18, 14, 40], _tod));
+    final cap = _c(_p3([226, 218, 208], [150, 104, 146], [44, 36, 78], _tod));
+    final steel = _c(_p3([84, 80, 94], [54, 34, 72], [16, 12, 36], _tod));
+    const sMin = 1.15, sMax = 60.0;
+    // the face of the wall toward the road, the top, the dark inner side
+    _quad(canvas, [_pt(x0, 0.6, sMin), _pt(x0, 0.6, sMax), _pt(x0, 0, sMax), _pt(x0, 0, sMin)], face);
+    _quad(canvas, [_pt(x0, 0.6, sMin), _pt(x0, 0.6, sMax), _pt(x1, 0.6, sMax), _pt(x1, 0.6, sMin)], cap);
+    _quad(canvas, [_pt(x1, 0.6, sMin), _pt(x1, 0.6, sMax), _pt(x1, 0.0, sMax), _pt(x1, 0.0, sMin)], concrete);
+    // shadow of the wall on the pavement
+    final sh = Paint()..color = _c(const [10, 6, 30], 0.18 * (0.4 + 0.6 * _dayK));
+    canvas.drawPath(
+      Path()..addPolygon([_pt(x0, 0, sMin), _pt(x0, 0, sMax), _pt(x0 - 0.35, 0, sMax), _pt(x0 - 0.35, 0, sMin)], true),
+      sh,
+    );
+    // railing: posts every 2.5 m and two rails
+    final bar = Paint()
+      ..color = steel
+      ..strokeCap = StrokeCap.round;
+    var first = true;
+    for (var s = 1.2; s < 40; s += 2.5) {
+      final a = _pt(0.5 * (x0 + x1), 0.6, s), b = _pt(0.5 * (x0 + x1), 1.35, s);
+      final m = _k / s;
+      bar.strokeWidth = math.max(0.7, 0.07 * m);
+      canvas.drawLine(a, b, bar);
+      if (!first) {
+        final pa = _pt(0.5 * (x0 + x1), 1.35, s - 2.5), pb = _pt(0.5 * (x0 + x1), 1.35, s);
+        final qa = _pt(0.5 * (x0 + x1), 1.0, s - 2.5), qb = _pt(0.5 * (x0 + x1), 1.0, s);
+        bar.strokeWidth = math.max(0.6, 0.05 * m);
+        canvas.drawLine(pa, pb, bar);
+        canvas.drawLine(qa, qb, bar);
+      }
+      first = false;
+    }
   }
 }

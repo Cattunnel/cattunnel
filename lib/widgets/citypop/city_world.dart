@@ -411,6 +411,7 @@ class CityWorld {
     canvas.drawPicture(_static!);
     _paintNearLit(canvas);
     _paintSigns(canvas);
+    _paintQuayWall(canvas);
     final items = <(double, void Function())>[
       for (final c in _cars) (c.s, () => _paintCar(canvas, c)),
       for (final c in _parked) (c.s, () => _paintCar(canvas, c)),
@@ -963,7 +964,8 @@ class CityWorld {
     }
     final pose = _planePose(uu, t);
     final dir = _planeDir.toDouble();
-    final q = 1.4 * u;
+    // The fuselage is 23 q long; the old plane was 20.9 u: q = 1.18 u makes it 1.3 times bigger.
+    final q = 1.18 * u;
     final cs = math.cos(pose.pitch), sn = math.sin(pose.pitch);
     // Fuselage coordinates (forward, down) in units of q to the screen.
     Offset at(double v, double y) => Offset(pose.x + dir * (v * cs + y * sn) * q, pose.y + (-v * sn + y * cs) * q);
