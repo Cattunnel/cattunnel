@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:trusttunnel/feature/security/domain/desktop_ca_bundle.dart';
+import 'package:trusttunnel/feature/security/domain/desktop_system_settings.dart';
 
 /// A CA the phone trusts beyond the stock system set: user-installed, or a
 /// Russian Ministry of Digital Development ("Russian Trusted") root found
@@ -120,7 +121,15 @@ abstract final class SecurityPlatform {
     );
   }
 
-  static Future<void> openSettings(SecuritySettingsTarget target) => _call<bool>('openSettings', target.name);
+  static Future<bool> openSettings(SecuritySettingsTarget target) async {
+    if ((Platform.isWindows || Platform.isLinux) &&
+        (target == SecuritySettingsTarget.wifi ||
+            target == SecuritySettingsTarget.network ||
+            target == SecuritySettingsTarget.date)) {
+      return DesktopSystemSettings.open(date: target == SecuritySettingsTarget.date);
+    }
+    return await _call<bool>('openSettings', target.name) ?? false;
+  }
 
   static Future<bool> isDisguised() async => await _call<bool>('isDisguised') ?? false;
 

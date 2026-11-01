@@ -1018,5 +1018,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "diagDesktopDateHint": "Open system settings → Date & Time. Check the date and time zone and enable automatic time synchronization. Then run the check again.",
+  "diagDesktopNetworkHint": "Open system settings → Network or Wi-Fi. Connect to your network and open a browser: the network may require sign-in. Then run the check again."
 }

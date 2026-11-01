@@ -352,9 +352,9 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       case DoctorAction.retry:
         await _switchTo(widget.server);
       case DoctorAction.wifiSettings:
-        await SecurityPlatform.openSettings(SecuritySettingsTarget.wifi);
+        await _openSystemSettings(date: false);
       case DoctorAction.dateSettings:
-        await SecurityPlatform.openSettings(SecuritySettingsTarget.date);
+        await _openSystemSettings(date: true);
       case DoctorAction.messageAdmin:
         await ProblemReport.share(context, diagnosis: _result?.verdict.name);
       case DoctorAction.none:
@@ -369,6 +369,22 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
     DoctorAction.messageAdmin => context.ln.diagMessageAdmin,
     DoctorAction.none => '',
   };
+
+  Future<void> _openSystemSettings({required bool date}) async {
+    final opened = await SecurityPlatform.openSettings(
+      date ? SecuritySettingsTarget.date : SecuritySettingsTarget.wifi,
+    );
+    if (!opened && mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(date ? context.ln.diagOpenDate : context.ln.diagOpenWifi),
+          content: Text(date ? context.ln.diagDesktopDateHint : context.ln.diagDesktopNetworkHint),
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.ln.cancel))],
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -486,7 +502,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
         ? DoctorAction.none
         : ConnectionDoctor.actionFor(
             result.verdict,
-            systemSettings: !_debug ? Platform.isAndroid : true,
+            systemSettings: _debug || Platform.isAndroid || Platform.isWindows || Platform.isLinux,
           );
     // One filled button: the way out that most likely works. Switching to
     // a server that answers beats trying this one again.
