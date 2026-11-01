@@ -253,7 +253,7 @@ extension _FarGen on CityWorld {
     final col = _mixc(
       [base[0] * f, base[1] * f, base[2] * f],
       _hz,
-      0.24 + 0.12 * (1 - math.min(1, b.h / (90 * _u))) + b.tint * 0.05,
+      0.15 + 0.12 * (1 - math.min(1, b.h / (90 * _u))) + b.tint * 0.05,
     );
 
     return _c(col);
@@ -503,7 +503,14 @@ extension _FarGen on CityWorld {
       if (b.x + b.w < _vpx) continue;
       for (final rr in b.body) {
         final a = rr.shift(Offset(b.x, hy));
-        sil.addRect(Rect.fromLTRB(a.left, hy + (hy - a.bottom) * 1.05, a.right, hy + (hy - a.top) * 1.05));
+        // slices, each swaying a little on the ripples
+        final n = math.max(1, (a.height / (4 * u)).ceil());
+        for (var i = 0; i < n; i++) {
+          final y0 = hy + (hy - a.bottom + a.height * i / n) * 1.05;
+          final y1 = hy + (hy - a.bottom + a.height * (i + 1) / n) * 1.05 + 0.5;
+          final dx = math.sin(y0 / u * 0.55 + _time * 1.2 + a.left * 0.05) * 0.9 * u;
+          sil.addRect(Rect.fromLTRB(a.left + dx, y0, a.right + dx, y1));
+        }
       }
       if (b.type == 3) {
         sil.addRect(Rect.fromLTRB(b.x, hy + b.wall, b.x + b.w, hy + b.h * 1.05));
@@ -511,7 +518,7 @@ extension _FarGen on CityWorld {
     }
     canvas.drawPath(
       sil,
-      fade(_c(_mixc(_p3([70, 80, 100], [60, 30, 80], [10, 6, 30], _tod), const [10, 6, 30], 0.3)), 0.5),
+      fade(_c(_mixc(_p3([70, 80, 100], [60, 30, 80], [10, 6, 30], _tod), const [10, 6, 30], 0.3)), 0.36),
     );
     final dayLit = _sm(0.0, 0.3, _tod);
     Path mirror(List<Rect> rects, double sway) {
@@ -778,7 +785,7 @@ extension _FacGen on CityWorld {
       final f = list[i];
       if (_pt(xf, 0, f.s0).dx < -0.4 * _size.width && _pt(xf, 0, f.s1).dx < -0.4 * _size.width) continue;
       final wall = _wallColor(f);
-      final haze = math.min(0.42, 0.04 + 0.55 * math.exp(-3.6 / math.max(f.s0, 0.1)));
+      final haze = math.min(0.34, 0.04 + 0.55 * math.exp(-3.6 / math.max(f.s0, 0.1)));
       final col = _mixc(wall, hz, haze);
       final wallC = _c(col);
       final shade = _c(_mixc(col, const [20, 10, 40], 0.35));
@@ -864,8 +871,11 @@ extension _FacGen on CityWorld {
       final glassNight = _mixc(const [40, 56, 84], const [16, 14, 44], _night);
       final glass = _c(_mixc(_mixc(const [128, 176, 190], glassNight, _tod), col, 0.18));
       final sill = _c(_mixc(col, const [255, 255, 255], 0.35));
+      final blind = _c(_mixc([236, 228, 206], col, 0.25 + 0.5 * _night));
       for (final w in f.wins) {
-        _quad(canvas, _qsz(w.x, w.sa, w.sb, w.z0, w.z1), glass);
+        // some windows have blinds or curtains drawn, so the wall is not one even grid
+        final t = _ih(f.idx * 17 + w.col, w.row + 9);
+        _quad(canvas, _qsz(w.x, w.sa, w.sb, w.z0, w.z1), t < 0.16 && w.k != 1 ? blind : glass);
         if (pxm > 3) {
           if (w.k != 1) _quad(canvas, _qsz(w.x, w.sa - 0.05, w.sb + 0.05, w.z0 - 0.12, w.z0), sill);
           if (w.k == 0) {
