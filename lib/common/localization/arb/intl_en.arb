@@ -820,7 +820,7 @@
   "appearanceStyleY2k": "Y2K",
   "appearanceStyleY2kDescription": "Early-2000s look: deep navy, electric blue, chrome and shards. Always dark.",
   "appearanceStyleCityPop": "City pop",
-  "appearanceStyleCityPopDescription": "A Tokyo street of the 80s: glass towers, neon signs, wet asphalt and a bay. A cassette panel, the time of day follows the phone's clock, always night in the dark theme.",
+  "appearanceStyleCityPopDescription": "A Tokyo street of the 80s: glass towers, neon signs, wet asphalt and a bay. A cassette panel; the time of day follows the phone's clock, in the light and the dark theme alike.",
   "appearanceStyleAero": "Aero",
   "appearanceStyleAeroDescription": "Frutiger Aero: sky, grass, glass and bubbles. Morning, day, evening and night follow the phone's clock.",
   "appearanceUseStyle": "Use {name}",
@@ -856,7 +856,7 @@
     }
   },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• New City pop style: a living Tokyo street of the 80s, by day, at dusk and at night. Turn it on in Settings → Appearance\n• Switching servers no longer hangs on \"Connecting\": the engine starts once\n• Marsik is clearer: he shows what stops the connection and offers one action: another server, try again, Wi-Fi or date settings, message the admin. He checks only our servers and never knocks on other sites\n• Tablets: the app rotates, and settings and forms no longer stretch across a wide screen\n• Aero: the server card fits a narrow phone, the connect button grows with the screen and no longer sways\n• The app and routers (OpenWrt, Keenetic) have their own device key for the subscription\n• Engine updated to 1.3.0-rc.2: connections through SOCKS no longer lose requests after being idle\n• Grey text has more contrast and is easier to read",
+  "whatsNewBody": "• City pop is livelier: a Tokyo street of the 80s that follows the phone's clock, with a traffic light that pedestrians press, metro trains on the viaduct and shop signs that light up one by one when the VPN connects\n• A song for City pop: the ♪ button left of the cat turns it on and off. It is off by default\n• Settings → Networks: tap a network to see which technique worked for each key and when\n• The same news on Android, Windows and Linux",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",

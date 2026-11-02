@@ -17,7 +17,7 @@ class WhatsNewDialog {
   static const _stylePickedKey = 'whats_new_style_picked_153';
 
   /// Bump together with the text when a release has news worth a dialog.
-  static const _release = '1.5.7';
+  static const _release = '1.5.8';
 
   const WhatsNewDialog._();
 
