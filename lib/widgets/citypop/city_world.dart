@@ -241,6 +241,19 @@ class CityWorld {
   /// the stripes.
   static const zebraNear = 2.5, zebraFar = 3.05, stopLineA = 3.6, stopLineB = 2.0;
 
+  /// Roof height of a car sprite, in its own units (the sprite stands on the
+  /// ground at the car's depth).
+  static double _roofH(_Car c) => c.kei ? 1.78 : (c.coupe ? 1.38 : 1.52);
+
+  /// Where a car stands when it stops for the signal. Lane A comes towards
+  /// us: the sprite stands on its front bumper, so that one goes to the stop
+  /// line. Lane B drives away: the sprite stands on its rear bumper and the
+  /// body rises up the screen, i.e. visually further; the car stops where
+  /// its roof meets the stop line, otherwise it seems to stand past the line
+  /// with its body on the zebra (owner 02.11 screenshot).
+  static double stopAt(_Car c) =>
+      c.lane == 'A' ? stopLineA : (stopLineB - 0.05) * (6 - _roofH(c)) / 6;
+
   /// 0 waits for a pedestrian, 1 yellow, 2 all-red before the walk, 3 walk,
   /// 4 all-red after the walk.
   int _light = 0;
@@ -521,7 +534,7 @@ class CityWorld {
       // speed met the red on the stripes.
       final committed = c.lane == 'A'
           ? c.s > zebraNear - 0.1 && c.s < stopLineA
-          : c.s > stopLineB && c.s < zebraFar + 0.1;
+          : c.s > stopAt(c) && c.s < zebraFar + 0.1;
       var v = c.v * (committed ? math.max(spd, 1.0) : spd);
       for (final o in _cars) {
         if (identical(o, c) || o.lane != c.lane) continue;
@@ -535,7 +548,7 @@ class CityWorld {
       var target = 1.0;
       final sig = _carSignal;
       if (sig != 0) {
-        final dist = c.lane == 'A' ? c.s - stopLineA : (c.lane == 'B' ? stopLineB - c.s : double.infinity);
+        final dist = c.lane == 'A' ? c.s - stopAt(c) : (c.lane == 'B' ? stopAt(c) - c.s : double.infinity);
         if (dist >= 0 && dist < 6) target = (dist / 0.9).clamp(0.0, 1.0);
       }
       c.k = target < c.k ? target : math.min(target, c.k + dt * 1.5);
@@ -1215,7 +1228,7 @@ class CityWorld {
       rect(-0.92, 0.42, 0.92, 0.53, const [214, 40, 46]);
     }
     if (_dayK > 0.05) rect(0.55, 0.18, 0.92, 0.85, const [255, 232, 190], 0.20 * _dayK);
-    final roofH = c.kei ? 1.78 : (c.coupe ? 1.38 : 1.52), cw = c.kei ? 0.7 : (c.coupe ? 0.68 : 0.62);
+    final roofH = _roofH(c), cw = c.kei ? 0.7 : (c.coupe ? 0.68 : 0.62);
     canvas.drawPath(
       Path()
         ..moveTo(-0.9, -0.85)

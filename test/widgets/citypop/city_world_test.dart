@@ -274,4 +274,27 @@ void main() {
       expect(crossed, isTrue, reason: 'nobody crossed with the VPN off (tod $tod)');
     }
   });
+
+  test('a car driving away stops with its roof before the stop line, not its rear bumper (owner 02.11)', () {
+    final w = CityWorld()..resize(const Size(360, 800));
+    const p = CityParams(tod: 0.5, alive: 1, fault: 0);
+    var prev = <int, double>{};
+    var stoppedB = 0;
+    for (var i = 0; i < 20 * 400; i++) {
+      w.step(0.05, p);
+      final now = {for (final c in w.debugCars) c.id: c.s};
+      if (w.debugSignal.car == 2) {
+        for (final c in w.debugCars.where((c) => c.lane == 'B')) {
+          final before = prev[c.id];
+          if (before == null || (c.s - before).abs() > 1e-4) continue;
+          stoppedB++;
+          // the sprite's roof (1.38..1.78 high) projects to depth s*6/(6-roof)
+          expect(c.s * 6 / (6 - 1.38), lessThanOrEqualTo(CityWorld.stopLineB + 0.01),
+              reason: 'a lane B car stands with its body past the stop line at s=${c.s}');
+        }
+      }
+      prev = now;
+    }
+    expect(stoppedB, greaterThan(0), reason: 'no lane B car ever stopped on red');
+  });
 }
