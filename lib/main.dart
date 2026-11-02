@@ -4,12 +4,15 @@ import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Router;
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:trusttunnel/common/logging/app_logger.dart';
 import 'package:trusttunnel/common/logging/extensions/db_logger_extension.dart';
 import 'package:trusttunnel/common/logging/extensions/global_error_logger_extension.dart';
 import 'package:trusttunnel/common/logging/extensions/vpn_logger_extension.dart';
 import 'package:trusttunnel/common/utils/earlier_install_migration.dart';
 import 'package:trusttunnel/common/utils/third_party_licenses.dart';
+import 'package:trusttunnel/data/domain/device_identity.dart';
+import 'package:trusttunnel/data/domain/subscription_sync_service.dart';
 import 'package:trusttunnel/di/model/initialization_helper.dart';
 import 'package:trusttunnel/di/widgets/dependency_scope.dart';
 import 'package:trusttunnel/feature/app/app.dart';
@@ -30,6 +33,19 @@ void _registerAppLicense() {
     final license = await rootBundle.loadString('LICENSE');
     yield LicenseEntryWithLineBreaks(['CatTunnel'], license);
   });
+}
+
+/// The subscription request and the device-key headers carry the app version
+/// (User-Agent, x-app-version); without this the server saw an empty one.
+/// A failure here must not stop the app from starting.
+Future<void> _setAppVersion() async {
+  try {
+    final version = (await PackageInfo.fromPlatform()).version;
+    SubscriptionSyncService.setAppVersion(version);
+    await DeviceIdentity.setAppVersion(version);
+  } on Object catch (_) {
+    // Headers go out with an empty version, as before.
+  }
 }
 
 /// The Quick Settings tile's windowless engine runs this by name (see
@@ -57,6 +73,8 @@ Future<void> main() async {
       _applyGlobalErrorHandling(dispatchError);
       _registerAppLicense();
       registerThirdPartyLicenses();
+
+      await _setAppVersion();
 
       final initializationHelper = await const InitializationHelperIo().init();
 
