@@ -258,4 +258,20 @@ void main() {
       });
     }
   });
+
+  test('the signal serves people with the VPN off too, day and night (owner 02.11)', () {
+    for (final tod in [0.0, 1.0]) {
+      final w = CityWorld()..resize(const Size(360, 800));
+      final p = CityParams(tod: tod, alive: 0, fault: 0);
+      final seen = <int>{};
+      var crossed = false;
+      for (var i = 0; i < 20 * 240; i++) {
+        w.step(0.05, p);
+        seen.add(w.debugSignal.car);
+        if (w.debugCrossers.any((c) => c.crossing)) crossed = true;
+      }
+      expect(seen, containsAll([0, 1, 2]), reason: 'the signal never changed with the VPN off (tod $tod)');
+      expect(crossed, isTrue, reason: 'nobody crossed with the VPN off (tod $tod)');
+    }
+  });
 }

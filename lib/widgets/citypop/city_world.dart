@@ -490,7 +490,12 @@ class CityWorld {
     null => _mix(1.0, 0.45, _night),
   };
 
+  /// How many of the people are out now: the same gate for drawing them and
+  /// for letting them press the signal button.
+  double get _peopleOut => _pedDensity(_p) * (0.35 + 0.65 * _p.alive) * (1 - 0.45 * _p.fault);
+
   void step(double dt, CityParams p) {
+    _p = p;
     _simT += dt;
     if (p.alive > 0.9 && !_wasAlive) {
       _connectT = 0;
@@ -597,6 +602,11 @@ class CityWorld {
       if (!debugPedestrians) continue;
       switch (c.cstate) {
         case 0:
+          // Somebody who is not out does not press the button: with the VPN
+          // off there are fewer people, but the signal still serves the ones
+          // you see (owner 02.11: «без включённого VPN светофор не работает?
+          // Должен»).
+          if (c.gate > _peopleOut) continue;
           c.pressIn -= dt;
           if (c.pressIn <= 0) {
             c.pressed = true;
@@ -926,11 +936,18 @@ class CityWorld {
     final pressed = _crossers.any((c) => c.cstate == 0 && c.pressed);
     final btn = Offset(bx + 0.25 * m, by + 1.22 * m);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: btn, width: 0.34 * m, height: 0.48 * m), Radius.circular(0.08 * m)),
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: btn, width: 0.34 * m, height: 0.48 * m),
+        Radius.circular(0.08 * m),
+      ),
       Paint()..color = _c(const [40, 40, 50]),
     );
     final blink = pressed ? (0.55 + 0.45 * math.sin(_time * 7)) : 0.0;
-    canvas.drawCircle(btn.translate(0, -0.04 * m), 0.09 * m, Paint()..color = _c(_mixc(const [90, 66, 60], [255, 186, 92], blink)));
+    canvas.drawCircle(
+      btn.translate(0, -0.04 * m),
+      0.09 * m,
+      Paint()..color = _c(_mixc(const [90, 66, 60], [255, 186, 92], blink)),
+    );
     if (pressed) _glow(canvas, btn, 0.5 * m, const [255, 186, 92], 0.45 * blink);
   }
 
@@ -945,7 +962,10 @@ class CityWorld {
     final c = Offset(top.dx, top.dy - 0.22 * m);
     final side = 0.94 * m;
     final plate = Rect.fromCenter(center: c, width: side, height: side);
-    canvas.drawRRect(RRect.fromRectAndRadius(plate, Radius.circular(0.1 * m)), Paint()..color = _c(const [34, 86, 184]));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(plate, Radius.circular(0.1 * m)),
+      Paint()..color = _c(const [34, 86, 184]),
+    );
     canvas.drawRRect(
       RRect.fromRectAndRadius(plate.deflate(0.05 * m), Radius.circular(0.08 * m)),
       Paint()
@@ -959,12 +979,53 @@ class CityWorld {
       ..lineTo(c.dx - 0.36 * m, c.dy + 0.3 * m)
       ..close();
     canvas.drawPath(tri, Paint()..color = _c(const [244, 244, 240]));
-    final ink = Paint()..color = _c(const [22, 22, 26]);
-    final man = Offset(c.dx - 0.03 * m, c.dy + 0.02 * m);
-    canvas.drawCircle(man.translate(0, -0.16 * m), 0.055 * m, ink);
-    canvas.drawLine(man.translate(0, -0.1 * m), man.translate(0.02 * m, 0.05 * m), ink..strokeWidth = 0.06 * m..strokeCap = StrokeCap.round);
-    canvas.drawLine(man.translate(0.02 * m, 0.05 * m), man.translate(-0.08 * m, 0.2 * m), ink);
-    canvas.drawLine(man.translate(0.02 * m, 0.05 * m), man.translate(0.1 * m, 0.16 * m), ink);
+    // The walker of 407-A: a head, a torso leaning forward, both arms
+    // swinging and a long stride, standing on a strip of zebra bars (owner
+    // 02.11: the old one was a stick «λ» without arms). The sign is about
+    // 30 px on a phone, so every part is a thick round stroke.
+    final ink = Paint()
+      ..color = _c(const [22, 22, 26])
+      ..strokeWidth = 0.05 * m
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+    Offset at(double x, double y) => Offset(c.dx + x * m, c.dy + y * m);
+    canvas.drawCircle(at(0.035, -0.17), 0.05 * m, Paint()..color = ink.color);
+    canvas.drawLine(at(0.02, -0.1), at(-0.01, 0.05), ink); // torso
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(0.015, -0.08).dx, at(0.015, -0.08).dy)
+        ..lineTo(at(0.075, -0.02).dx, at(0.075, -0.02).dy)
+        ..lineTo(at(0.11, 0.03).dx, at(0.11, 0.03).dy),
+      ink,
+    ); // front arm
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(0.015, -0.08).dx, at(0.015, -0.08).dy)
+        ..lineTo(at(-0.05, -0.02).dx, at(-0.05, -0.02).dy)
+        ..lineTo(at(-0.09, 0.02).dx, at(-0.09, 0.02).dy),
+      ink,
+    ); // back arm
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(-0.01, 0.05).dx, at(-0.01, 0.05).dy)
+        ..lineTo(at(0.06, 0.11).dx, at(0.06, 0.11).dy)
+        ..lineTo(at(0.1, 0.17).dx, at(0.1, 0.17).dy),
+      ink,
+    ); // front leg
+    canvas.drawPath(
+      Path()
+        ..moveTo(at(-0.01, 0.05).dx, at(-0.01, 0.05).dy)
+        ..lineTo(at(-0.05, 0.12).dx, at(-0.05, 0.12).dy)
+        ..lineTo(at(-0.12, 0.16).dx, at(-0.12, 0.16).dy),
+      ink,
+    ); // back leg
+    // the zebra under the feet: four black bars
+    final bar = Paint()..color = ink.color;
+    for (var i = 0; i < 4; i++) {
+      final x0 = -0.21 + i * 0.12;
+      canvas.drawRect(Rect.fromLTRB(c.dx + x0 * m, c.dy + 0.205 * m, c.dx + (x0 + 0.07) * m, c.dy + 0.255 * m), bar);
+    }
   }
 
   /// Japanese crossing: wide white bars along the road (the shader draws
@@ -1243,8 +1304,7 @@ class CityWorld {
     final pos = _pt(p.x, 0, p.s);
     final m = _k / p.s;
     if (m < 1.2 || pos.dy > _size.height) return;
-    final density = _pedDensity(_p) * (0.35 + 0.65 * _p.alive) * (1 - 0.45 * _p.fault);
-    if (p.gate > density) return;
+    if (p.gate > _peopleOut) return;
     final ph = p.ph + _time * 5.2 * p.v.abs() / 0.12 * 0.7;
     final sw = p.wait ? 0.0 : math.sin(ph) * 0.22, bob = p.wait ? 0.0 : math.cos(ph).abs() * 0.03;
     final nk = _night;
