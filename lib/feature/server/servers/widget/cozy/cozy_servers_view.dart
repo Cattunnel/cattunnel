@@ -24,6 +24,7 @@ import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:trusttunnel/widgets/aero/aero_widgets.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/citypop/city_home.dart';
+import 'package:trusttunnel/widgets/citypop/city_music.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
@@ -340,6 +341,15 @@ class _CozyServersViewState extends State<CozyServersView> {
             topActions: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // The City pop song (owner 02.11): left of the cat, off by default.
+                CityMusicScope(
+                  builder: (context, on, toggle) => _CityRoundButton(
+                    icon: on ? Icons.music_note_rounded : Icons.music_off_rounded,
+                    tooltip: on ? context.ln.cityMusicOff : context.ln.cityMusicOn,
+                    onTap: toggle,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 const CatPettingButton(),
                 const SizedBox(width: 8),
                 _CityRoundButton(

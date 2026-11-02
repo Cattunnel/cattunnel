@@ -100,6 +100,7 @@ flutter:
     - assets/images/cats/
     - assets/routing_presets/
     - assets/sounds/
+    - assets/music/
     - assets/video/
     - assets/readme/
     - assets/licenses/

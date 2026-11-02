@@ -144,7 +144,7 @@ void main() {
   group('traffic signal', () {
     test('cars wait on green while nobody presses, and a pedestrian gets the walk after yellow and red', () {
       final w = CityWorld()..resize(const Size(360, 800));
-      final p = CityParams(tod: 0, alive: 1, fault: 0);
+      final p = const CityParams(tod: 0, alive: 1, fault: 0);
       w.debugPedestrians = false;
       for (var i = 0; i < 20 * 90; i++) {
         w.step(0.05, p);
@@ -169,7 +169,7 @@ void main() {
 
     test('after crossing a pedestrian walks away and disappears instead of waiting on the other side', () {
       final w = CityWorld()..resize(const Size(360, 800));
-      final p = CityParams(tod: 0, alive: 1, fault: 0);
+      final p = const CityParams(tod: 0, alive: 1, fault: 0);
       w.debugPedestrians = false;
       for (var i = 0; i < 20 * 30; i++) {
         w.step(0.05, p);
@@ -361,9 +361,9 @@ void main() {
     });
 
     test('the sky turns to night when the street does (21:00)', () {
-      expect(CityClock.todAt(DateTime(2026, 11, 2, 16, 30), dark: false), 0);
-      expect(CityClock.todAt(DateTime(2026, 11, 2, 19), dark: false), closeTo(0.5, 1e-9));
-      expect(CityClock.todAt(DateTime(2026, 11, 2, 21), dark: false), 1);
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 16, 30)), 0);
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 19)), closeTo(0.5, 1e-9));
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 21)), 1);
       expect(CityClock.phaseAt(DateTime(2026, 11, 2, 21)), CityPhase.night);
     });
   });
