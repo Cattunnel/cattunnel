@@ -236,6 +236,10 @@ class CityWorld {
   /// gaps empty the zebra before the other side moves.
   static const yellowTime = 2.5, allRedTime = 2.0, walkTime = 9.0, clearTime = 2.0;
 
+  /// The cars keep the green at least a minute (owner 02.11: «для машин
+  /// минуту»); the people at the kerb wait for it.
+  static const minGreen = 60.0;
+
   /// The zebra lies at depth 2.5..3.05 (shaders/city.frag). The stop line is
   /// set back from it by half a metre, so a stopped car does not hang over
   /// the stripes.
@@ -251,13 +255,17 @@ class CityWorld {
   /// body rises up the screen, i.e. visually further; the car stops where
   /// its roof meets the stop line, otherwise it seems to stand past the line
   /// with its body on the zebra (owner 02.11 screenshot).
+  /// How far up the depth a car's sprite reaches: s .. s * span.
+  static double _span(_Car c) => 6 / (6 - _roofH(c));
+
   static double stopAt(_Car c) =>
       c.lane == 'A' ? stopLineA : (stopLineB - 0.05) * (6 - _roofH(c)) / 6;
 
   /// 0 waits for a pedestrian, 1 yellow, 2 all-red before the walk, 3 walk,
   /// 4 all-red after the walk.
   int _light = 0;
-  double _lightT = 0;
+  // the first walk comes about 15 s after the scene opens, then once a minute
+  double _lightT = minGreen - 15;
   bool _requested = false;
 
   /// Tests: without pedestrians nobody presses, so the cars stay on green.
@@ -278,7 +286,9 @@ class CityWorld {
   };
 
   @visibleForTesting
-  List<({String lane, double s, int id})> get debugCars => [for (final c in _cars) (lane: c.lane, s: c.s, id: c.id)];
+  List<({String lane, double s, int id, double span})> get debugCars => [
+    for (final c in _cars) (lane: c.lane, s: c.s, id: c.id, span: _span(c)),
+  ];
 
   /// Crossing pedestrians: x across the street (metres), whether they stand.
   @visibleForTesting
@@ -522,7 +532,14 @@ class CityWorld {
     if (_cars.length < _targetCars(p) && _r.nextDouble() < dt * 0.9) {
       final lane = _r.nextDouble() < 0.55 ? 'A' : 'B';
       final s = lane == 'A' ? 24.0 : 0.78;
-      if (!_cars.any((c) => c.lane == lane && (c.s - s).abs() < (lane == 'A' ? 3 : 0.5))) {
+      // A new car comes in only where its picture does not touch the last one
+      // (on the screen a car covers the depths s .. s * span, see [_span]).
+      final free = !_cars.any(
+        (c) =>
+            c.lane == lane &&
+            (lane == 'A' ? c.s * 1.42 + 0.06 * c.s + 0.05 > s : s * 1.42 > c.s - 0.06 * c.s - 0.05),
+      );
+      if (free) {
         // A city street at 30-40 km/h, not a highway.
         _cars.add(_mkCar(lane, s, (0.5 + _r.nextDouble() * 0.4) * (lane == 'A' ? -1 : 1), _r.nextInt(1000000), true));
       }
@@ -536,20 +553,39 @@ class CityWorld {
           ? c.s > zebraNear - 0.1 && c.s < stopLineA
           : c.s > stopAt(c) && c.s < zebraFar + 0.1;
       var v = c.v * (committed ? math.max(spd, 1.0) : spd);
+      // Where this car must stand still: before its stop line on yellow and
+      // red, and behind the car ahead with a gap, whichever comes first. A
+      // car is drawn standing on one bumper with its body rising up the
+      // screen, so on the screen it covers the depths s .. s * r (r from its
+      // roof height); the queue keeps those spans apart (owner 02.11: «должны
+      // вставать друг за дружкой, а не впритык, и не перекатываться дальше»).
+      final away = c.lane == 'B';
+      double? hold;
+      if (_carSignal != 0 && !committed) {
+        // only a car that has not reached its stop point yet stops for it;
+        // one already past the crossing drives on
+        final before = away ? c.s <= stopAt(c) : c.s >= stopAt(c);
+        if (before) hold = stopAt(c);
+      }
+      _Car? ahead;
       for (final o in _cars) {
         if (identical(o, c) || o.lane != c.lane) continue;
-        final gap = (o.s - c.s) * (c.v < 0 ? -1 : 1);
-        if (gap > 0 && gap < (c.lane == 'A' ? 2.2 * c.s * 0.25 + 0.5 : 0.4 + 0.12 * c.s)) {
-          v = math.min(v.abs(), o.v.abs() * 0.6) * (c.v < 0 ? -1 : 1);
-        }
+        final d = away ? o.s - c.s : c.s - o.s;
+        if (d <= 0) continue;
+        if (ahead == null || d < (away ? ahead.s - c.s : c.s - ahead.s)) ahead = o;
       }
-      // The signal: on yellow and red a car may not cross its stop line; it
-      // eases to a stop before it (speed in proportion to the distance left).
+      if (ahead != null) {
+        final gap = 0.06 * ahead.s + 0.05;
+        final behind = away ? (ahead.s - gap) / _span(c) : ahead.s * _span(ahead) + gap;
+        hold = hold == null ? behind : (away ? math.min(hold, behind) : math.max(hold, behind));
+      }
       var target = 1.0;
-      final sig = _carSignal;
-      if (sig != 0) {
-        final dist = c.lane == 'A' ? c.s - stopAt(c) : (c.lane == 'B' ? stopAt(c) - c.s : double.infinity);
-        if (dist >= 0 && dist < 6) target = (dist / 0.9).clamp(0.0, 1.0);
+      if (hold != null) {
+        final dist = away ? hold - c.s : c.s - hold;
+        // the braking distance grows with the depth: far away a car covers
+        // more depth per second
+        final ease = 0.9 + 0.25 * c.s;
+        target = dist <= 0 ? 0.0 : (dist / ease).clamp(0.0, 1.0);
       }
       c.k = target < c.k ? target : math.min(target, c.k + dt * 1.5);
       v *= c.k;
@@ -573,12 +609,13 @@ class CityWorld {
     }
   }
 
-  /// The signal stays green until a waiting pedestrian presses the button.
+  /// The signal stays green until a waiting pedestrian presses the button,
+  /// and not less than [minGreen]: the people at the kerb wait for it.
   void _stepLight(double dt) {
     _lightT += dt;
     switch (_light) {
       case 0:
-        if (_requested) {
+        if (_requested && _lightT >= minGreen) {
           _light = 1;
           _lightT = 0;
           _requested = false;

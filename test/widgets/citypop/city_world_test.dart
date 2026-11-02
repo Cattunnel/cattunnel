@@ -297,4 +297,27 @@ void main() {
     }
     expect(stoppedB, greaterThan(0), reason: 'no lane B car ever stopped on red');
   });
+
+  test('cars queue at the signal one behind another with a gap and never roll into the car ahead (owner 02.11)', () {
+    for (final tod in [0.0, 0.5]) {
+      final w = CityWorld()..resize(const Size(360, 800));
+      final p = CityParams(tod: tod, alive: 1, fault: 0);
+      var queued = 0;
+      for (var i = 0; i < 20 * 400; i++) {
+        w.step(0.05, p);
+        for (final lane in ['A', 'B']) {
+          final cars = w.debugCars.where((c) => c.lane == lane).toList()
+            ..sort((a, b) => a.s.compareTo(b.s));
+          for (var j = 0; j + 1 < cars.length; j++) {
+            final near = cars[j], far = cars[j + 1];
+            // on the screen a car covers the depths s .. s * span
+            expect(near.s * near.span, lessThan(far.s + 1e-6),
+                reason: 'lane $lane: cars overlap at s=${near.s.toStringAsFixed(2)} and ${far.s.toStringAsFixed(2)}');
+            if (w.debugSignal.car == 2 && far.s - near.s * near.span < 0.4) queued++;
+          }
+        }
+      }
+      expect(queued, greaterThan(0), reason: 'no queue ever formed at the red (tod $tod)');
+    }
+  });
 }
