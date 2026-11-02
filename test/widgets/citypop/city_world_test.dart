@@ -320,4 +320,51 @@ void main() {
       expect(queued, greaterThan(0), reason: 'no queue ever formed at the red (tod $tod)');
     }
   });
+
+  group('the clock (owner 02.11)', () {
+    test('the trains keep the Tokyo timetable: none from 0:30 to 5:00, often in the rush', () {
+      expect(cityTrainGap(2), isNull);
+      expect(cityTrainGap(0.6), isNull);
+      expect(cityTrainGap(4.99), isNull);
+      expect(cityTrainGap(5.0), isNotNull);
+      expect(cityTrainGap(0.25), isNotNull); // the last trains
+      expect(cityTrainGap(8)!.$2, lessThan(cityTrainGap(13)!.$1));
+      expect(cityTrainGap(13)!.$2, lessThan(cityTrainGap(23.5)!.$1));
+    });
+
+    int trainsIn(double hour, double seconds) {
+      final w = CityWorld()..resize(const Size(360, 800));
+      final p = CityParams(tod: 1, alive: 1, fault: 0, hour: hour);
+      var n = 0;
+      var was = false;
+      for (var i = 0; i < seconds * 20; i++) {
+        w.step(0.05, p);
+        final now = w.debugTrain.active;
+        if (now && !was) n++;
+        was = now;
+      }
+      return n;
+    }
+
+    test('no train passes at 3 at night, several at 8 in the morning', () {
+      expect(trainsIn(3, 300), 0);
+      expect(trainsIn(8, 300), greaterThan(5));
+    });
+
+    test('the street fills smoothly, no jump at the phase borders', () {
+      for (var h = 0.0; h < 24; h += 0.05) {
+        final a = cityByHour(h, cityCarsByHour), b = cityByHour(h + 0.05, cityCarsByHour);
+        expect((a - b).abs(), lessThan(0.6), reason: 'cars jump at $h');
+      }
+      expect(cityByHour(8, cityCarsByHour), greaterThan(cityByHour(13, cityCarsByHour)));
+      expect(cityByHour(13, cityCarsByHour), greaterThan(cityByHour(2, cityCarsByHour)));
+    });
+
+    test('the sky turns to night when the street does (21:00)', () {
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 16, 30), dark: false), 0);
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 19), dark: false), closeTo(0.5, 1e-9));
+      expect(CityClock.todAt(DateTime(2026, 11, 2, 21), dark: false), 1);
+      expect(CityClock.phaseAt(DateTime(2026, 11, 2, 21)), CityPhase.night);
+    });
+  });
 }

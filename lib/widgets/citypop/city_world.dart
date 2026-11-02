@@ -28,7 +28,60 @@ class CityParams {
   /// Strength multiplier of the film grade (1 normal, 0 off).
   final double grade;
 
-  const CityParams({required this.tod, required this.alive, required this.fault, this.grade = 1, this.phase});
+  /// Hour of the device clock (0..24, minutes as a fraction). With it the
+  /// street fills and empties smoothly and the trains keep the Tokyo
+  /// timetable; null (tests, fixed frames) keeps the [phase] steps.
+  final double? hour;
+
+  const CityParams({
+    required this.tod,
+    required this.alive,
+    required this.fault,
+    this.grade = 1,
+    this.phase,
+    this.hour,
+  });
+}
+
+/// Piecewise-linear value over the hour of the day (keys sorted by hour).
+double cityByHour(double hour, List<(double, double)> keys) {
+  final h = hour % 24;
+  for (var i = 0; i < keys.length - 1; i++) {
+    final (h0, v0) = keys[i];
+    final (h1, v1) = keys[i + 1];
+    if (h >= h0 && h <= h1) return h1 == h0 ? v1 : v0 + (v1 - v0) * (h - h0) / (h1 - h0);
+  }
+
+  return keys.last.$2;
+}
+
+/// How busy the street is over the day, cars at full life: rush hours in
+/// the morning and the evening, a calmer day, few at night. The edges take an
+/// hour each, so the street fills and empties instead of jumping at the
+/// phase borders (owner 02.11).
+const cityCarsByHour = [
+  (0.0, 3.0), (5.0, 3.0), (6.5, 13.0), (9.5, 13.0), (10.5, 8.0), (16.5, 8.0), //
+  (17.5, 13.0), (20.5, 13.0), (21.5, 3.0), (24.0, 3.0),
+];
+
+/// The same for the people on the pavements (share of them out).
+const cityPeopleByHour = [
+  (0.0, 0.35), (5.0, 0.35), (6.5, 1.0), (9.5, 1.0), (10.5, 0.8), (16.5, 0.8), //
+  (17.5, 1.0), (20.5, 1.0), (21.5, 0.35), (24.0, 0.35),
+];
+
+/// Seconds between two trains on the viaduct by the clock, or null when the
+/// line sleeps. The Tokyo subway of the 80s ran from about 5:00 to about
+/// 0:30 and not at night (owner 02.11): often in the rush hours, less by day,
+/// rarely late in the evening. The scene squeezes the real 2..3 minutes of
+/// the rush into seconds.
+(double, double)? cityTrainGap(double hour) {
+  final h = hour % 24;
+  if (h >= 0.5 && h < 5) return null;
+  if ((h >= 7 && h < 9.5) || (h >= 17.5 && h < 20)) return (5, 15);
+  if (h >= 23 || h < 0.5) return (60, 100);
+
+  return (20, 40);
 }
 
 /// Glow of the one tube that starts like an old gas-discharge lamp: every 30
@@ -258,8 +311,7 @@ class CityWorld {
   /// How far up the depth a car's sprite reaches: s .. s * span.
   static double _span(_Car c) => 6 / (6 - _roofH(c));
 
-  static double stopAt(_Car c) =>
-      c.lane == 'A' ? stopLineA : (stopLineB - 0.05) * (6 - _roofH(c)) / 6;
+  static double stopAt(_Car c) => c.lane == 'A' ? stopLineA : (stopLineB - 0.05) * (6 - _roofH(c)) / 6;
 
   /// 0 waits for a pedestrian, 1 yellow, 2 all-red before the walk, 3 walk,
   /// 4 all-red after the walk.
@@ -493,25 +545,30 @@ class CityWorld {
   // -------------------------------------------------------------- simulation
   int _targetCars(CityParams p) {
     final t = p.tod;
-    final base = switch (p.phase) {
-      CityPhase.morning => 13,
-      CityPhase.day => 8,
-      CityPhase.evening => 13,
-      CityPhase.night => 3,
-      null => t < 0.5 ? _mix(6, 9, t * 2) : _mix(9, 3, (t - 0.5) * 2),
-    };
+    final hour = p.hour;
+    final base = hour != null
+        ? cityByHour(hour, cityCarsByHour)
+        : switch (p.phase) {
+            CityPhase.morning => 13,
+            CityPhase.day => 8,
+            CityPhase.evening => 13,
+            CityPhase.night => 3,
+            null => t < 0.5 ? _mix(6, 9, t * 2) : _mix(9, 3, (t - 0.5) * 2),
+          };
 
     return math.max(1, (base * (0.35 + 0.65 * p.alive) * (1 - 0.45 * p.fault)).round());
   }
 
   /// How many of the passers-by are out. The gate of each one is fixed, so
   /// the same people stay home at night and come back in the morning.
-  double _pedDensity(CityParams p) => switch (p.phase) {
-    CityPhase.morning || CityPhase.evening => 1.0,
-    CityPhase.day => 0.8,
-    CityPhase.night => 0.35,
-    null => _mix(1.0, 0.45, _night),
-  };
+  double _pedDensity(CityParams p) => p.hour != null
+      ? cityByHour(p.hour!, cityPeopleByHour)
+      : switch (p.phase) {
+          CityPhase.morning || CityPhase.evening => 1.0,
+          CityPhase.day => 0.8,
+          CityPhase.night => 0.35,
+          null => _mix(1.0, 0.45, _night),
+        };
 
   /// How many of the people are out now: the same gate for drawing them and
   /// for letting them press the signal button.
@@ -536,8 +593,7 @@ class CityWorld {
       // (on the screen a car covers the depths s .. s * span, see [_span]).
       final free = !_cars.any(
         (c) =>
-            c.lane == lane &&
-            (lane == 'A' ? c.s * 1.42 + 0.06 * c.s + 0.05 > s : s * 1.42 > c.s - 0.06 * c.s - 0.05),
+            c.lane == lane && (lane == 'A' ? c.s * 1.42 + 0.06 * c.s + 0.05 > s : s * 1.42 > c.s - 0.06 * c.s - 0.05),
       );
       if (free) {
         // A city street at 30-40 km/h, not a highway.

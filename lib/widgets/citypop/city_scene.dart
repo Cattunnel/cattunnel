@@ -5,13 +5,15 @@ import 'package:flutter/scheduler.dart';
 import 'package:trusttunnel/widgets/citypop/city_world.dart';
 
 /// Time of day for the scene: 0 day, 0.5 dusk, 1 night. From the device clock
-/// alone: night 21..5, day 8..16, dusk around 6 and 18. The dark theme no
+/// alone: night 21..5, day 8..17, dusk around 6 and 19. The dark theme no
 /// longer decides the scene (owner 01.11: the street showed night at 14:00
 /// because the phone was in the dark theme); it only styles the controls.
 abstract final class CityClock {
   static double todAt(DateTime now, {bool dark = false}) {
     final h = now.hour + now.minute / 60;
-    const keys = [(0.0, 1.0), (5.0, 1.0), (6.0, 0.5), (8.0, 0.0), (16.0, 0.0), (18.0, 0.5), (20.0, 1.0), (24.0, 1.0)];
+    // The same borders as the street's phases (morning from 6, evening 17..21,
+    // night from 21), so the sky and the traffic agree (owner 02.11).
+    const keys = [(0.0, 1.0), (5.0, 1.0), (6.0, 0.5), (8.0, 0.0), (17.0, 0.0), (19.0, 0.5), (21.0, 1.0), (24.0, 1.0)];
     for (var i = 0; i < keys.length - 1; i++) {
       if (h >= keys[i].$1 && h <= keys[i + 1].$1) {
         final t = (h - keys[i].$1) / (keys[i + 1].$1 - keys[i].$1);
@@ -204,7 +206,14 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
     fault: _fault.clamp(0, 1),
     grade: widget.grade,
     phase: widget.timeOfDay != null ? CityClock.phaseForTod(widget.timeOfDay!) : CityClock.phaseAt(DateTime.now()),
+    hour: widget.timeOfDay != null ? null : _hourNow(),
   );
+
+  static double _hourNow() {
+    final now = DateTime.now();
+
+    return now.hour + now.minute / 60;
+  }
 
   @override
   void dispose() {

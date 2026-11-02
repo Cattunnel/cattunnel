@@ -425,7 +425,10 @@ extension _FarGen on CityWorld {
     // the embankment: a cap, a wall face and a shadow at the foot
     canvas.drawRect(Rect.fromLTRB(0, hy - 1.9 * u, w, hy - 1.55 * u), Paint()..color = _c(cap));
     canvas.drawRect(Rect.fromLTRB(0, hy - 1.55 * u, w, hy + 0.1 * u), Paint()..color = _c(wall));
-    canvas.drawRect(Rect.fromLTRB(0, hy - 0.18 * u, w, hy + 0.1 * u), Paint()..color = _c(_mixc(wall, const [10, 8, 26], 0.45)));
+    canvas.drawRect(
+      Rect.fromLTRB(0, hy - 0.18 * u, w, hy + 0.1 * u),
+      Paint()..color = _c(_mixc(wall, const [10, 8, 26], 0.45)),
+    );
     // riprap along the waterline
     for (var x = 0.0; x < w; x += 3.2 * u) {
       final rr = 0.5 + 0.5 * _ih((x / u).round(), 61);
@@ -1020,7 +1023,13 @@ extension _FacGen on CityWorld {
       ..strokeCap = StrokeCap.round;
     for (final x in const [-6.45, -5.55]) {
       canvas.drawLine(_pt(x, 0, 4.6), _pt(x, 3.45, 4.6), pillar);
-      canvas.drawLine(_pt(x, 0, 4.6), _pt(x, 0.4, 4.6), Paint()..color = _c(redDark)..strokeWidth = math.max(1.4, 0.24 * m));
+      canvas.drawLine(
+        _pt(x, 0, 4.6),
+        _pt(x, 0.4, 4.6),
+        Paint()
+          ..color = _c(redDark)
+          ..strokeWidth = math.max(1.4, 0.24 * m),
+      );
     }
     canvas.drawRRect(
       RRect.fromRectAndRadius(
@@ -1043,7 +1052,14 @@ extension _FacGen on CityWorld {
     // upturned ends of the kasagi
     for (final sx in const [-1.0, 1.0]) {
       final a = _pt(sx * 6.85, 3.82, 4.6), b = _pt(sx * 6.72, 4.08, 4.6);
-      canvas.drawLine(a, b, Paint()..color = _c(red)..strokeWidth = math.max(1.2, 0.18 * m)..strokeCap = StrokeCap.round);
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = _c(red)
+          ..strokeWidth = math.max(1.2, 0.18 * m)
+          ..strokeCap = StrokeCap.round,
+      );
     }
     _quad(canvas, [
       _pt(-6.85, 3.74, 4.6),
@@ -1054,8 +1070,14 @@ extension _FacGen on CityWorld {
     // stone lanterns at the path
     for (final s in const [3.7, 5.4]) {
       final p = _pt(-5.7, 0, s), lm = _k / s;
-      canvas.drawRect(Rect.fromLTWH(p.dx - 0.14 * lm, p.dy - 0.55 * lm, 0.28 * lm, 0.55 * lm), Paint()..color = _c(stone));
-      canvas.drawRect(Rect.fromLTWH(p.dx - 0.2 * lm, p.dy - 0.78 * lm, 0.4 * lm, 0.24 * lm), Paint()..color = _c(stone));
+      canvas.drawRect(
+        Rect.fromLTWH(p.dx - 0.14 * lm, p.dy - 0.55 * lm, 0.28 * lm, 0.55 * lm),
+        Paint()..color = _c(stone),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(p.dx - 0.2 * lm, p.dy - 0.78 * lm, 0.4 * lm, 0.24 * lm),
+        Paint()..color = _c(stone),
+      );
       final light = Rect.fromLTWH(p.dx - 0.13 * lm, p.dy - 0.78 * lm, 0.26 * lm, 0.2 * lm);
       canvas.drawRect(light, Paint()..color = _c(_mixc(const [240, 226, 190], const [255, 196, 96], _night)));
       if (_night > 0.2) {
@@ -1087,7 +1109,12 @@ extension _FacGen on CityWorld {
     canvas.drawRect(vm.deflate(vm.width * 0.12), Paint()..color = front);
     for (var i = 0; i < 3; i++) {
       canvas.drawRect(
-        Rect.fromLTWH(vm.left + vm.width * 0.2, vm.top + vm.height * (0.18 + 0.22 * i), vm.width * 0.6, vm.height * 0.1),
+        Rect.fromLTWH(
+          vm.left + vm.width * 0.2,
+          vm.top + vm.height * (0.18 + 0.22 * i),
+          vm.width * 0.6,
+          vm.height * 0.1,
+        ),
         Paint()..color = _c(_mixc(const [220, 72, 80], const [255, 190, 120], _night), 0.85),
       );
     }
@@ -1108,7 +1135,10 @@ extension _FacGen on CityWorld {
       final p0 = _pt(x + 0.25, 0, 2.75 + i * 0.5), m = _k / (2.7 + i * 0.5);
       final box = Rect.fromLTWH(p0.dx - 0.17 * m, p0.dy - 0.32 * m, 0.34 * m, 0.32 * m);
       canvas.drawRect(box, Paint()..color = Color.lerp(green, dark, 0.5)!);
-      canvas.drawOval(Rect.fromCenter(center: box.topCenter.translate(0, -0.08 * m), width: 0.5 * m, height: 0.36 * m), Paint()..color = green);
+      canvas.drawOval(
+        Rect.fromCenter(center: box.topCenter.translate(0, -0.08 * m), width: 0.5 * m, height: 0.36 * m),
+        Paint()..color = green,
+      );
     }
   }
 
@@ -1382,6 +1412,11 @@ extension _Rail on CityWorld {
   void _stepTrain() {
     final u = _u;
     if (!_trainActive) {
+      // the line sleeps from about 0:30 to 5:00: look at the clock again later
+      if (_simT >= _trainNext && _p.hour != null && cityTrainGap(_p.hour!) == null) {
+        _trainNext = _simT + 10;
+        return;
+      }
       if (_simT >= _trainNext) {
         _trainActive = true;
         _trainT0 = _simT;
@@ -1394,7 +1429,8 @@ extension _Rail on CityWorld {
     final len = _trainCars * _carM * _mToU * u + _trainCars * 0.8 * u;
     if ((_simT - _trainT0) * _speedU * u > _size.width + len + 20 * u) {
       _trainActive = false;
-      _trainNext = _simT + 5 + 10 * _r.nextDouble();
+      final gap = _p.hour == null ? (5.0, 15.0) : (cityTrainGap(_p.hour!) ?? (10.0, 10.0));
+      _trainNext = _simT + gap.$1 + (gap.$2 - gap.$1) * _r.nextDouble();
     }
   }
 
