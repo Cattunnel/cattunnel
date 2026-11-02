@@ -50,6 +50,16 @@ class AntiDpiAuto {
   /// memory counts [mobileWarmup] from here.
   static const directSinceKeyPrefix = 'anti_dpi_direct_since';
 
+  /// The technique that worked for a server whose subscription itself asks
+  /// for the bypass. It still goes first next time, but it is not a fact
+  /// about the network (the key asked for the bypass, not the network), so
+  /// the list of the networks does not show it (owner 02.11).
+  static const subHintKeyPrefix = 'anti_dpi_sub';
+
+  /// When the technique last worked in the network, for the server
+  /// (milliseconds since the epoch): the details of a network show it.
+  static const seenKeyPrefix = 'anti_dpi_seen';
+
   /// The technique that worked in the network, for the server.
   static String modeKey(String serverId, String network) => '$modeKeyPrefix.$serverId.$network';
 
@@ -61,6 +71,12 @@ class AntiDpiAuto {
 
   /// When the plain connection first failed in the network, for the server.
   static String directSinceKey(String serverId, String network) => '$directSinceKeyPrefix.$serverId.$network';
+
+  /// The technique that worked for a server with the bypass from the subscription.
+  static String subHintKey(String serverId, String network) => '$subHintKeyPrefix.$serverId.$network';
+
+  /// When the technique last worked in the network, for the server.
+  static String seenKey(String serverId, String network) => '$seenKeyPrefix.$serverId.$network';
 
   /// The round that ended last, for the diagnostics dialog.
   static final lastRound = ValueNotifier<AntiDpiRound?>(null);
@@ -100,8 +116,13 @@ class AntiDpiAuto {
   /// The techniques to try, in order: the one that worked in this network
   /// goes first, then the rest, starting where the last round stopped.
   /// At most [modesPerAttempt] of them.
-  List<int> order({required String serverId, required String network}) {
-    final hint = _preferences.getInt(_hintKey(serverId, network));
+  ///
+  /// [bySubscription]: the subscription asked for the bypass itself, the
+  /// hint lives apart from the networks' memory (see [subHintKeyPrefix]).
+  List<int> order({required String serverId, required String network, bool bySubscription = false}) {
+    final hint = _preferences.getInt(
+      bySubscription ? subHintKey(serverId, network) : _hintKey(serverId, network),
+    );
     final cursor = _preferences.getInt(_cursorKey(serverId, network)) ?? 0;
     final start = cursor.clamp(0, modes.length - 1);
     final rotated = <int>[...modes.skip(start), ...modes.take(start)];
@@ -111,8 +132,24 @@ class AntiDpiAuto {
   }
 
   /// The technique that worked in this network.
-  Future<void> remember({required String serverId, required String network, required int mode}) async {
-    await _preferences.setInt(_hintKey(serverId, network), mode);
+  ///
+  /// With [bySubscription] the network is not marked: only the hint for the
+  /// server is kept, and an old mark of this pair goes away.
+  Future<void> remember({
+    required String serverId,
+    required String network,
+    required int mode,
+    bool bySubscription = false,
+    DateTime? now,
+  }) async {
+    if (bySubscription) {
+      await _preferences.setInt(subHintKey(serverId, network), mode);
+      await _preferences.remove(_hintKey(serverId, network));
+      await _preferences.remove(seenKey(serverId, network));
+    } else {
+      await _preferences.setInt(_hintKey(serverId, network), mode);
+      await _preferences.setInt(seenKey(serverId, network), (now ?? DateTime.now()).millisecondsSinceEpoch);
+    }
     // The next round starts after the one that worked.
     final index = modes.indexOf(mode);
     await _preferences.setInt(_cursorKey(serverId, network), (index + 1) % modes.length);
@@ -177,11 +214,34 @@ class AntiDpiAuto {
   /// learnt about it before says nothing now.
   Future<void> forgetServer(String serverId) async {
     for (final key in _preferences.getKeys().toList()) {
-      for (final prefix in [modeKeyPrefix, cursorKeyPrefix, directKeyPrefix, directSinceKeyPrefix]) {
+      for (final prefix in [
+        modeKeyPrefix,
+        cursorKeyPrefix,
+        directKeyPrefix,
+        directSinceKeyPrefix,
+        subHintKeyPrefix,
+        seenKeyPrefix,
+      ]) {
         if (key.startsWith('$prefix.$serverId.')) {
           await _preferences.remove(key);
         }
       }
+    }
+  }
+
+  /// The subscription asks for the bypass for this server: what the round
+  /// learnt about it before goes from the networks' memory to the server's
+  /// own hints (older versions marked the network even then, although the
+  /// subscription already turns the bypass on for that server).
+  Future<void> moveToSubscription(String serverId) async {
+    final prefix = '$modeKeyPrefix.$serverId.';
+    for (final key in _preferences.getKeys().toList()) {
+      if (!key.startsWith(prefix)) continue;
+      final network = key.substring(prefix.length);
+      final mode = _preferences.getInt(key);
+      if (mode != null) await _preferences.setInt(subHintKey(serverId, network), mode);
+      await _preferences.remove(key);
+      await _preferences.remove(seenKey(serverId, network));
     }
   }
 

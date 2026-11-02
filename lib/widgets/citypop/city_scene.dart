@@ -5,11 +5,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:trusttunnel/widgets/citypop/city_world.dart';
 
 /// Time of day for the scene: 0 day, 0.5 dusk, 1 night. From the device clock
-/// (night 21..5, day 8..16, dusk around 6 and 18), always night in the dark
-/// theme.
+/// alone: night 21..5, day 8..16, dusk around 6 and 18. The dark theme no
+/// longer decides the scene (owner 01.11: the street showed night at 14:00
+/// because the phone was in the dark theme); it only styles the controls.
 abstract final class CityClock {
-  static double todAt(DateTime now, {required bool dark}) {
-    if (dark) return 1;
+  static double todAt(DateTime now, {bool dark = false}) {
     final h = now.hour + now.minute / 60;
     const keys = [(0.0, 1.0), (5.0, 1.0), (6.0, 0.5), (8.0, 0.0), (16.0, 0.0), (18.0, 0.5), (20.0, 1.0), (24.0, 1.0)];
     for (var i = 0; i < keys.length - 1; i++) {
@@ -21,6 +21,26 @@ abstract final class CityClock {
     }
 
     return 1;
+  }
+
+  /// The four parts of the day: morning 6..10, day 10..17, evening 17..21,
+  /// night 21..6. The scene changes smoothly at the borders: the sky and the
+  /// lights move by [todAt], the street slowly fills and empties.
+  static CityPhase phaseAt(DateTime now) {
+    final h = now.hour + now.minute / 60;
+    if (h >= 6 && h < 10) return CityPhase.morning;
+    if (h >= 10 && h < 17) return CityPhase.day;
+    if (h >= 17 && h < 21) return CityPhase.evening;
+
+    return CityPhase.night;
+  }
+
+  /// The phase for a fixed frame ([tod] 0 day, 0.5 dusk, 1 night).
+  static CityPhase phaseForTod(double tod) {
+    if (tod < 0.2) return CityPhase.day;
+    if (tod < 0.6) return CityPhase.evening;
+
+    return CityPhase.night;
   }
 }
 
@@ -84,7 +104,7 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
   // springs: position and velocity
   double _alive = 0, _aliveV = 0, _fault = 0, _faultV = 0, _tod = 1, _todV = 0;
 
-  double get _todTarget => widget.timeOfDay ?? CityClock.todAt(DateTime.now(), dark: widget.dark);
+  double get _todTarget => widget.timeOfDay ?? CityClock.todAt(DateTime.now());
 
   @override
   void initState() {
@@ -93,7 +113,7 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
     _world = CityWorld(seed: widget.seed)..planeForce = widget.planeNow;
     _alive = widget.alive;
     _fault = widget.fault;
-    _tod = widget.timeOfDay ?? CityClock.todAt(DateTime.now(), dark: widget.dark);
+    _tod = widget.timeOfDay ?? CityClock.todAt(DateTime.now());
     _ticker = createTicker(_onTick);
     _CityShader.load().then((program) {
       if (!mounted) return;
@@ -178,8 +198,13 @@ class _CitySceneState extends State<CityScene> with SingleTickerProviderStateMix
     _frame.value++;
   }
 
-  CityParams get _params =>
-      CityParams(tod: _tod.clamp(0, 1), alive: _alive.clamp(0, 1.2), fault: _fault.clamp(0, 1), grade: widget.grade);
+  CityParams get _params => CityParams(
+    tod: _tod.clamp(0, 1),
+    alive: _alive.clamp(0, 1.2),
+    fault: _fault.clamp(0, 1),
+    grade: widget.grade,
+    phase: widget.timeOfDay != null ? CityClock.phaseForTod(widget.timeOfDay!) : CityClock.phaseAt(DateTime.now()),
+  );
 
   @override
   void dispose() {

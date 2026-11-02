@@ -512,9 +512,16 @@ class _VpnScopeState extends State<VpnScope> {
     await NetworkFingerprint.rememberKind(preferences, fingerprint);
     final directFails = auto.directFails(serverId: server.id, network: network, kind: kind);
     final networkName = networkNameByKey(ln, preferences, network, kind);
+    // The subscription itself asked for the bypass: what works here is a
+    // fact about the key, not the network, and stays out of the list of the
+    // networks (owner 02.11). Older versions marked the network anyway.
+    final bySubscription = !directFirst;
+    if (bySubscription) {
+      await auto.moveToSubscription(server.id);
+    }
     final techniques = <int>[
       if (directFirst && !directFails) 0,
-      ...auto.order(serverId: server.id, network: network),
+      ...auto.order(serverId: server.id, network: network, bySubscription: bySubscription),
     ];
     // A frozen address gets one technique only: another handshake into the
     // freeze only extends it.
@@ -581,7 +588,12 @@ class _VpnScopeState extends State<VpnScope> {
             await auto.forgetDirectFailure(serverId: server.id, network: network);
           } else {
             triedModes.add(technique);
-            await auto.remember(serverId: server.id, network: network, mode: technique);
+            await auto.remember(
+              serverId: server.id,
+              network: network,
+              mode: technique,
+              bySubscription: bySubscription,
+            );
           }
           AntiDpiAuto.lastRound.value = AntiDpiRound(
             serverId: server.id,

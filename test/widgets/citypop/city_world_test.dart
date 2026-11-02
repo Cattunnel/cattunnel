@@ -142,17 +142,49 @@ void main() {
   });
 
   group('traffic signal', () {
-    test('the signal cycles through green, yellow and red for cars, and pedestrians only walk on red', () {
+    test('cars wait on green while nobody presses, and a pedestrian gets the walk after yellow and red', () {
+      final w = CityWorld()..resize(const Size(360, 800));
+      final p = CityParams(tod: 0, alive: 1, fault: 0);
+      w.debugPedestrians = false;
+      for (var i = 0; i < 20 * 90; i++) {
+        w.step(0.05, p);
+        expect(w.debugSignal.car, 0);
+        expect(w.debugSignal.ped, 0);
+      }
+      w.debugPedestrians = true;
       final seen = <int>{};
-      for (var t = 0.0; t < 40; t += 0.05) {
-        final s = CityWorld.signalAt(t);
-        seen.add(s.car);
-        // pedestrians never have the walk phase while cars may go
-        if (s.ped != 0) expect(s.car, 2, reason: 'ped walk while cars go at $t');
-        // and a 1.5 s all-red gap before the walk and after it
-        if (s.car == 2 && t % 20 < 12) expect(s.ped, 0);
+      var walked = 0;
+      for (var i = 0; i < 20 * 60; i++) {
+        w.step(0.05, p);
+        final sig = w.debugSignal;
+        seen.add(sig.car);
+        if (sig.ped != 0) {
+          walked++;
+          expect(sig.car, 2, reason: 'ped walk while cars go');
+        }
       }
       expect(seen, {0, 1, 2});
+      expect(walked, greaterThan(20));
+    });
+
+    test('after crossing a pedestrian walks away and disappears instead of waiting on the other side', () {
+      final w = CityWorld()..resize(const Size(360, 800));
+      final p = CityParams(tod: 0, alive: 1, fault: 0);
+      w.debugPedestrians = false;
+      for (var i = 0; i < 20 * 30; i++) {
+        w.step(0.05, p);
+      }
+      w.debugPedestrians = true;
+      var left = false, gone = false;
+      for (var i = 0; i < 20 * 120; i++) {
+        w.step(0.05, p);
+        for (final c in w.debugCrossers) {
+          if (c.leaving) left = true;
+          if (c.gone) gone = true;
+        }
+      }
+      expect(left, isTrue, reason: 'nobody walked away along the pavement');
+      expect(gone, isTrue, reason: 'nobody disappeared after walking away');
     });
 
     for (final cfg in [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)]) {
@@ -166,8 +198,7 @@ void main() {
           var crossersWalked = 0;
           for (var i = 0; i < 20 * 400; i++) {
             w.step(0.05, p);
-            final t = w.debugSimTime;
-            final sig = CityWorld.signalAt(t);
+            final sig = w.debugSignal;
             final now = {for (final c in w.debugCars) c.id: c.s};
             carsSeen = carsSeen < now.length ? now.length : carsSeen;
             for (final c in w.debugCars) {
@@ -178,18 +209,18 @@ void main() {
               if (inside && !wasInside && sig.car == 2) entered++;
             }
             prev = now;
-            final walking = w.debugCrossers.where((c) => !c.waiting).toList();
+            final walking = w.debugCrossers.where((c) => c.crossing).toList();
             if (walking.isNotEmpty) {
               crossersWalked++;
               // somebody is on the road: no car on the zebra, and the walk phase began
               if (w.debugCars.any((c) => c.s > CityWorld.zebraNear && c.s < CityWorld.zebraFar)) crossedWhileWalk++;
-              expect(t % 20, greaterThan(11.9), reason: 'pedestrian on the road before the walk phase');
-              expect(t % 20, lessThan(19.5), reason: 'pedestrian still on the road when cars go');
+              expect(sig.ped, isNot(0), reason: 'pedestrian on the road outside the walk phase');
+              expect(sig.car, 2, reason: 'pedestrian on the road while cars go');
             }
           }
           expect(entered, 0, reason: 'cars entered the zebra on red');
           expect(crossedWhileWalk, 0, reason: 'a car stood on the zebra with people on it');
-          expect(crossersWalked, greaterThan(100), reason: 'pedestrians never crossed');
+          expect(crossersWalked, greaterThan(20), reason: 'pedestrians never crossed');
           expect(carsSeen, greaterThan(0));
         },
       );

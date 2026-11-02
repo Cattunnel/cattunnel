@@ -7,10 +7,17 @@ import 'package:flutter/painting.dart';
 
 part 'city_buildings.dart';
 
+/// The four parts of the day the street lives by (device clock).
+enum CityPhase { morning, day, evening, night }
+
 /// What the scene needs to know to draw one frame.
 class CityParams {
   /// 0 day, 0.5 dusk, 1 night.
   final double tod;
+
+  /// The part of the day: drives how busy the street is. Null keeps the old
+  /// behaviour of reading it from [tod].
+  final CityPhase? phase;
 
   /// 0 the city sleeps, 1 it lives fully (VPN: off ... on).
   final double alive;
@@ -21,7 +28,7 @@ class CityParams {
   /// Strength multiplier of the film grade (1 normal, 0 off).
   final double grade;
 
-  const CityParams({required this.tod, required this.alive, required this.fault, this.grade = 1});
+  const CityParams({required this.tod, required this.alive, required this.fault, this.grade = 1, this.phase});
 }
 
 /// Glow of the one tube that starts like an old gas-discharge lamp: every 30
@@ -102,6 +109,13 @@ const _winColors = [
 const citySignHorizontal = ['ラーメン', 'コーヒー', 'カラオケ', 'すし', 'やきとり', 'レコード', 'カメラ', 'くすり', '喫茶', 'ホテル', 'マルシク'];
 const citySignVertical = ['ラーメン', 'すし', 'くすり', 'スナック', 'カラオケ', 'そば', '喫茶', '映画', 'マルシク'];
 
+class _CoastCar {
+  double x;
+  final double v;
+  final List<double> col;
+  _CoastCar(this.x, this.v, this.col);
+}
+
 class _Blade {
   final double s, x, z0, wid;
   final String text;
@@ -111,18 +125,26 @@ class _Blade {
   _Blade(this.s, this.x, this.z0, this.wid, this.text, this.neon, this.paintCol, this.pos, this.dk);
 }
 
+enum _CarKind { car, taxi, coupe, police, ambulance, kei }
+
 class _Car {
   String lane;
   double s, v;
   final int id;
-  final bool front, taxi, coupe;
+  final bool front;
+  final _CarKind kind;
   final List<double> col;
   final double x;
   double brake = 0, bt = 0;
 
   /// 0..1 how freely the car rolls: it eases to a stop before the zebra.
   double k = 1;
-  _Car(this.lane, this.s, this.v, this.id, this.front, this.col, this.taxi, this.coupe, this.x);
+  bool get taxi => kind == _CarKind.taxi;
+  bool get coupe => kind == _CarKind.coupe;
+  bool get police => kind == _CarKind.police;
+  bool get ambulance => kind == _CarKind.ambulance;
+  bool get kei => kind == _CarKind.kei;
+  _Car(this.lane, this.s, this.v, this.id, this.front, this.col, this.kind, this.x);
 }
 
 class _Ped {
@@ -130,7 +152,7 @@ class _Ped {
   double x;
   final double v, ph, gate;
 
-  /// Standing at the kerb (a crossing pedestrian waiting for the signal).
+  /// Standing at the kerb, waiting for the signal (and pressing the button).
   bool wait;
 
   /// Walking direction across the street while crossing: -1 to the left, 1 to the right.
@@ -140,6 +162,22 @@ class _Ped {
   final bool crosser;
   final bool umb;
   final List<double> col, umbCol;
+
+  /// Crossing pedestrian: 0 waits at the kerb, 1 crosses, 2 walks away along
+  /// the pavement, 3 is gone and waits to come back.
+  int cstate = 0;
+
+  /// Seconds until this one presses the button after reaching the kerb.
+  double pressIn = 0;
+  bool pressed = false;
+
+  /// seconds left before a gone pedestrian comes back.
+  double respawnIn = 0;
+
+  /// metres along the pavement left before this one disappears.
+  double leaveLeft = 0;
+  int leaveDir = 1;
+
   _Ped(
     this.s,
     this.v,
@@ -180,6 +218,7 @@ class CityWorld {
   final List<_Car> _parked = [];
   final List<_Ped> _peds = [];
   final List<_Ped> _crossers = [];
+  final List<_CoastCar> _coast = [];
 
   // The metro train on the viaduct at the far shore (city_buildings.dart).
   bool _trainActive = false;
@@ -191,36 +230,60 @@ class CityWorld {
   ({bool active, int cars, int dir, double t0}) get debugTrain =>
       (active: _trainActive, cars: _trainCars, dir: _trainDir, t0: _trainT0);
 
-  /// The signal cycle, seconds. Cars: green (the Japanese «blue») 0-8,
-  /// yellow 8-10.5, red 10.5-20. Pedestrians: red man, walk 12-17.5, walk
-  /// blinking 17.5-19.5. The 1.5 s of red for everybody on either side empty
-  /// the zebra.
-  static const signalCycle = 20.0;
+  /// The signal has no clock of its own: cars keep the green until somebody
+  /// at the kerb presses the button. Then yellow, all-red, the walk (with its
+  /// last two seconds blinking), all-red again and back to green. The all-red
+  /// gaps empty the zebra before the other side moves.
+  static const yellowTime = 2.5, allRedTime = 2.0, walkTime = 9.0, clearTime = 2.0;
 
-  /// Signal state at [t]: car 0 green, 1 yellow, 2 red; ped 0 red man,
-  /// 1 walk, 2 walk (blinking, do not start).
-  static ({int car, int ped}) signalAt(double t) {
-    final c = t % signalCycle;
+  /// The zebra lies at depth 2.5..3.05 (shaders/city.frag). The stop line is
+  /// set back from it by half a metre, so a stopped car does not hang over
+  /// the stripes.
+  static const zebraNear = 2.5, zebraFar = 3.05, stopLineA = 3.6, stopLineB = 2.0;
 
-    return (car: c < 8 ? 0 : (c < 10.5 ? 1 : 2), ped: c >= 12 && c < 17.5 ? 1 : (c >= 17.5 && c < 19.5 ? 2 : 0));
-  }
+  /// 0 waits for a pedestrian, 1 yellow, 2 all-red before the walk, 3 walk,
+  /// 4 all-red after the walk.
+  int _light = 0;
+  double _lightT = 0;
+  bool _requested = false;
 
-  /// The zebra lies at depth 2.5..3.05 (shaders/city.frag). Cars on the way
-  /// to us (lane A) stop right before it (3.08), cars going away (lane B) at 2.47.
-  static const zebraNear = 2.5, zebraFar = 3.05, stopLineA = 3.08, stopLineB = 2.47;
+  /// Tests: without pedestrians nobody presses, so the cars stay on green.
+  @visibleForTesting
+  bool debugPedestrians = true;
+
+  /// Signal state: car 0 green, 1 yellow, 2 red; ped 0 red man, 1 walk,
+  /// 2 walk (blinking, do not start).
+  ({int car, int ped}) get debugSignal => (car: _carSignal, ped: _pedSignal);
+  int get _carSignal => switch (_light) {
+    0 => 0,
+    1 => 1,
+    _ => 2,
+  };
+  int get _pedSignal => switch (_light) {
+    3 => _lightT < walkTime - 2 ? 1 : 2,
+    _ => 0,
+  };
 
   @visibleForTesting
   List<({String lane, double s, int id})> get debugCars => [for (final c in _cars) (lane: c.lane, s: c.s, id: c.id)];
 
   /// Crossing pedestrians: x across the street (metres), whether they stand.
   @visibleForTesting
-  List<({double x, bool waiting})> get debugCrossers => [for (final c in _crossers) (x: c.x, waiting: c.wait)];
+  List<({double x, bool waiting, bool crossing, bool leaving, bool gone})> get debugCrossers => [
+    for (final c in _crossers)
+      (x: c.x, waiting: c.cstate == 0, crossing: c.cstate == 1, leaving: c.cstate == 2, gone: c.cstate == 3),
+  ];
 
   @visibleForTesting
   double get debugSimTime => _simT;
   final List<double> _poles = const [2.0, 3.7, 6.0, 9.4, 15.0];
   final List<double> _lamps = const [1.5, 2.6, 4.2, 6.6, 10.5, 16.0];
   double _simT = 0;
+
+  /// Seconds since the VPN came up (alive crossed 0.9), -1 while it is off:
+  /// every sign lights once with its starter flicker (item 15).
+  double _connectT = -1;
+  bool _wasAlive = false;
   double _planeNext = 0, _planeT0 = -1;
   int _planeDir = 1;
   bool planeForce = false;
@@ -334,6 +397,17 @@ class CityWorld {
         ),
       );
     }
+    _coast.clear();
+    final cr = math.Random(seed + 991);
+    for (var i = 0; i < 3; i++) {
+      _coast.add(
+        _CoastCar(
+          cr.nextDouble() * _size.width,
+          (6 + cr.nextDouble() * 7) * _u * (cr.nextBool() ? 1 : -1),
+          _carColors[cr.nextInt(_carColors.length)],
+        ),
+      );
+    }
     _crossers.clear();
     const gates = [0.0, 0.02, 0.05, 0.1, 0.2, 0.3];
     for (var i = 0; i < gates.length; i++) {
@@ -350,15 +424,34 @@ class CityWorld {
           [_neon[i % 5], _paint[(i + 2) % 6]][i % 2],
           wait: true,
           crosser: true,
-        ),
+        )..pressIn = 2.5 + gates[i] * 4.5,
       );
     }
   }
 
   _Car _mkCar(String lane, double s, double v, int id, bool front) {
     final r = math.Random(seed * 131 + id * 17);
-    final taxi = r.nextDouble() < 0.22;
-    final col = taxi ? _carColors[0] : _carColors[r.nextInt(_carColors.length)];
+    final roll = r.nextDouble();
+    final kind = lane == 'P'
+        ? _CarKind.car
+        : roll < 0.03
+        ? _CarKind.police
+        : roll < 0.05
+        ? _CarKind.ambulance
+        : roll < 0.27
+        ? _CarKind.taxi
+        : roll < 0.47
+        ? _CarKind.coupe
+        : roll < 0.65
+        ? _CarKind.kei
+        : _CarKind.car;
+    final col = switch (kind) {
+      _CarKind.taxi => _carColors[0],
+      _CarKind.police => const [26.0, 28.0, 36.0],
+      _CarKind.ambulance => const [238.0, 238.0, 240.0],
+      _CarKind.kei => _carColors[3 + r.nextInt(3)],
+      _ => _carColors[r.nextInt(_carColors.length)],
+    };
 
     return _Car(
       lane,
@@ -369,8 +462,7 @@ class CityWorld {
       // road (headlights), B goes away on the left half (tail lights).
       lane == 'A' ? true : (lane == 'B' ? false : front),
       col,
-      taxi,
-      r.nextDouble() < 0.4,
+      kind,
       lane == 'A' ? -0.9 : (lane == 'B' ? -2.9 : -4.7),
     );
   }
@@ -378,13 +470,36 @@ class CityWorld {
   // -------------------------------------------------------------- simulation
   int _targetCars(CityParams p) {
     final t = p.tod;
-    final base = t < 0.5 ? _mix(6, 9, t * 2) : _mix(9, 3, (t - 0.5) * 2);
+    final base = switch (p.phase) {
+      CityPhase.morning => 13,
+      CityPhase.day => 8,
+      CityPhase.evening => 13,
+      CityPhase.night => 3,
+      null => t < 0.5 ? _mix(6, 9, t * 2) : _mix(9, 3, (t - 0.5) * 2),
+    };
 
     return math.max(1, (base * (0.35 + 0.65 * p.alive) * (1 - 0.45 * p.fault)).round());
   }
 
+  /// How many of the passers-by are out. The gate of each one is fixed, so
+  /// the same people stay home at night and come back in the morning.
+  double _pedDensity(CityParams p) => switch (p.phase) {
+    CityPhase.morning || CityPhase.evening => 1.0,
+    CityPhase.day => 0.8,
+    CityPhase.night => 0.35,
+    null => _mix(1.0, 0.45, _night),
+  };
+
   void step(double dt, CityParams p) {
     _simT += dt;
+    if (p.alive > 0.9 && !_wasAlive) {
+      _connectT = 0;
+    } else if (_connectT >= 0) {
+      _connectT += dt;
+    }
+    if (p.alive < 0.25) _connectT = -1;
+    _wasAlive = p.alive > 0.9;
+    _stepLight(dt);
     final spd = 1 - 0.9 * p.fault;
     if (_cars.length < _targetCars(p) && _r.nextDouble() < dt * 0.9) {
       final lane = _r.nextDouble() < 0.55 ? 'A' : 'B';
@@ -395,9 +510,14 @@ class CityWorld {
       }
     }
     for (final c in _cars) {
-      // On the zebra a car does not crawl even in a failure: it clears it.
-      final onZebra = c.s > zebraNear - 0.1 && c.s < stopLineA;
-      var v = c.v * (onZebra ? math.max(spd, 0.7) : spd);
+      // Past its own stop line a car is committed: it clears the crossing at
+      // its normal speed even in a failure. With the stop lines set back
+      // from the zebra (owner 02.11) a car crawling there at the failure
+      // speed met the red on the stripes.
+      final committed = c.lane == 'A'
+          ? c.s > zebraNear - 0.1 && c.s < stopLineA
+          : c.s > stopLineB && c.s < zebraFar + 0.1;
+      var v = c.v * (committed ? math.max(spd, 1.0) : spd);
       for (final o in _cars) {
         if (identical(o, c) || o.lane != c.lane) continue;
         final gap = (o.s - c.s) * (c.v < 0 ? -1 : 1);
@@ -408,7 +528,7 @@ class CityWorld {
       // The signal: on yellow and red a car may not cross its stop line; it
       // eases to a stop before it (speed in proportion to the distance left).
       var target = 1.0;
-      final sig = signalAt(_simT).car;
+      final sig = _carSignal;
       if (sig != 0) {
         final dist = c.lane == 'A' ? c.s - stopLineA : (c.lane == 'B' ? stopLineB - c.s : double.infinity);
         if (dist >= 0 && dist < 6) target = (dist / 0.9).clamp(0.0, 1.0);
@@ -423,6 +543,11 @@ class CityWorld {
     _cars.removeWhere((c) => c.s < 0.7 || c.s > 27);
     _stepCrossers(dt);
     _stepTrain();
+    for (final c in _coast) {
+      c.x += c.v * dt;
+      if (c.x < -12 * _u) c.x = _size.width + 12 * _u;
+      if (c.x > _size.width + 12 * _u) c.x = -12 * _u;
+    }
     for (final pd in _peds) {
       pd.s += pd.v * dt * math.max(0.3, pd.s * 0.25);
       if (pd.s < 1.15) pd.s = 21;
@@ -430,26 +555,90 @@ class CityWorld {
     }
   }
 
-  /// Pedestrians wait at the kerb and cross by the zebra only in the walk
-  /// phase, in the first 1.3 s of it, so that they are over before the cars go.
+  /// The signal stays green until a waiting pedestrian presses the button.
+  void _stepLight(double dt) {
+    _lightT += dt;
+    switch (_light) {
+      case 0:
+        if (_requested) {
+          _light = 1;
+          _lightT = 0;
+          _requested = false;
+        }
+      case 1:
+        if (_lightT >= yellowTime) {
+          _light = 2;
+          _lightT = 0;
+        }
+      case 2:
+        if (_lightT >= allRedTime) {
+          _light = 3;
+          _lightT = 0;
+        }
+      case 3:
+        if (_lightT >= walkTime) {
+          _light = 4;
+          _lightT = 0;
+        }
+      default:
+        if (_lightT >= clearTime) {
+          _light = 0;
+          _lightT = 0;
+        }
+    }
+  }
+
+  /// Pedestrians come to the kerb, press the button after a few seconds and
+  /// cross at the start of the walk phase. Having crossed they walk away
+  /// along the pavement and disappear; a new one comes later.
   void _stepCrossers(double dt) {
-    final cyc = _simT % signalCycle;
-    final walk = signalAt(_simT).ped == 1;
+    final walk = _light == 3;
     for (final c in _crossers) {
-      if (c.wait) {
-        final zebraBusy = _cars.any((o) => o.s > zebraNear && o.s < zebraFar);
-        if (walk && !zebraBusy && cyc < 13.3 && cyc >= 12 + 1.0 * c.gate / 0.3) {
-          c.wait = false;
-          c.dirX = c.x > -2.5 ? -1 : 1;
-        }
-      } else {
-        final toLeft = c.dirX < 0;
-        c.x += (toLeft ? -1 : 1) * 1.4 * dt;
-        final done = toLeft ? c.x <= -5.6 : c.x >= 0.9;
-        if (done) {
-          c.x = toLeft ? -5.6 : 0.9;
-          c.wait = true;
-        }
+      if (!debugPedestrians) continue;
+      switch (c.cstate) {
+        case 0:
+          c.pressIn -= dt;
+          if (c.pressIn <= 0) {
+            c.pressed = true;
+            if (_light == 0) _requested = true;
+          }
+          final zebraBusy = _cars.any((o) => o.s > zebraNear && o.s < zebraFar);
+          if (walk && !zebraBusy && c.pressed && _lightT < 1.3 && _lightT >= c.gate * 1.3) {
+            c.wait = false;
+            c.pressed = false;
+            c.cstate = 1;
+            c.dirX = c.x > -2.5 ? -1 : 1;
+          }
+        case 1:
+          final toLeft = c.dirX < 0;
+          c.x += (toLeft ? -1 : 1) * 1.4 * dt;
+          final done = toLeft ? c.x <= -5.6 : c.x >= 0.9;
+          if (done) {
+            c.x = toLeft ? -5.6 : 0.9;
+            c.cstate = 2;
+            c.leaveDir = c.gate < 0.5 ? 1 : -1;
+            c.leaveLeft = 3.0 + c.gate * 8.0;
+          }
+        case 2:
+          final step = 0.9 * dt;
+          c.s += c.leaveDir * step;
+          c.leaveLeft -= step;
+          if (c.leaveLeft <= 0) {
+            c.cstate = 3;
+            c.respawnIn = 5 + c.gate * 10;
+          }
+        default:
+          c.respawnIn -= dt;
+          if (c.respawnIn <= 0) {
+            final right = _ih((c.gate * 1000).round(), (_simT * 7).floor()).round().isEven;
+            c.cstate = 0;
+            c.wait = true;
+            c.pressed = false;
+            c.pressIn = 2.5 + c.gate * 4.5;
+            c.s = 2.62 + (c.gate - 0.15).abs() * 0.2;
+            c.x = right ? 0.9 : -5.6;
+            c.dirX = right ? -1 : 1;
+          }
       }
     }
   }
@@ -533,6 +722,8 @@ class CityWorld {
     }
     canvas.drawPicture(_staticFar!);
     _paintFarLit(canvas);
+    _paintCoastStatic(canvas);
+    _paintCoastCars(canvas);
     _paintRadioTower(canvas);
     canvas.drawPicture(_staticRail!);
     _paintTrain(canvas);
@@ -541,6 +732,7 @@ class CityWorld {
     _paintNearLit(canvas);
     _paintSigns(canvas);
     _paintQuayWall(canvas);
+    _paintRoadMarkings(canvas);
     final items = <(double, void Function())>[
       for (final c in _cars) (c.s, () => _paintCar(canvas, c)),
       for (final c in _parked) (c.s, () => _paintCar(canvas, c)),
@@ -689,7 +881,7 @@ class CityWorld {
     // left to right. It runs on its own cycle whatever the VPN does; only a
     // failure makes the red one stutter.
     var on = [0, 0, 0];
-    final sig = signalAt(_simT);
+    final sig = debugSignal;
     if (_p.fault > 0.5) {
       on = [0, 0, _ih(1, (_time * 9).floor()) < 0.7 ? 1 : 0];
     } else {
@@ -729,6 +921,17 @@ class CityWorld {
       canvas.drawLine(c.translate(0, 0.12 * m), c.translate(0.05 * m + sw, 0.24 * m), leg);
       if (lit) _glow(canvas, c, 0.45 * m, col, 0.6 * (0.35 + 0.65 * _mix(0.18, 1, _sm(0.1, 0.75, _tod))));
     }
+    // The push-button on the pole: a waiting pedestrian presses it, and it
+    // answers with a warm blink until the walk starts.
+    final pressed = _crossers.any((c) => c.cstate == 0 && c.pressed);
+    final btn = Offset(bx + 0.25 * m, by + 1.22 * m);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: btn, width: 0.34 * m, height: 0.48 * m), Radius.circular(0.08 * m)),
+      Paint()..color = _c(const [40, 40, 50]),
+    );
+    final blink = pressed ? (0.55 + 0.45 * math.sin(_time * 7)) : 0.0;
+    canvas.drawCircle(btn.translate(0, -0.04 * m), 0.09 * m, Paint()..color = _c(_mixc(const [90, 66, 60], [255, 186, 92], blink)));
+    if (pressed) _glow(canvas, btn, 0.5 * m, const [255, 186, 92], 0.45 * blink);
   }
 
   void _paintRoadSign(Canvas canvas) {
@@ -738,21 +941,57 @@ class CityWorld {
       Rect.fromLTRB(a.dx - 0.05 * m, top.dy, a.dx + 0.05 * m, a.dy),
       Paint()..color = _c(const [120, 120, 130]),
     );
-    final c = Offset(top.dx, top.dy - 0.2 * m);
-    final blue = Paint()..color = _c(const [40, 90, 190]);
-    final white = Paint()..color = _c(const [244, 244, 240]);
-    canvas.drawCircle(c, 0.42 * m, blue);
-    canvas.drawCircle(c, 0.36 * m, white);
-    canvas.drawCircle(c, 0.31 * m, blue);
-    canvas.drawRect(Rect.fromLTWH(c.dx - 0.05 * m, c.dy - 0.22 * m, 0.1 * m, 0.46 * m), white);
-    canvas.drawPath(
-      Path()
-        ..moveTo(c.dx - 0.15 * m, c.dy - 0.1 * m)
-        ..lineTo(c.dx, c.dy - 0.3 * m)
-        ..lineTo(c.dx + 0.15 * m, c.dy - 0.1 * m)
-        ..close(),
-      white,
+    // The Japanese 407-A: a blue square, a white triangle, a black pedestrian.
+    final c = Offset(top.dx, top.dy - 0.22 * m);
+    final side = 0.94 * m;
+    final plate = Rect.fromCenter(center: c, width: side, height: side);
+    canvas.drawRRect(RRect.fromRectAndRadius(plate, Radius.circular(0.1 * m)), Paint()..color = _c(const [34, 86, 184]));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(plate.deflate(0.05 * m), Radius.circular(0.08 * m)),
+      Paint()
+        ..color = _c(const [244, 244, 240])
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.04 * m,
     );
+    final tri = Path()
+      ..moveTo(c.dx, c.dy - 0.36 * m)
+      ..lineTo(c.dx + 0.36 * m, c.dy + 0.3 * m)
+      ..lineTo(c.dx - 0.36 * m, c.dy + 0.3 * m)
+      ..close();
+    canvas.drawPath(tri, Paint()..color = _c(const [244, 244, 240]));
+    final ink = Paint()..color = _c(const [22, 22, 26]);
+    final man = Offset(c.dx - 0.03 * m, c.dy + 0.02 * m);
+    canvas.drawCircle(man.translate(0, -0.16 * m), 0.055 * m, ink);
+    canvas.drawLine(man.translate(0, -0.1 * m), man.translate(0.02 * m, 0.05 * m), ink..strokeWidth = 0.06 * m..strokeCap = StrokeCap.round);
+    canvas.drawLine(man.translate(0.02 * m, 0.05 * m), man.translate(-0.08 * m, 0.2 * m), ink);
+    canvas.drawLine(man.translate(0.02 * m, 0.05 * m), man.translate(0.1 * m, 0.16 * m), ink);
+  }
+
+  /// Japanese crossing: wide white bars along the road (the shader draws
+  /// them), a stop line set back from them on each lane and the warning
+  /// diamond ◇ on the approach.
+  void _paintRoadMarkings(Canvas canvas) {
+    final white = _c(const [244, 240, 226], _mix(0.5, 0.72, _night));
+    void bar(double x0, double x1, double s0, double s1) {
+      _quad(canvas, [_pt(x0, 0, s0), _pt(x1, 0, s0), _pt(x1, 0, s1), _pt(x0, 0, s1)], white);
+    }
+
+    // Lane A (towards us): stop line 0.55 m before the zebra; lane B: 0.5 m.
+    bar(-1.9, 0.4, stopLineA, stopLineA + 0.12);
+    bar(-5.4, -1.9, stopLineB - 0.12, stopLineB);
+    void diamond(double x, double s) {
+      final pts = [_pt(x, 0, s - 0.5), _pt(x + 0.38, 0, s), _pt(x, 0, s + 0.5), _pt(x - 0.38, 0, s)];
+      canvas.drawPath(
+        Path()..addPolygon(pts, true),
+        Paint()
+          ..color = white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(0.6, 0.07 * _k / s),
+      );
+    }
+
+    diamond(-0.9, 4.6);
+    diamond(-2.9, 1.0);
   }
 
   // ------------------------------------------------------------------- signs
@@ -785,8 +1024,25 @@ class CityWorld {
       final flick = _ih(id, (_time * 11).floor()) < 0.55 ? 1.0 : 0.05;
       g *= _mix(1, flick, _p.fault);
     }
+    g *= _connectBurst(id);
 
     return g;
+  }
+
+  /// The starter flicker of one sign when the VPN comes up: its own delay
+  /// 0..1 s, then 2-4 uneven flashes, then a steady light. After the burst
+  /// (and when the scene was already alive) it is 1.
+  double _connectBurst(int id) {
+    if (_connectT < 0) return 1;
+    final u = _connectT - _ih(id, 7);
+    if (u < 0) return 0;
+    final flashes = 2 + (_ih(id, 11) * 3).floor();
+    final step = 0.44;
+    if (u >= flashes * step) return 1;
+    final amp = 0.45 + 0.55 * _ih(id, 13);
+    final phase = (u / step) % 1;
+    // a short strike, a long dark gap: uneven, like a gas tube
+    return phase < 0.34 - 0.1 * _ih(id, 17) ? amp : 0;
   }
 
   /// Which letter of which blade sign has the old starter-lit tube.
@@ -891,8 +1147,14 @@ class CityWorld {
     rect(-0.96, 0, -0.74, 0.5, wheel);
     rect(0.74, 0, 0.96, 0.5, wheel);
     rect(-0.92, 0.18, 0.92, 0.85, body);
+    if (c.police) {
+      rect(-0.92, 0.5, 0.92, 0.85, const [246, 244, 238]);
+    } else if (c.ambulance) {
+      rect(-0.92, 0.18, 0.92, 0.85, const [242, 240, 236]);
+      rect(-0.92, 0.42, 0.92, 0.53, const [214, 40, 46]);
+    }
     if (_dayK > 0.05) rect(0.55, 0.18, 0.92, 0.85, const [255, 232, 190], 0.20 * _dayK);
-    final roofH = c.coupe ? 1.38 : 1.52, cw = c.coupe ? 0.68 : 0.62;
+    final roofH = c.kei ? 1.78 : (c.coupe ? 1.38 : 1.52), cw = c.kei ? 0.7 : (c.coupe ? 0.68 : 0.62);
     canvas.drawPath(
       Path()
         ..moveTo(-0.9, -0.85)
@@ -962,14 +1224,26 @@ class CityWorld {
         ], (0.35 + 0.5 * brake) * tl);
       }
     }
+    if (c.police || c.ambulance) {
+      final bp = Offset(p.dx, p.dy - (roofH + 0.22) * m);
+      _glow(canvas, bp, 3.0 * m, const [255, 54, 62], 0.18 + 0.72 * n);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: bp, width: 0.46 * m, height: 0.2 * m),
+          Radius.circular(0.05 * m),
+        ),
+        Paint()..color = _c(_mixc(const [150, 34, 40], const [255, 70, 80], 0.35 + 0.65 * n)),
+      );
+    }
   }
 
   // ------------------------------------------------------------------ people
   void _paintPed(Canvas canvas, _Ped p) {
+    if (p.crosser && p.cstate == 3) return;
     final pos = _pt(p.x, 0, p.s);
     final m = _k / p.s;
     if (m < 1.2 || pos.dy > _size.height) return;
-    final density = _mix(1.0, 0.45, _night) * (0.35 + 0.65 * _p.alive) * (1 - 0.45 * _p.fault);
+    final density = _pedDensity(_p) * (0.35 + 0.65 * _p.alive) * (1 - 0.45 * _p.fault);
     if (p.gate > density) return;
     final ph = p.ph + _time * 5.2 * p.v.abs() / 0.12 * 0.7;
     final sw = p.wait ? 0.0 : math.sin(ph) * 0.22, bob = p.wait ? 0.0 : math.cos(ph).abs() * 0.03;

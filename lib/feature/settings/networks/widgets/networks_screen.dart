@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/data/model/server.dart';
+import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/domain/networks_memory.dart';
@@ -36,8 +39,21 @@ class _NetworksScreenState extends State<NetworksScreen> {
     unawaited(_load());
   }
 
+  /// The servers, by id: names for the details, and which of them get the
+  /// bypass from the subscription (those do not mark networks).
+  Map<String, Server> get _servers => {
+    for (final server in ServersScope.controllerOf(context, listen: false).servers) server.id: server,
+  };
+
   Future<void> _load() async {
-    final networks = NetworksMemory.all(context.dependencyFactory.sharedPreferences);
+    final bySubscription = {
+      for (final server in _servers.values)
+        if (server.serverData.antiDpi && server.serverData.antiDpiMode == ServerData.antiDpiAuto) server.id,
+    };
+    final networks = NetworksMemory.all(
+      context.dependencyFactory.sharedPreferences,
+      bySubscription: bySubscription,
+    );
     if (!mounted) return;
     setState(() => _networks = networks);
   }
@@ -53,13 +69,19 @@ class _NetworksScreenState extends State<NetworksScreen> {
               padding: const EdgeInsets.all(24),
               child: Text(context.ln.networksEmpty, textAlign: TextAlign.center),
             )
-          else
+          else ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(context.ln.networksDetailsHint, style: Theme.of(context).textTheme.bodySmall),
+            ),
             for (final network in _networks)
               _NetworkTile(
                 network: network,
+                onOpen: () => _details(network),
                 onRename: () => _rename(network),
                 onForget: () => _forget(network),
               ),
+          ],
           if (_networks.isNotEmpty) ...[
             const Divider(),
             Padding(
@@ -74,6 +96,54 @@ class _NetworksScreenState extends State<NetworksScreen> {
       ),
     ),
   );
+
+  /// What the app knows about one network: each key that needed a technique
+  /// here, the technique and when it last worked (owner 02.11: «по нажатию
+  /// показывать, какие ключи и какой режим»).
+  Future<void> _details(RememberedNetwork network) async {
+    final preferences = context.dependencyFactory.sharedPreferences;
+    final servers = _servers;
+    final title = networkNameByKey(context.ln, preferences, network.key, network.kind);
+    final forget = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final ln = dialogContext.ln;
+        final lines = <Widget>[
+          Text(ln.networksDetailsKind(networkKindName(ln, network.kind))),
+          if (network.directFailsUntil != null) ...[
+            const SizedBox(height: 8),
+            Text(ln.networksDirectUntil(_NetworkTile._date(network.directFailsUntil!))),
+          ],
+          for (final entry in network.modeByServer.entries) ...[
+            const SizedBox(height: 8),
+            Text(
+              ln.networksDetailsServerMode(
+                servers[entry.key]?.serverData.name ?? ln.networksDetailsGoneServer,
+                entry.value.toString(),
+              ),
+            ),
+            if (network.seenByServer[entry.key] case final seen?)
+              Text(
+                ln.networksDetailsSeen(_NetworkTile._dateTime(seen)),
+                style: Theme.of(dialogContext).textTheme.bodySmall,
+              ),
+          ],
+        ];
+
+        return CustomAlertDialog(
+          title: title,
+          content: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: lines),
+          ),
+          actionsBuilder: (_) => [
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(ln.networksForget)),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(ln.diagClose)),
+          ],
+        );
+      },
+    );
+    if (forget == true && mounted) await _forget(network);
+  }
 
   Future<void> _rename(RememberedNetwork network) async {
     final preferences = context.dependencyFactory.sharedPreferences;
@@ -149,11 +219,13 @@ class _NetworksScreenState extends State<NetworksScreen> {
 /// One network: the name, what the app knows about it and the two actions.
 class _NetworkTile extends StatelessWidget {
   final RememberedNetwork network;
+  final VoidCallback onOpen;
   final VoidCallback onRename;
   final VoidCallback onForget;
 
   const _NetworkTile({
     required this.network,
+    required this.onOpen,
     required this.onRename,
     required this.onForget,
   });
@@ -163,6 +235,7 @@ class _NetworkTile extends StatelessWidget {
     final preferences = context.dependencyFactory.sharedPreferences;
 
     return ListTile(
+      onTap: onOpen,
       title: Text(networkNameByKey(context.ln, preferences, network.key, network.kind)),
       subtitle: Text(_facts(context)),
       trailing: PopupMenuButton<String>(
@@ -199,4 +272,7 @@ class _NetworkTile extends StatelessWidget {
 
   static String _date(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}';
+
+  static String _dateTime(DateTime date) =>
+      '${_date(date)} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }

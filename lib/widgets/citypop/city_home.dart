@@ -39,6 +39,10 @@ class CityHomeBody extends StatelessWidget {
   final VoidCallback onPickServer;
   final Widget? topActions;
 
+  /// Wide window: the always-open server list shown under the cassette panel
+  /// in the right column. Null keeps the phone layout even on a wide screen.
+  final Widget? wideServers;
+
   /// Tests and screenshots: a fixed scene frame and time of day.
   final double? still;
   final double? timeOfDay;
@@ -55,6 +59,7 @@ class CityHomeBody extends StatelessWidget {
     this.unreachable = false,
     this.session,
     this.topActions,
+    this.wideServers,
     this.still,
     this.timeOfDay,
   });
@@ -79,6 +84,78 @@ class CityHomeBody extends StatelessWidget {
         final w = box.maxWidth, h = box.maxHeight;
         final panelH = (h * 0.31).clamp(222.0, 280.0);
         final catW = (w * (state == VpnState.disconnected ? 0.43 : 0.33)).clamp(110.0, 180.0);
+        final wide = w >= 840 && wideServers != null;
+
+        if (wide) {
+          final scene = Stack(
+            fit: StackFit.expand,
+            children: [
+              CityScene(
+                alive: alive,
+                fault: trouble ? 1 : 0,
+                dark: night,
+                still: still,
+                timeOfDay: timeOfDay,
+                planeNow: still != null,
+              ),
+              Positioned(
+                left: 14,
+                right: 14,
+                top: MediaQuery.paddingOf(context).top + 6,
+                child: _TopBar(actions: topActions, dark: _sceneIsDark(context, timeOfDay)),
+              ),
+              Positioned(
+                left: 24,
+                right: 48,
+                top: MediaQuery.paddingOf(context).top + 76,
+                child: _StatusBlock(
+                  state: state,
+                  session: session,
+                  pingMs: pingMs,
+                  unreachable: unreachable,
+                  dark: _sceneIsDark(context, timeOfDay),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                top: MediaQuery.paddingOf(context).top + 90,
+                child: _Tategaki(text: cityStatusJa(state)),
+              ),
+            ],
+          );
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: scene),
+              SizedBox(
+                width: (w * 0.38).clamp(320.0, 480.0),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: panelH,
+                      child: _CassettePanel(
+                        state: state,
+                        serverName: serverName,
+                        serverSub: serverSub,
+                        pingMs: pingMs,
+                        onPlay: onPlay,
+                        onStop: onStop,
+                        onPickServer: onPickServer,
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 8, 12, 12),
+                        child: wideServers!,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        }
 
         return Stack(
           fit: StackFit.expand,
@@ -144,8 +221,7 @@ class CityHomeBody extends StatelessWidget {
 /// Text over the scene: cream with a dark plate by night and at dusk, ink on
 /// a cream plate by day, so it stays readable on any frame of the sky.
 bool _sceneIsDark(BuildContext context, double? tod) {
-  if (context.isCityNight) return true;
-  final t = tod ?? CityClock.todAt(DateTime.now(), dark: false);
+  final t = tod ?? CityClock.todAt(DateTime.now());
 
   return t > 0.3;
 }

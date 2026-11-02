@@ -83,9 +83,10 @@ void main() {
   // ================= проход 1: зерно, засвет, виньетка поверх всего =================
   if (uPass > 0.5) {
     float sg = uGrade * P3(vec3(1.0), vec3(0.7), vec3(0.4), tod).x;   // сила: день 1, закат 0.7, ночь 0.4
-    float frame = floor(uTime * 12.0);
+    // The grain is fixed: it used to jump 12 times a second, which read as
+    // a ripple running over the whole frame by day (owner 01.11, item 16).
     float gs = 2.0 * U;                                              // крупное зерно ~2 px
-    vec2 gp = floor(fc / gs) + vec2(frame * 37.0, frame * 17.0);
+    vec2 gp = floor(fc / gs);
     float g = fract(sin(dot(gp, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
     float grainAmt = 0.05 * (0.35 + 0.65 * sg);
     float leak = exp(-uv.x * 3.2) * (0.35 + 0.65 * smoothstep(0.1, 0.55, uv.y)) * (0.4 + 0.6 * vnoise(vec2(uv.y * 3.0, uTime * 0.05)));
@@ -210,8 +211,8 @@ void main() {
       col = mix(col, hor, wet * exp(-d * 1.6) * 0.8);
       // разметка: осевая пунктиром и зебра
       float dash = step(fract(S * 0.55), 0.5) * (1.0 - smoothstep(0.08, 0.12, abs(X + 1.9)));
-      float zebra = step(2.5, S) * step(S, 3.05) * step(fract((X + 5.4) * 0.75), 0.5);
-      col = mix(col, vec3(0.95, 0.92, 0.85), (dash * 0.55 + zebra * 0.6) * mix(0.8, 0.6, night));
+      float zebra = step(2.45, S) * step(S, 3.1) * step(fract((X + 5.4) * 0.62), 0.5);
+      col = mix(col, vec3(0.96, 0.94, 0.88), (dash * 0.55 + zebra * 0.82) * mix(0.9, 0.78, night));
       // отражения огней города и вывесок на асфальте
       float cx = floor(X * 1.4);
       float hc = hash21(vec2(cx, 15.0));
@@ -221,7 +222,7 @@ void main() {
       // Short wet patches, not columns down the whole road: those read as a
       // trail that never goes away (owner 01.11).
       float wetSpot = smoothstep(0.62, 0.85, vnoise(vec2(cx * 1.7, S * 2.2 - uTime * 0.15)));
-      col += neon(hash21(vec2(cx, 8.0))) * in1 * sTr * wetSpot * exp(-d * 1.3) * smoothstep(0.03, 0.2, d) * cityLit * lightK * (0.15 + 0.85 * night) * 0.45;
+      col += neon(hash21(vec2(cx, 8.0))) * in1 * sTr * wetSpot * exp(-d * 1.3) * smoothstep(0.03, 0.2, d) * cityLit * lightK * (0.15 + 0.85 * night) * 0.45 * (1.0 - zebra * 0.8);
       // Подсветки полос от фар здесь больше нет: она горела и без машин,
       // постоянным шлейфом. Каждая машина светит сама (city_world.dart).
       // днём блик солнца на мокрой дороге

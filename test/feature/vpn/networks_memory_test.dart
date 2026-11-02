@@ -81,4 +81,41 @@ void main() {
     // The name of the forgotten network is gone too.
     expect(NetworkFingerprint.customName(preferences, network.key), isNull);
   });
+
+  test('the details: each key, its technique and when it last worked (owner 02.11)', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final auto = AntiDpiAuto(preferences);
+    final at = DateTime(2026, 11, 2, 14, 30);
+
+    await NetworkFingerprint.rememberKind(preferences, network);
+    await auto.remember(serverId: 'server.de.1', network: network.key, mode: 2, now: at);
+    await auto.remember(serverId: 'nl', network: network.key, mode: 1, now: at);
+
+    final details = NetworksMemory.all(preferences).single;
+    expect(details.modeByServer, {'server.de.1': 2, 'nl': 1});
+    expect(details.seenByServer['server.de.1'], at);
+    expect(details.modes, [1, 2]);
+  });
+
+  test('a key with the bypass from its subscription marks no network', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final auto = AntiDpiAuto(preferences);
+
+    await NetworkFingerprint.rememberKind(preferences, network);
+    await auto.remember(serverId: 'de', network: network.key, mode: 1, bySubscription: true);
+    expect(NetworksMemory.all(preferences), isEmpty);
+    // The hint still goes first next time.
+    expect(auto.order(serverId: 'de', network: network.key, bySubscription: true).first, 1);
+
+    // An old mark of such a key (older versions wrote it) is hidden at once.
+    await auto.remember(serverId: 'de', network: network.key, mode: 3);
+    expect(NetworksMemory.all(preferences), isNotEmpty);
+    expect(NetworksMemory.all(preferences, bySubscription: {'de'}), isEmpty);
+
+    // Forgetting the network takes the key's hint too.
+    await NetworksMemory.forgetAll(preferences);
+    expect(preferences.getKeys().where((k) => k.startsWith(AntiDpiAuto.subHintKeyPrefix)), isEmpty);
+  });
 }

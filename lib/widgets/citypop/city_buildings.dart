@@ -406,6 +406,79 @@ extension _FarGen on CityWorld {
     }
   }
 
+  /// The far shore's own edge: a concrete embankment and riprap above the
+  /// water, with a narrow coast road behind it, so the houses do not grow
+  /// straight out of the bay (items 11 and 12).
+  void _paintCoastStatic(Canvas canvas) {
+    final hy = _hy, u = _u, w = _size.width;
+    final wall = _p3([176, 168, 158], [104, 78, 108], [30, 24, 50], _tod);
+    final cap = _p3([214, 204, 190], [138, 104, 132], [46, 38, 68], _tod);
+    final stone = _p3([120, 116, 112], [74, 58, 84], [24, 20, 42], _tod);
+    final road = _c(_mixc(_p3([92, 92, 100], [58, 50, 76], [22, 20, 40], _tod), _hz, 0.24));
+    // road behind the embankment
+    canvas.drawRect(Rect.fromLTRB(0, hy - 4.2 * u, w, hy - 1.7 * u), Paint()..color = road);
+    // dashed centre line, small at this distance
+    final line = Paint()..color = _c(const [230, 226, 210], 0.45);
+    for (var x = 4 * u; x < w; x += 16 * u) {
+      canvas.drawRect(Rect.fromLTWH(x, hy - 3.0 * u, 7 * u, math.max(0.7, 0.28 * u)), line);
+    }
+    // the embankment: a cap, a wall face and a shadow at the foot
+    canvas.drawRect(Rect.fromLTRB(0, hy - 1.9 * u, w, hy - 1.55 * u), Paint()..color = _c(cap));
+    canvas.drawRect(Rect.fromLTRB(0, hy - 1.55 * u, w, hy + 0.1 * u), Paint()..color = _c(wall));
+    canvas.drawRect(Rect.fromLTRB(0, hy - 0.18 * u, w, hy + 0.1 * u), Paint()..color = _c(_mixc(wall, const [10, 8, 26], 0.45)));
+    // riprap along the waterline
+    for (var x = 0.0; x < w; x += 3.2 * u) {
+      final rr = 0.5 + 0.5 * _ih((x / u).round(), 61);
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(x + rr * u, hy + 0.25 * u), width: 2.2 * u, height: 0.7 * u),
+        Paint()..color = _c(_mixc(stone, const [16, 12, 32], 0.25)),
+      );
+    }
+    // a low railing on the far pavement
+    final rail = Paint()
+      ..color = _c(_mixc(wall, const [20, 16, 40], 0.5))
+      ..strokeWidth = math.max(0.7, 0.16 * u);
+    canvas.drawLine(Offset(0, hy - 2.05 * u), Offset(w, hy - 2.05 * u), rail);
+    for (var x = 0.0; x < w; x += 8 * u) {
+      canvas.drawLine(Offset(x, hy - 2.05 * u), Offset(x, hy - 1.75 * u), rail);
+    }
+  }
+
+  /// Rare traffic on the far coast road: two or three cars by day, one at
+  /// night, headlights on in the dark.
+  void _paintCoastCars(Canvas canvas) {
+    final u = _u, hy = _hy;
+    final want = switch (_p.phase) {
+      CityPhase.morning || CityPhase.evening => 3,
+      CityPhase.day => 2,
+      CityPhase.night => 1,
+      null => 2,
+    };
+    final n = _night;
+    for (var i = 0; i < want && i < _coast.length; i++) {
+      final c = _coast[i];
+      final body = Rect.fromCenter(center: Offset(c.x, hy - 3.0 * u), width: 4.2 * u, height: 1.15 * u);
+      final col = _mixc(c.col, const [24, 18, 40], 0.55 * n);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(body, Radius.circular(0.3 * u)),
+        Paint()..color = _c(col),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(body.left + 0.9 * u, body.top + 0.15 * u, 1.8 * u, 0.55 * u),
+        Paint()..color = _c(_mixc(const [130, 170, 186], const [20, 16, 40], n)),
+      );
+      if (n > 0.2) {
+        final dir = c.v > 0 ? 1.0 : -1.0;
+        final lx = body.center.dx + dir * body.width * 0.52;
+        for (final dy in const [-0.3, 0.3]) {
+          final p = Offset(lx, body.center.dy + dy * u);
+          _glow(canvas, p, 1.8 * u, const [255, 236, 190], 0.55 * n);
+          canvas.drawCircle(p, 0.28 * u, Paint()..color = _c(const [255, 246, 214], n));
+        }
+      }
+    }
+  }
+
   /// Lit windows and neon signs of the far shore, with the beacons. The
   /// rectangles are kept for the reflection in the water.
   void _paintFarLit(Canvas canvas) {
@@ -613,7 +686,9 @@ class _Fac {
 extension _FacGen on CityWorld {
   void _buildFac(math.Random r) {
     _fac.clear();
-    var s = 1.55;
+    // Start before the left edge of the screen, so no strip of sky shows
+    // between the first house and the frame (owner 01.11).
+    var s = 1.2;
     var idx = 0;
     var prev = -1;
     const words = citySignHorizontal;
@@ -897,6 +972,140 @@ extension _FacGen on CityWorld {
         _paintFBoxStatic(canvas, f, b, col, metal, pxm);
       }
       if (f.shop) _paintShopStatic(canvas, f, xf);
+    }
+    _paintLeftProps(canvas);
+    _paintShrine(canvas);
+  }
+
+  /// A small street shrine past the first house (item 17): a vermilion torii
+  /// with a black kasagi, a stone path under it, a pair of stone lanterns and
+  /// two trees. Walkers on the left pavement pass under the gate.
+  void _paintShrine(Canvas canvas) {
+    const xc = -6.0;
+    const s0 = 3.55, s1 = 5.55;
+    final inkRgb = _p3([54, 58, 72], [40, 26, 60], [14, 10, 34], _tod);
+    final stone = _p3([176, 172, 164], [112, 92, 116], [38, 32, 58], _tod);
+    final red = _mixc(const [196.0, 54.0, 42.0], const [96.0, 30.0, 34.0], _night * 0.55);
+    final redDark = _mixc(red, const [12.0, 8.0, 28.0], 0.35);
+    // the path of flat stones, from the street to the gate
+    for (var s = s0; s <= s1 + 0.01; s += 0.42) {
+      final p = _pt(xc, 0, s), m = _k / s;
+      canvas.drawOval(
+        Rect.fromCenter(center: p.translate(0, -0.03 * m), width: 0.5 * m, height: 0.16 * m),
+        Paint()..color = _c(_mixc(stone, const [24, 18, 40], 0.3)),
+      );
+    }
+    // trees behind the gate, a sakura and a maple
+    for (final t in const [(5.3, 0), (3.85, 1)]) {
+      final p = _pt(-6.45, 0, t.$1), m = _k / t.$1;
+      final trunk = Paint()
+        ..color = _c(_mixc(inkRgb, const [70, 44, 40], 0.35))
+        ..strokeWidth = math.max(1.0, 0.1 * m);
+      canvas.drawLine(p, p.translate(0, -3.2 * m), trunk);
+      final col = t.$2 == 0
+          ? _c(_mixc(const [240, 168, 178], const [110, 54, 92], _night * 0.45))
+          : _c(_mixc(const [206, 92, 62], const [104, 40, 54], _night * 0.45));
+      for (final c in const [(-0.35, 3.55, 0.9), (0.3, 3.9, 0.8), (0.0, 4.35, 0.75)]) {
+        canvas.drawCircle(p.translate(c.$1 * m, -c.$2 * m), c.$3 * m, Paint()..color = col);
+      }
+    }
+    // torii: two pillars, a nuki and a black kasagi with upturned ends
+    final m = _k / 4.6;
+    final pillar = Paint()
+      ..color = _c(red)
+      ..strokeWidth = math.max(1.4, 0.24 * m)
+      ..strokeCap = StrokeCap.round;
+    for (final x in const [-6.45, -5.55]) {
+      canvas.drawLine(_pt(x, 0, 4.6), _pt(x, 3.45, 4.6), pillar);
+      canvas.drawLine(_pt(x, 0, 4.6), _pt(x, 0.4, 4.6), Paint()..color = _c(redDark)..strokeWidth = math.max(1.4, 0.24 * m));
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(
+          _pt(-6.75, 3.0, 4.6).dx,
+          _pt(-6.75, 3.28, 4.6).dy,
+          _pt(-5.25, 3.0, 4.6).dx,
+          _pt(-5.25, 3.28, 4.6).dy,
+        ),
+        Radius.circular(0.1 * m),
+      ),
+      Paint()..color = _c(red),
+    );
+    _quad(canvas, [
+      _pt(-6.85, 3.45, 4.6),
+      _pt(-5.15, 3.45, 4.6),
+      _pt(-5.15, 3.82, 4.6),
+      _pt(-6.85, 3.82, 4.6),
+    ], _c(red));
+    // upturned ends of the kasagi
+    for (final sx in const [-1.0, 1.0]) {
+      final a = _pt(sx * 6.85, 3.82, 4.6), b = _pt(sx * 6.72, 4.08, 4.6);
+      canvas.drawLine(a, b, Paint()..color = _c(red)..strokeWidth = math.max(1.2, 0.18 * m)..strokeCap = StrokeCap.round);
+    }
+    _quad(canvas, [
+      _pt(-6.85, 3.74, 4.6),
+      _pt(-5.15, 3.74, 4.6),
+      _pt(-5.15, 3.9, 4.6),
+      _pt(-6.85, 3.9, 4.6),
+    ], _c(const [26, 24, 30]));
+    // stone lanterns at the path
+    for (final s in const [3.7, 5.4]) {
+      final p = _pt(-5.7, 0, s), lm = _k / s;
+      canvas.drawRect(Rect.fromLTWH(p.dx - 0.14 * lm, p.dy - 0.55 * lm, 0.28 * lm, 0.55 * lm), Paint()..color = _c(stone));
+      canvas.drawRect(Rect.fromLTWH(p.dx - 0.2 * lm, p.dy - 0.78 * lm, 0.4 * lm, 0.24 * lm), Paint()..color = _c(stone));
+      final light = Rect.fromLTWH(p.dx - 0.13 * lm, p.dy - 0.78 * lm, 0.26 * lm, 0.2 * lm);
+      canvas.drawRect(light, Paint()..color = _c(_mixc(const [240, 226, 190], const [255, 196, 96], _night)));
+      if (_night > 0.2) {
+        _glow(canvas, light.center, 1.1 * lm, const [255, 196, 96], 0.55 * _night);
+      }
+      canvas.drawPath(
+        Path()
+          ..moveTo(p.dx - 0.28 * lm, p.dy - 0.78 * lm)
+          ..lineTo(p.dx, p.dy - 1.02 * lm)
+          ..lineTo(p.dx + 0.28 * lm, p.dy - 0.78 * lm)
+          ..close(),
+        Paint()..color = _c(stone),
+      );
+    }
+  }
+
+  /// The near left pavement, the strip the owner marked as empty: a vending
+  /// machine, a bicycle, planters and a stone lantern by the first house.
+  void _paintLeftProps(Canvas canvas) {
+    const x = -6.25;
+    final dark = _c(_p3([54, 58, 72], [40, 26, 60], [14, 10, 34], _tod));
+    final steel = _c(_p3([150, 152, 160], [88, 62, 108], [30, 24, 56], _tod));
+    final green = _c(_p3([70, 112, 84], [48, 54, 78], [14, 18, 38], _tod));
+    // vending machine, 1.8 m tall, its front softly lit
+    final a = _pt(x, 0, 1.62), b = _pt(x, 1.75, 1.47);
+    final vm = Rect.fromLTRB(a.dx, b.dy, a.dx + 1.0 * (_k / 1.55), a.dy);
+    canvas.drawRect(vm, Paint()..color = dark);
+    final front = _c(_mixc(const [210, 220, 214], const [120, 150, 160], _night));
+    canvas.drawRect(vm.deflate(vm.width * 0.12), Paint()..color = front);
+    for (var i = 0; i < 3; i++) {
+      canvas.drawRect(
+        Rect.fromLTWH(vm.left + vm.width * 0.2, vm.top + vm.height * (0.18 + 0.22 * i), vm.width * 0.6, vm.height * 0.1),
+        Paint()..color = _c(_mixc(const [220, 72, 80], const [255, 190, 120], _night), 0.85),
+      );
+    }
+    // bicycle against the wall
+    final w0 = _pt(x, 0.55, 2.0), w1 = _pt(x, 0.55, 2.5);
+    final wheel = math.max(2.0, 0.32 * _k / 2.25);
+    final line = Paint()
+      ..color = steel
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.8, wheel * 0.12);
+    canvas.drawCircle(w0, wheel, line);
+    canvas.drawCircle(w1, wheel, line);
+    canvas.drawLine(w0, w1.translate(0, -wheel * 0.9), line);
+    canvas.drawLine(w1, w1.translate(0, -wheel * 0.9), line);
+    canvas.drawLine(w0, w1.translate(0.1 * wheel, -wheel * 1.7), line);
+    // planters with a clipped shrub
+    for (var i = 0; i < 2; i++) {
+      final p0 = _pt(x + 0.25, 0, 2.75 + i * 0.5), m = _k / (2.7 + i * 0.5);
+      final box = Rect.fromLTWH(p0.dx - 0.17 * m, p0.dy - 0.32 * m, 0.34 * m, 0.32 * m);
+      canvas.drawRect(box, Paint()..color = Color.lerp(green, dark, 0.5)!);
+      canvas.drawOval(Rect.fromCenter(center: box.topCenter.translate(0, -0.08 * m), width: 0.5 * m, height: 0.36 * m), Paint()..color = green);
     }
   }
 
@@ -1191,8 +1400,8 @@ extension _Rail on CityWorld {
     final concrete = _c(_mixc(_p3([172, 168, 178], [108, 68, 116], [28, 22, 54], _tod), _hz, 0.18));
     final shade = _c(_mixc(_p3([138, 134, 148], [80, 48, 92], [18, 14, 40], _tod), _hz, 0.18));
     final steel = _c(_p3([84, 80, 94], [54, 34, 72], [16, 12, 36], _tod));
-    // piers and their caps
-    for (var x = 12 * u; x < w + 40 * u; x += 38 * u) {
+    // piers and their caps: they stand on the far shore, never on the road
+    for (var x = math.max(0.52 * w, 12 * u); x < w + 40 * u; x += 38 * u) {
       canvas.drawRect(Rect.fromLTRB(x - 1.5 * u, top + 3 * u, x + 1.5 * u, _waterY), Paint()..color = concrete);
       canvas.drawRect(Rect.fromLTRB(x + 0.2 * u, top + 3 * u, x + 1.5 * u, _waterY), Paint()..color = shade);
       canvas.drawRect(Rect.fromLTRB(x - 2.6 * u, top + 3 * u, x + 2.6 * u, top + 4.3 * u), Paint()..color = concrete);

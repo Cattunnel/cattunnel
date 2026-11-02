@@ -18,6 +18,7 @@ import 'package:trusttunnel/di/model/dependency_factory.dart';
 import 'package:trusttunnel/di/model/repository_factory.dart';
 import 'package:trusttunnel/di/widgets/dependency_scope.dart';
 import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
+import 'package:trusttunnel/feature/vpn/domain/networks_memory.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
 import 'package:vpn_plugin/models/net_diagnostic.dart';
@@ -81,8 +82,8 @@ class _FakeRepositoryFactory implements RepositoryFactory {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Future<SharedPreferences> _connect(WidgetTester tester, ServerData data) async {
-  SharedPreferences.setMockInitialValues({});
+Future<SharedPreferences> _connect(WidgetTester tester, ServerData data, {Map<String, Object> initial = const {}}) async {
+  SharedPreferences.setMockInitialValues(initial);
   // Wi-Fi; on iOS (the variant) there is no platform fingerprint to wait for.
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
     const MethodChannel('dev.fluttercommunity.plus/connectivity'),
@@ -151,7 +152,34 @@ void main() {
       );
 
       expect(VpnScope.antiDpiStatus.value, isNull);
-      expect(prefs.getKeys().where((key) => key.startsWith('anti_dpi_auto.s1.')).map(prefs.get), contains(1));
+      // The hint for the key is kept (it goes first next time), but the
+      // network is not marked: the subscription asked, not the network.
+      expect(prefs.getKeys().where((key) => key.startsWith('anti_dpi_sub.s1.')).map(prefs.get), contains(1));
+      expect(prefs.getKeys().where((key) => key.startsWith('anti_dpi_auto.s1.')), isEmpty);
+      expect(NetworksMemory.all(prefs), isEmpty);
+      await _finish(tester);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets(
+    'the key asks for the bypass: an old network mark of this key moves to the key (owner 02.11)',
+    (tester) async {
+      final prefs = await _connect(
+        tester,
+        const ServerData.empty(name: 'srv', ipAddress: '1.2.3.4:443').copyWith(
+          antiDpi: true,
+          antiDpiMode: ServerData.antiDpiAuto,
+        ),
+        initial: {'anti_dpi_auto.s1.oldnet': 2, 'anti_dpi_seen.s1.oldnet': 1, 'anti_dpi_auto.s2.oldnet': 3},
+      );
+
+      expect(prefs.getInt('anti_dpi_auto.s1.oldnet'), isNull);
+      expect(prefs.getInt('anti_dpi_seen.s1.oldnet'), isNull);
+      expect(prefs.getInt('anti_dpi_sub.s1.oldnet'), 2);
+      // Another server without the bypass in its key keeps its mark.
+      expect(prefs.getInt('anti_dpi_auto.s2.oldnet'), 3);
+      expect(NetworksMemory.all(prefs).map((n) => n.key), ['oldnet']);
       await _finish(tester);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),

@@ -130,7 +130,7 @@ class _CozyServersViewState extends State<CozyServersView> {
     _trackSession(state);
     if (current != null) _pingOnce(current);
 
-    if (widget.cityPop && current != null && !CozyServersView.useWideLayout(context)) {
+    if (widget.cityPop && current != null) {
       return _buildCityPop(context, servers, current, state);
     }
 
@@ -324,6 +324,19 @@ class _CozyServersViewState extends State<CozyServersView> {
               if (state != VpnState.disconnected) unawaited(ServerConnectionActions.disconnect(context));
             },
             onPickServer: () => _openPicker(context, servers, current, state),
+            wideServers: CozyServersView.useWideLayout(context)
+                ? Material(
+                    color: context.colors.backgroundSystem,
+                    borderRadius: BorderRadius.circular(28),
+                    clipBehavior: Clip.antiAlias,
+                    child: CozyServerPicker.panel(
+                      currentId: current.id,
+                      onOpenDetails: (server) => _openServerDetails(context, server),
+                      onPick: (server) => _switchTo(context, server, current, state),
+                      onAdd: () => presentAddServerFlow(context, pushServerDetails: _pushServerDetailsScreen),
+                    ),
+                  )
+                : null,
             topActions: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

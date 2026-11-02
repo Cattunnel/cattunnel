@@ -63,8 +63,9 @@ Future<void> _shot(
   required double width,
   required bool night,
   double scale = 1,
+  double? height,
 }) async {
-  final height = width >= 400 ? 915.0 : 800.0;
+  height ??= width >= 400 ? 915.0 : 800.0;
   await tester.binding.setSurfaceSize(Size(width, height));
   await tester.pumpWidget(
     RepaintBoundary(
@@ -101,7 +102,7 @@ Future<void> _shot(
   });
 }
 
-Widget _home(VpnState state, double tod) => Scaffold(
+Widget _home(VpnState state, double tod, {bool wide = false}) => Scaffold(
   backgroundColor: Colors.transparent,
   body: CityHomeBody(
     state: state,
@@ -114,6 +115,14 @@ Widget _home(VpnState state, double tod) => Scaffold(
     onPickServer: () {},
     still: 14,
     timeOfDay: tod,
+    wideServers: wide
+        ? ListView(
+            children: [
+              for (final name in ['Амстердам', 'Германия 1', 'Финляндия', 'США'])
+                ListTile(title: Text(name), subtitle: const Text('42 мс')),
+            ],
+          )
+        : null,
   ),
 );
 
@@ -312,6 +321,18 @@ void main() {
           );
         }
       }
+    }
+    // A tablet on its side (owner 02.11: «на широких экранах нету анимации
+    // города вообще»): the scene on the left, the cassette and the list right.
+    for (final MapEntry(key: tName, value: tod) in times.entries) {
+      await _shot(
+        tester,
+        'home_on_${tName}_wide1280',
+        _home(VpnState.connected, tod, wide: true),
+        width: 1280,
+        height: 800,
+        night: tod >= 1,
+      );
     }
     await tester.binding.setSurfaceSize(null);
     expect(tester.takeException(), isNull);

@@ -493,6 +493,35 @@
       }
     }
   },
+  "networksDetailsHint": "Нажмите на сеть, чтобы увидеть ключи и режимы",
+  "networksDetailsServerMode": "{server}: сработал режим {mode}",
+  "@networksDetailsServerMode": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "networksDetailsSeen": "последний раз {date}",
+  "@networksDetailsSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "networksDetailsGoneServer": "Ключ удалён из списка",
+  "networksDetailsKind": "Тип сети: {kind}",
+  "@networksDetailsKind": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
   "subscriptionHttpsOnlyError": "Разрешены только ссылки https:// — в подписке твои ключи",
   "shareSubscription": "Поделиться через QR",
   "shareSubscriptionTitle": "Отсканируй в CatTunnel",

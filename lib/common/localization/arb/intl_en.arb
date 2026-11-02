@@ -647,6 +647,35 @@
       }
     }
   },
+  "networksDetailsHint": "Tap a network to see the keys and techniques",
+  "networksDetailsServerMode": "{server}: technique {mode} worked",
+  "@networksDetailsServerMode": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "networksDetailsSeen": "last time {date}",
+  "@networksDetailsSeen": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "networksDetailsGoneServer": "Key no longer in the list",
+  "networksDetailsKind": "Network type: {kind}",
+  "@networksDetailsKind": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
   "subscriptionHttpsOnlyError": "Only https:// links are allowed - the subscription carries your keys",
   "shareSubscription": "Share via QR",
   "shareSubscriptionTitle": "Scan with CatTunnel",

@@ -23,12 +23,20 @@ class RememberedNetwork {
   /// The techniques that worked here, over the servers.
   final List<int> modes;
 
+  /// The technique that worked here, per server id.
+  final Map<String, int> modeByServer;
+
+  /// When it last worked here, per server id (older versions did not keep it).
+  final Map<String, DateTime> seenByServer;
+
   const RememberedNetwork({
     required this.key,
     required this.kind,
     required this.name,
     required this.directFailsUntil,
     required this.modes,
+    this.modeByServer = const {},
+    this.seenByServer = const {},
   });
 
   /// Whether the app knows that the plain connection does not work here.
@@ -45,12 +53,23 @@ class RememberedNetwork {
 /// the home Wi-Fi and the university are two networks and not one "wifi".
 abstract final class NetworksMemory {
   /// Every network the app knows something about, the freshest first.
-  static List<RememberedNetwork> all(SharedPreferences preferences, {DateTime? now}) {
+  ///
+  /// [bySubscription]: ids of the servers whose subscription itself asks for
+  /// the bypass. What worked for them says nothing about the network, so it
+  /// is not shown (marks older versions wrote move away on the next connect,
+  /// see [AntiDpiAuto.moveToSubscription]).
+  static List<RememberedNetwork> all(
+    SharedPreferences preferences, {
+    DateTime? now,
+    Set<String> bySubscription = const {},
+  }) {
     final at = now ?? DateTime.now();
     final kinds = <String, String>{};
     final written = <String, int>{};
     final since = <String, int>{};
     final modes = <String, Set<int>>{};
+    final byServer = <String, Map<String, int>>{};
+    final seen = <String, Map<String, DateTime>>{};
 
     for (final key in preferences.getKeys()) {
       if (key.startsWith(NetworkFingerprint.kindKey(''))) {
@@ -71,11 +90,22 @@ abstract final class NetworksMemory {
         written[network] = value;
         continue;
       }
-      if (key.startsWith(AntiDpiAuto.modeKeyPrefix)) {
+      if (key.startsWith(AntiDpiAuto.seenKeyPrefix)) {
+        final network = _networkOf(key, AntiDpiAuto.seenKeyPrefix);
+        final server = _serverOf(key, AntiDpiAuto.seenKeyPrefix);
+        final value = preferences.getInt(key);
+        if (network == null || server == null || value == null) continue;
+        (seen[network] ??= {})[server] = DateTime.fromMillisecondsSinceEpoch(value);
+        continue;
+      }
+      if (key.startsWith('${AntiDpiAuto.modeKeyPrefix}.')) {
         final network = _networkOf(key, AntiDpiAuto.modeKeyPrefix);
+        final server = _serverOf(key, AntiDpiAuto.modeKeyPrefix);
         final mode = preferences.getInt(key);
-        if (network == null || mode == null) continue;
+        if (network == null || server == null || mode == null) continue;
+        if (bySubscription.contains(server)) continue;
         (modes[network] ??= <int>{}).add(mode);
+        (byServer[network] ??= {})[server] = mode;
       }
     }
 
@@ -103,6 +133,11 @@ abstract final class NetworksMemory {
         name: NetworkFingerprint.customName(preferences, key),
         directFailsUntil: direct[key],
         modes: known ?? const [],
+        modeByServer: byServer[key] ?? const {},
+        seenByServer: {
+          for (final entry in (seen[key] ?? const <String, DateTime>{}).entries)
+            if (byServer[key]?.containsKey(entry.key) ?? false) entry.key: entry.value,
+        },
       );
     }
 
@@ -146,6 +181,8 @@ abstract final class NetworksMemory {
       AntiDpiAuto.cursorKeyPrefix,
       AntiDpiAuto.directKeyPrefix,
       AntiDpiAuto.directSinceKeyPrefix,
+      AntiDpiAuto.subHintKeyPrefix,
+      AntiDpiAuto.seenKeyPrefix,
     ]) {
       if (_networkOf(prefKey, prefix) == key) return true;
     }
@@ -160,7 +197,9 @@ abstract final class NetworksMemory {
       prefKey.startsWith(AntiDpiAuto.modeKeyPrefix) ||
       prefKey.startsWith(AntiDpiAuto.cursorKeyPrefix) ||
       prefKey.startsWith(AntiDpiAuto.directKeyPrefix) ||
-      prefKey.startsWith(AntiDpiAuto.directSinceKeyPrefix);
+      prefKey.startsWith(AntiDpiAuto.directSinceKeyPrefix) ||
+      prefKey.startsWith(AntiDpiAuto.subHintKeyPrefix) ||
+      prefKey.startsWith(AntiDpiAuto.seenKeyPrefix);
 
   /// The network of a key of the memory: the last part of the key is the
   /// network, the rest is the server.
@@ -171,5 +210,16 @@ abstract final class NetworksMemory {
     if (parts.length < 2) return null;
 
     return parts.last;
+  }
+
+  /// The server of a key of the memory: everything between the prefix and
+  /// the network.
+  static String? _serverOf(String key, String prefix) {
+    if (!key.startsWith('$prefix.')) return null;
+    final rest = key.substring(prefix.length + 1);
+    final cut = rest.lastIndexOf('.');
+    if (cut <= 0) return null;
+
+    return rest.substring(0, cut);
   }
 }
