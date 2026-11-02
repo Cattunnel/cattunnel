@@ -687,8 +687,11 @@ extension _FacGen on CityWorld {
   void _buildFac(math.Random r) {
     _fac.clear();
     // Start before the left edge of the screen, so no strip of sky shows
-    // between the first house and the frame (owner 01.11).
-    var s = 1.2;
+    // between the first house and the frame (owner 01.11). The facade plane
+    // is at x = -6.6: on a phone 1.2 m deep is already past the edge; a wide
+    // frame (tablet, 02.11) moves the vanishing point right, so the first
+    // house comes nearer until its front edge is off screen again.
+    var s = math.min(1.2, 0.8 * 6.6 * _k / math.max(1.0, _vpx));
     var idx = 0;
     var prev = -1;
     const words = citySignHorizontal;

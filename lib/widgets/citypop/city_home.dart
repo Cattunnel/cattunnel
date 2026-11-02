@@ -27,6 +27,10 @@ bool cityIsTrouble(VpnState state) => switch (state) {
 ///
 /// It only draws: connecting, the server list and the session timer stay in
 /// CozyServersView, which passes the callbacks in.
+/// Side by side, the share of the scene's height that is shown: the same
+/// as above the cassette panel on a phone.
+const double _wideSceneShown = 0.69;
+
 class CityHomeBody extends StatelessWidget {
   final VpnState state;
   final String serverName;
@@ -90,13 +94,26 @@ class CityHomeBody extends StatelessWidget {
           final scene = Stack(
             fit: StackFit.expand,
             children: [
-              CityScene(
-                alive: alive,
-                fault: trouble ? 1 : 0,
-                dark: night,
-                still: still,
-                timeOfDay: timeOfDay,
-                planeNow: still != null,
+              // On a phone the cassette panel covers the lower third of the
+              // scene, which is mostly road. Side by side nothing covers it,
+              // so the scene is drawn as tall as on a phone (the panel's share
+              // below the frame) and that lower part is cut off: the street
+              // keeps its phone framing instead of a field of empty asphalt
+              // (owner 02.11 on 1280x800: «так точно не пойдёт»).
+              ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topCenter,
+                  minHeight: h / _wideSceneShown,
+                  maxHeight: h / _wideSceneShown,
+                  child: CityScene(
+                    alive: alive,
+                    fault: trouble ? 1 : 0,
+                    dark: night,
+                    still: still,
+                    timeOfDay: timeOfDay,
+                    planeNow: still != null,
+                  ),
+                ),
               ),
               Positioned(
                 left: 14,
