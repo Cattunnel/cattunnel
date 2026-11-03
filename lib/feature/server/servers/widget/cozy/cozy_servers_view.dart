@@ -101,7 +101,9 @@ class _CozyServersViewState extends State<CozyServersView> with WidgetsBindingOb
   /// sees it, so it pauses and the label keeps counting from the same
   /// starting moment on resume.
   void _syncSessionTicker() {
-    final run = _connectedSince != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    // Null lifecycle (desktop before the first change) counts as visible.
+    final state = WidgetsBinding.instance.lifecycleState;
+    final run = _connectedSince != null && (state == null || state == AppLifecycleState.resumed);
     if (run && _ticker == null) {
       _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() {});

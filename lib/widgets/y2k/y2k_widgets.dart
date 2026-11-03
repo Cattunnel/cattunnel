@@ -79,7 +79,9 @@ class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStat
   /// is paused (in the background, screen off, update sheet): nothing
   /// visible changes - the picture freezes either way.
   void _syncClock() {
-    if (_still || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+    // Null lifecycle (desktop before the first change) counts as visible.
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (_still || (state != null && state != AppLifecycleState.resumed)) {
       _clock.stop();
     } else if (!_clock.isAnimating) {
       unawaited(_clock.repeat());

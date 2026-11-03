@@ -184,7 +184,12 @@ class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderSt
   /// (in the background, screen off, update sheet over the window) -
   /// nothing to redraw, so the ticker stops and starts again on resume.
   void _syncTicker() {
-    if (_still || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+    // null means the lifecycle has not fired yet (desktop appears to sit in
+    // that state at startup), so treat it as visible rather than frozen.
+    final hidden = WidgetsBinding.instance.lifecycleState == null
+        ? false
+        : WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    if (_still || hidden) {
       _ticker.stop();
     } else if (!_ticker.isActive) {
       unawaited(_ticker.start());
