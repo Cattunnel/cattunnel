@@ -48,6 +48,8 @@ Third-party code and assets included in this repository:
   encoding).
 - assets/sounds/cat_purr.ogg: cut from "6_Cat, purr.wav" by
   16GPanskaZlochova_Eliska (https://freesound.org/s/496275/), CC0 1.0.
+- assets/music/citypop_theme.ogg: the City pop song, our own composition,
+  synthesized in code; instruments rendered with Surge XT factory patches.
 - Illustrations of the cat "Marsik" (assets/images/cats/, design/cats_png/)
   and the app icon (assets/icon/) were created with ChatGPT (OpenAI).
 - tools/engine_native/0001-anti-dpi-desync.patch: anti-DPI techniques for the
