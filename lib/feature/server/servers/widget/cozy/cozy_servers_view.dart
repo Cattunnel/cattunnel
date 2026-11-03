@@ -69,7 +69,7 @@ class CozyServersView extends StatefulWidget {
   State<CozyServersView> createState() => _CozyServersViewState();
 }
 
-class _CozyServersViewState extends State<CozyServersView> {
+class _CozyServersViewState extends State<CozyServersView> with WidgetsBindingObserver {
   final _scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
   /// When the VPN was seen reaching "connected" - the session timer counts
@@ -80,6 +80,7 @@ class _CozyServersViewState extends State<CozyServersView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final deepLinkData = widget.deepLinkData;
     if (deepLinkData != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -90,22 +91,39 @@ class _CozyServersViewState extends State<CozyServersView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
   }
+
+  /// The one-second timer rebuilds only the session label. While the app
+  /// is not visible (in the background, screen off, update sheet) no one
+  /// sees it, so it pauses and the label keeps counting from the same
+  /// starting moment on resume.
+  void _syncSessionTicker() {
+    final run = _connectedSince != null && WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    if (run && _ticker == null) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!run && _ticker != null) {
+      _ticker?.cancel();
+      _ticker = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _syncSessionTicker();
 
   void _trackSession(VpnState state) {
     if (state == VpnState.connected) {
       if (_connectedSince == null) {
         _connectedSince = DateTime.now();
-        _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-          if (mounted) setState(() {});
-        });
+        _syncSessionTicker();
       }
     } else if (state == VpnState.disconnected && _connectedSince != null) {
       _connectedSince = null;
-      _ticker?.cancel();
-      _ticker = null;
+      _syncSessionTicker();
     }
   }
 

@@ -58,14 +58,28 @@ class Y2kBackdrop extends StatefulWidget {
   State<Y2kBackdrop> createState() => _Y2kBackdropState();
 }
 
-class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStateMixin {
+class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _clock = AnimationController(vsync: this, duration: const Duration(seconds: 18));
+  bool _still = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Respect "reduce motion": the picture stays, the drift and sweep stop.
-    if (MediaQuery.of(context).disableAnimations) {
+    _still = MediaQuery.of(context).disableAnimations;
+    _syncClock();
+  }
+
+  /// The shards and the sweep stop for reduce motion and while the app
+  /// is paused (in the background, screen off, update sheet): nothing
+  /// visible changes - the picture freezes either way.
+  void _syncClock() {
+    if (_still || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       _clock.stop();
     } else if (!_clock.isAnimating) {
       unawaited(_clock.repeat());
@@ -73,7 +87,11 @@ class _Y2kBackdropState extends State<Y2kBackdrop> with SingleTickerProviderStat
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _syncClock();
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _clock.dispose();
     super.dispose();
   }
@@ -334,8 +352,21 @@ class Y2kConnectButton extends StatefulWidget {
 }
 
 class _Y2kConnectButtonState extends State<Y2kConnectButton> with SingleTickerProviderStateMixin {
-  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(seconds: 14))
-    ..repeat();
+  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(seconds: 14));
+  bool _still = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reduce motion already paints the rings still (turns = 0): the spin
+    // controller must not keep scheduling frames on top of that.
+    _still = MediaQuery.of(context).disableAnimations;
+    if (_still) {
+      _spin.stop();
+    } else if (!_spin.isAnimating) {
+      _spin.repeat();
+    }
+  }
 
   @override
   void dispose() {

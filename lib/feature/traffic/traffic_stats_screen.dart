@@ -27,7 +27,7 @@ class TrafficStatsScreen extends StatefulWidget {
   State<TrafficStatsScreen> createState() => _TrafficStatsScreenState();
 }
 
-class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
+class _TrafficStatsScreenState extends State<TrafficStatsScreen> with WidgetsBindingObserver {
   List<TrafficRow>? _rows;
   Object? _error;
   Timer? _refresh;
@@ -42,13 +42,44 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     // Live while open: the recorder samples every 30 s.
-    _refresh = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+    _refresh = _startRefreshTimer();
+  }
+
+  Timer? _startRefreshTimer() {
+    if (WidgetsBinding.instance.lifecycleState != null &&
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return null;
+    }
+    return Timer.periodic(const Duration(seconds: 30), (_) => _load());
+  }
+
+  /// The period refresh stops while the app is not visible (in the
+  /// background, screen off, update sheet): the numbers are not seen, so
+  /// they are re-read on resume. A ready-made screen stays as is.
+  void _syncRefreshTimer() {
+    final run = WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    if (run && _refresh == null) {
+      _refresh = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+    } else if (!run && _refresh != null) {
+      _refresh?.cancel();
+      _refresh = null;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
+    _syncRefreshTimer();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _refresh?.cancel();
     super.dispose();
   }

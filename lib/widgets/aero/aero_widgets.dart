@@ -75,12 +75,38 @@ abstract final class _Tilt {
   static StreamSubscription<AccelerometerEvent>? _sub;
   static int _users = 0;
   static Offset? _base;
+  static WidgetsBindingObserver? _lifecycle;
+  static bool _paused = false;
 
   static bool get _supported => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   static void attach() {
     _users++;
-    if (_sub != null || !_supported) return;
+    if (_lifecycle == null) {
+      _lifecycle = _TiltObserver();
+      WidgetsBinding.instance.addObserver(_lifecycle!);
+    }
+    _subscribe();
+  }
+
+  /// Pauses the native sensor listener when the app goes into the
+  /// background: an event stream that is no longer seen still wakes the
+  /// CPU on Android (called from [_TiltObserver], for every backdrop).
+  static void _background() {
+    _paused = true;
+    unawaited(_sub?.cancel());
+    _sub = null;
+    _base = null;
+    value.value = Offset.zero;
+  }
+
+  static void _foreground() {
+    _paused = false;
+    if (_users > 0) _subscribe();
+  }
+
+  static void _subscribe() {
+    if (_sub != null || !_supported || _paused) return;
     try {
       _sub = accelerometerEventStream(samplingPeriod: SensorInterval.gameInterval).listen(
         (e) {
@@ -98,10 +124,25 @@ abstract final class _Tilt {
   static void detach() {
     _users--;
     if (_users > 0) return;
+    if (_lifecycle != null) {
+      WidgetsBinding.instance.removeObserver(_lifecycle!);
+      _lifecycle = null;
+    }
     unawaited(_sub?.cancel());
     _sub = null;
     _base = null;
     value.value = Offset.zero;
+  }
+}
+
+class _TiltObserver with WidgetsBindingObserver {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _Tilt._foreground();
+    } else {
+      _Tilt._background();
+    }
   }
 }
 
@@ -119,7 +160,7 @@ class AeroBackdrop extends StatefulWidget {
   State<AeroBackdrop> createState() => _AeroBackdropState();
 }
 
-class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderStateMixin {
+class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final Ticker _ticker = createTicker(_tick);
   final _time = ValueNotifier<double>(0);
   Offset _tilt = Offset.zero;
@@ -128,6 +169,7 @@ class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _Tilt.attach();
   }
 
@@ -135,12 +177,22 @@ class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderSt
   void didChangeDependencies() {
     super.didChangeDependencies();
     _still = MediaQuery.of(context).disableAnimations;
-    if (_still) {
+    _syncTicker();
+  }
+
+  /// The sky is redrawn every frame while the app is visible; paused
+  /// (in the background, screen off, update sheet over the window) -
+  /// nothing to redraw, so the ticker stops and starts again on resume.
+  void _syncTicker() {
+    if (_still || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
       _ticker.stop();
     } else if (!_ticker.isActive) {
       unawaited(_ticker.start());
     }
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _syncTicker();
 
   void _tick(Duration elapsed) {
     // Ease towards the tilt so the layers glide instead of jumping.
@@ -150,6 +202,7 @@ class _AeroBackdropState extends State<AeroBackdrop> with SingleTickerProviderSt
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker.dispose();
     _time.dispose();
     _Tilt.detach();
