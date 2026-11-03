@@ -98,6 +98,15 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
+
+            // Task 88: R8 strips unreachable Java/Kotlin and shrinks
+            // resources not reachable from the manifest/data (dex and
+            // unused AAR resource files). Flutter and the plugins carry
+            // their own consumer rules; the engine's JNI surface and this
+            // app's own forms are kept explicitly in proguard-rules.pro.
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 
