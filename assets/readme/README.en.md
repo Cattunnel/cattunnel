@@ -1,10 +1,10 @@
 # CatTunnel
 
-An Android VPN client for the **TrustTunnel** protocol - a fork of the open-source TrustTunnel client (Apache-2.0 license). Mascot and helper: **Marsik** the cat.
+An Android, Windows and Linux VPN client for the **TrustTunnel** protocol - a fork of the open-source TrustTunnel client (Apache-2.0 license). Mascot and helper: **Marsik** the cat.
 
 ## Quick start
 
-1. Get a subscription from your VPN administrator (e.g. in the bot: `/config` → Android → "Subscription"). It comes with a link and an encryption key.
+1. Get a subscription from the administrator of your VPN server: a link and an encryption key.
 2. "Add server" → "Subscription" → paste the link and the key. Or scan a subscription QR code (see below).
 3. Pick a server and tap "Connect" - or the big button with Marsik if the "Cozy" style is on.
 
@@ -106,7 +106,7 @@ Section "Settings → Cyber security".
 - **Subscription QR link:** `cattunnel://subscription?url=…&key=…&name=…`.
 - **Server certificate verification:** the server's own certificate (PEM) → only that; otherwise Android's system root certificates without "Russian Trusted Root/Sub CA"; user-installed ones only if the strict check is turned off.
 - **Permissions:** internet, VPN, notifications, camera (QR scanner), biometrics (app lock), background work (VPN service), installing apps (CatTunnel updates only).
-- **Licenses:** Apache-2.0 (TrustTunnel). Purring sound - CC0 (freesound.org, recording 496275).
+- **Licenses:** Apache-2.0 (TrustTunnel and the CatTunnel changes). The anti-DPI techniques come from ByeDPI (MIT). Purring sound - CC0 (freesound.org, recording 496275). The City pop song is the project's own composition. Full list: "Settings → About → Licenses".
 
 ## How it differs from TrustTunnel
 
