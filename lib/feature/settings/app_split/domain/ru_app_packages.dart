@@ -89,7 +89,6 @@ const ruAppPackages = <String>{
   // Games with servers in Russia
   'com.tanksblitz',
   'com.gamesforfriends.trueorfalse.ru',
-  'com.rstgames.durak',
   'com.teremok.influence',
   // Mobile operators
   'ru.mts.mymts',

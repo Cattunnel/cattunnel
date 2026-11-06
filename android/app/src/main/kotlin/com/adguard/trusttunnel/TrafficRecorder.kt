@@ -51,6 +51,33 @@ object TrafficRecorder {
     private var foldedHour = -1L
     private var trimmedDay = -1L
 
+    private const val ENABLED_KEY = "flutter.traffic_collection_enabled"
+    private const val DELETE_AT_KEY = "flutter.traffic_collection_delete_at"
+    private fun preferences() = app.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+
+    fun setCollection(enabled: Boolean, deleteAt: Long): Unit = onRecorderThread {
+        expire()
+        val prefs = preferences()
+        if (prefs.getBoolean(ENABLED_KEY, true) != enabled) {
+            val edit = prefs.edit().putBoolean(ENABLED_KEY, enabled)
+            if (enabled) edit.remove(DELETE_AT_KEY) else edit.putLong(DELETE_AT_KEY, deleteAt)
+            check(edit.commit())
+            lastRx = -1L
+            lastTx = -1L
+            wasActive = false
+        }
+        Unit
+    }
+
+    private fun expire() {
+        val prefs = preferences()
+        if (!prefs.getBoolean(ENABLED_KEY, true) && prefs.contains(DELETE_AT_KEY) &&
+            System.currentTimeMillis() >= prefs.getLong(DELETE_AT_KEY, Long.MAX_VALUE)) {
+            clearFiles()
+            check(prefs.edit().remove(DELETE_AT_KEY).commit())
+        }
+    }
+
     private fun file(name: String) = File(app.filesDir, name)
 
     private val tick = object : Runnable {
@@ -77,13 +104,18 @@ object TrafficRecorder {
     }
 
     /** Forgets all statistics. */
-    fun clear() {
-        onRecorderThread {
-            file(ARCHIVE).delete()
-            file(PENDING).delete()
-            file("$ARCHIVE.tmp").delete()
-            file("$PENDING.tmp").delete()
+    fun clear() { onRecorderThread { clearFiles() } }
+
+    private fun clearFiles() {
+        listOf(ARCHIVE, PENDING, "$ARCHIVE.tmp", "$PENDING.tmp").forEach { name ->
+            val target = file(name)
+            check(!target.exists() || target.delete())
         }
+        lastRx = -1L
+        lastTx = -1L
+        wasActive = false
+        foldedHour = -1L
+        trimmedDay = -1L
     }
 
     private fun <T> onRecorderThread(block: () -> T): T {
@@ -95,6 +127,13 @@ object TrafficRecorder {
 
     /** Returns whether the VPN is up now. */
     private fun sample(): Boolean {
+        expire()
+        if (!preferences().getBoolean(ENABLED_KEY, true)) {
+            lastRx = -1L
+            lastTx = -1L
+            wasActive = false
+            return false
+        }
         val active = OwnVpn.isActive(app)
         val uid = Process.myUid()
         val rx = TrafficStats.getUidRxBytes(uid)

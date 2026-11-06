@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/common/utils/direct_request_retry.dart';
 import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/feature/updates/domain/app_update.dart';
 
@@ -69,8 +70,8 @@ class UpdateService {
   /// stay quiet (automatic one).
   static Future<AppUpdate?> check() async {
     final ((status, body), (sigStatus, sig)) = await (
-      getLimited(Uri.parse(_manifestUrl), maxBytes: 256 * 1024, timeout: _checkTimeout),
-      getLimited(Uri.parse('$_manifestUrl.sig'), maxBytes: 4 * 1024, timeout: _checkTimeout),
+      _readManifest(Uri.parse(_manifestUrl), 256 * 1024),
+      _readManifest(Uri.parse('$_manifestUrl.sig'), 4 * 1024),
     ).wait;
     if (status != 200) throw HttpException('latest.json: HTTP $status');
     if (sigStatus != 200) throw HttpException('latest.json.sig: HTTP $sigStatus');
@@ -96,6 +97,14 @@ class UpdateService {
 
     return update.build > current ? update : null;
   }
+
+  static Future<(int, Uint8List)> _readManifest(Uri uri, int maxBytes) => retryDirectRead(() async {
+    final result = await getLimited(uri, maxBytes: maxBytes, timeout: _checkTimeout);
+    if (result.$1 == 408 || result.$1 == 429 || result.$1 >= 500) {
+      throw HttpException('Update server: HTTP ${result.$1}');
+    }
+    return result;
+  }, retryable: (error) => error is HttpException);
 
   /// Throws [FormatException] unless [signature] is our key's signature of
   /// exactly these bytes.

@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tray_manager/tray_manager.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/logging/enum/logging_level.dart';
@@ -15,6 +16,8 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/vpn_configuration_log_level.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/app/controller/app_window_controller.dart';
+import 'package:trusttunnel/feature/app/controller/desktop_app_window_controller.dart';
+import 'package:trusttunnel/feature/app/controller/window_close_preferences.dart';
 import 'package:trusttunnel/feature/menu_bar/tray_manager/macos/tray_manager_macos.dart';
 import 'package:trusttunnel/feature/menu_bar/tray_manager/macos/tray_menu_data.dart';
 import 'package:trusttunnel/feature/routing/routing/widgets/scope/routing_scope.dart';
@@ -75,6 +78,9 @@ class _TrayMenuScopeState extends State<TrayMenuScope> {
       _serversController = ServersScope.controllerOf(context);
       _appLoggingController = AppLoggingScope.controllerOf(context);
 
+      if (_appWindowController case final DesktopAppWindowController desktop) {
+        desktop.onCloseRequested = _onWindowClose;
+      }
       _enqueueSync();
     }
   }
@@ -202,6 +208,68 @@ class _TrayMenuScopeState extends State<TrayMenuScope> {
     );
   }
 
+  Future<void> _onWindowClose() async {
+    final hasTray = defaultTargetPlatform != TargetPlatform.linux || LinuxSniTrayApi.available;
+    final prefs = context.dependencyFactory.sharedPreferences;
+    final action = resolveWindowClose(
+      preference: WindowClosePreferences.read(prefs),
+      hasTray: hasTray,
+      vpnActive: _vpnController.liveState != VpnState.disconnected,
+    );
+    var choice = action;
+    if (action == WindowCloseAction.ask) {
+      var remember = false;
+      choice =
+          await showDialog<WindowCloseAction>(
+            context: context,
+            builder: (dialogContext) => StatefulBuilder(
+              builder: (dialogContext, update) => AlertDialog(
+                title: Text(context.ln.closeAppTitle),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(hasTray ? context.ln.closeAppDescription : context.ln.closeAppNoTrayDescription),
+                    if (hasTray)
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(context.ln.rememberCloseChoice),
+                        value: remember,
+                        onChanged: (value) => update(() => remember = value),
+                      ),
+                  ],
+                ),
+                actions: [
+                  if (hasTray)
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext, WindowCloseAction.tray),
+                      child: Text(context.ln.minimizeToTray),
+                    ),
+                  if (!hasTray)
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(context.ln.cancel),
+                    ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, WindowCloseAction.exit),
+                    child: Text(context.ln.quit),
+                  ),
+                ],
+              ),
+            ),
+          ) ??
+          WindowCloseAction.ask;
+      if (!mounted) return;
+      if (remember && choice != WindowCloseAction.ask) {
+        await WindowClosePreferences.write(prefs, choice);
+      }
+    }
+    if (choice == WindowCloseAction.tray) {
+      await _appWindowController.hideMainWindow();
+    } else if (choice == WindowCloseAction.exit) {
+      await _onQuitPressed();
+    }
+  }
+
   // Goes through AppLifecycleListener.onExitRequested (VpnScope), which
   // stops the VPN first on Windows; SystemNavigator.pop doesn't exit on desktops.
   Future<void> _onQuitPressed() async {
@@ -318,6 +386,9 @@ class _TrayMenuScopeState extends State<TrayMenuScope> {
   @override
   void dispose() {
     _isDisposed = true;
+    if (_isMacOS && _appWindowController is DesktopAppWindowController) {
+      (_appWindowController as DesktopAppWindowController).onCloseRequested = null;
+    }
     unawaited(_trayManager?.dispose());
     super.dispose();
   }

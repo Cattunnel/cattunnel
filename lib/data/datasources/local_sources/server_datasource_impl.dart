@@ -65,7 +65,7 @@ class ServerDataSourceImpl implements ServerDataSource {
         xhttpPath: Value(request.xhttpPath),
         blockQuic: Value(request.blockQuic),
         ruExit: Value(request.ruExit),
-        tlsPrefix: Value(request.tlsPrefix),
+        tlsPrefix: const Value(null),
         routingProfileId: int.parse(
           request.routingProfileId,
         ),
@@ -279,7 +279,7 @@ class ServerDataSourceImpl implements ServerDataSource {
         xhttpPath: Value(request.xhttpPath),
         blockQuic: Value(request.blockQuic),
         ruExit: Value(request.ruExit),
-        tlsPrefix: Value(request.tlsPrefix),
+        tlsPrefix: const Value(null),
         customSni: Value(request.customSni),
       ),
     );
@@ -396,7 +396,9 @@ class ServerDataSourceImpl implements ServerDataSource {
       blockQuic: server.blockQuic,
       ruExit: server.ruExit,
       certificate: server.certificate?.data ?? '',
-      clientRandom: server.tlsPrefix ?? '',
+      // Ignore legacy fixed prefixes stored before 1.5.9.
+      // ignore: avoid_redundant_argument_values
+      clientRandom: '',
       customSni: server.customSni ?? '',
       username: server.username,
       password: server.password,

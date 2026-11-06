@@ -34,12 +34,16 @@ void main() {
     expect(found?.id, '7');
   });
 
-  test('another account, another key or a subscription server - no replacement', () {
+  test('a stored server with the old non-empty prefix is still replaced', () {
+    final stored = Server(id: '8', serverData: data(prefix: '0a0b0c'));
+    expect(service.findServerToReplace(data(), [stored])?.id, '8');
+  });
+
+  test('another account or a subscription server - no replacement', () {
     final manual = Server(id: '1', serverData: data());
     final fromSubscription = Server(id: '2', serverData: data(subscription: 'Family'));
     expect(service.findServerToReplace(data(user: 'bob'), [manual]), isNull);
     expect(service.findServerToReplace(data(pass: 'other'), [manual]), isNull);
-    expect(service.findServerToReplace(data(prefix: 'abcd'), [manual]), isNull);
     expect(service.findServerToReplace(data(), [fromSubscription]), isNull);
   });
 }

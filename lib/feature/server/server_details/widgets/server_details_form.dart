@@ -606,25 +606,6 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
       error: _error(PresentationFieldName.sni),
     ),
     CustomTextField(
-      value: _formData.tlsPrefix,
-      hint: context.ln.clientRandomHint,
-      label: context.ln.clientRandomLabel,
-      helper: context.ln.clientRandomHelper,
-      counter: const SizedBox.shrink(),
-      maxLength: 64,
-      onChanged: (tls) => _onDataChanged(
-        context,
-        clientRandom: ValueData(
-          tls.isEmpty ? null : tls,
-        ),
-      ),
-      error: [
-        PresentationFieldName.clientRandom,
-        PresentationFieldName.clientRandomMask,
-        PresentationFieldName.clientRandomValue,
-      ].map(_error).nonNulls.firstOrNull,
-    ),
-    CustomTextField(
       value: _formData.tlsAuthKey,
       hint: context.ln.tlsAuthKeyHint,
       label: context.ln.tlsAuthKeyLabel,

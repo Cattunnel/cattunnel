@@ -9,6 +9,7 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/logging/observers/logging_navigator_observer.dart';
 import 'package:trusttunnel/common/theme/appearance_preferences.dart';
 import 'package:trusttunnel/common/utils/device_orientation_policy.dart';
+import 'package:trusttunnel/feature/app/app_keys.dart';
 import 'package:trusttunnel/feature/app/widgets/app_system_ui_shell.dart';
 import 'package:trusttunnel/feature/navigation/navigation_screen.dart';
 import 'package:trusttunnel/feature/security/domain/security_platform.dart';
@@ -103,6 +104,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   }
 
   Widget _materialApp(BuildContext context, Locale locale, ThemeData? own) => MaterialApp(
+    scaffoldMessengerKey: appMessengerKey,
+    navigatorKey: appNavigatorKey,
     // «City pop» keeps the light/dark setting: its paper theme or its night one.
     theme: own ?? (_cityPop ? context.dependencyFactory.cityPopThemeData : context.dependencyFactory.lightThemeData),
     darkTheme:

@@ -77,7 +77,7 @@ void main() {
       expect(decoded.addresses, endpoint.addresses);
       expect(decoded.username, endpoint.username);
       expect(decoded.password, endpoint.password);
-      expect(decoded.clientRandom, endpoint.clientRandom);
+      expect(decoded.clientRandom, isEmpty);
       expect(decoded.customSni, endpoint.customSni);
       expect(decoded.certificate.trim(), endpoint.certificate.trim());
       expect(decoded.upStreamProtocol, endpoint.upStreamProtocol);
@@ -176,13 +176,13 @@ void main() {
     expect(withKey, contains('client_random_auth_key = "${key.toLowerCase()}"'));
     // With the key the fixed prefix would only mark the connection again.
     expect(withKey, contains('client_random = ""'));
-    // No key: the prefix stays as before.
-    expect(engineConfig(''), contains('client_random = "abcdef"'));
+    // No key: ClientHello remains random.
+    expect(engineConfig(''), contains('client_random = ""'));
     expect(engineConfig(''), isNot(contains('client_random_auth_key')));
-    // Too short, odd length, not hex: dropped, the prefix stays.
+    // Invalid auth keys are dropped; the old fixed prefix is ignored.
     for (final bad in ['0011', '${key}0', 'zz112233445566778899aabbccddeeff']) {
       expect(engineConfig(bad), isNot(contains('client_random_auth_key')), reason: bad);
-      expect(engineConfig(bad), contains('client_random = "abcdef"'), reason: bad);
+      expect(engineConfig(bad), contains('client_random = ""'), reason: bad);
     }
   });
 

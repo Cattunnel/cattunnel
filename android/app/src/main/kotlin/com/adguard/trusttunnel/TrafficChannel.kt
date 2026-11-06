@@ -21,6 +21,16 @@ class TrafficChannel(messenger: BinaryMessenger) : MethodChannel.MethodCallHandl
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         val work: () -> Any? = when (call.method) {
             "read" -> TrafficRecorder::snapshot
+            "setCollection" -> {
+                val enabled = call.argument<Boolean>("enabled")
+                val deleteAt = call.argument<Number>("deleteAt")?.toLong()
+                if (enabled == null || deleteAt == null) {
+                    result.error("traffic_error", "Invalid collection settings", null)
+                    return
+                }
+                val action: () -> Any? = { TrafficRecorder.setCollection(enabled, deleteAt); null }
+                action
+            }
             "clear" -> {
                 { TrafficRecorder.clear() }
             }

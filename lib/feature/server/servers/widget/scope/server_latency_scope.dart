@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
+import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/server/servers/controller/server_latency_controller.dart';
+import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
+import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
 /// Global scope exposing one shared [ServerLatencyController].
 ///
@@ -28,6 +32,8 @@ class ServerLatencyScope extends StatefulWidget {
 
 class _ServerLatencyScopeState extends State<ServerLatencyScope> {
   late final ServerLatencyController _controller;
+  late final ValueListenable<VpnState> _vpnState;
+  String? _selectedId;
 
   @override
   void initState() {
@@ -35,10 +41,27 @@ class _ServerLatencyScopeState extends State<ServerLatencyScope> {
     _controller = ServerLatencyController(
       timeoutRepository: context.repositoryFactory.serverTestTimeoutRepository,
     );
+    _vpnState = VpnScope.vpnControllerOf(context, listen: false).stateListenable;
+    _controller.connectionChanged(_vpnState.value, notify: false);
+    _vpnState.addListener(_connectionChanged);
+  }
+
+  void _connectionChanged() => _controller.connectionChanged(_vpnState.value);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final servers = ServersScope.controllerOf(context);
+    final selected = servers.selectedServer ?? (servers.servers.isEmpty ? null : servers.servers.first);
+    if (selected?.id != _selectedId) {
+      _selectedId = selected?.id;
+      _controller.invalidate(notify: false);
+    }
   }
 
   @override
   void dispose() {
+    _vpnState.removeListener(_connectionChanged);
     _controller.dispose();
     super.dispose();
   }

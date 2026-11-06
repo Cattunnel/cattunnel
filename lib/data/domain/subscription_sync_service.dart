@@ -9,6 +9,7 @@ import 'package:http/io_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/utils/age_armor.dart';
 import 'package:trusttunnel/common/utils/deep_link_uri_normalizer.dart';
+import 'package:trusttunnel/common/utils/direct_request_retry.dart';
 import 'package:trusttunnel/common/utils/limited_http.dart';
 import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
@@ -172,7 +173,14 @@ class SubscriptionSyncService {
     throw SubscriptionFetchException('Subscription unreachable: $lastError');
   }
 
-  Future<Uint8List> _fetchOne(String url, {required bool skipVerification}) async {
+  Future<Uint8List> _fetchOne(String url, {required bool skipVerification}) => retryDirectRead(
+    () => _fetchOneAttempt(url, skipVerification: skipVerification),
+    retryable: (error) =>
+        error is SubscriptionFetchException &&
+        (error.statusCode == 408 || error.statusCode == 429 || (error.statusCode ?? 0) >= 500),
+  );
+
+  Future<Uint8List> _fetchOneAttempt(String url, {required bool skipVerification}) async {
     // The response carries VPN credentials - never over cleartext, even for
     // an http:// subscription saved before this was enforced in the UI.
     // (Dart's HttpClient doesn't honor Android's cleartext policy.)

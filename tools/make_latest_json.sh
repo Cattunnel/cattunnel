@@ -6,7 +6,7 @@
 #   tools/make_latest_json.sh <base-url> <arm64.apk> <universal.apk> <notes.txt> > latest.json
 #
 # <base-url> is the download folder the APKs are uploaded to (https://…/downloads);
-# the APK file names are kept. Upload the APKs first, latest.json last, so a
+# canonical asset names are used, regardless of local build file names. Upload the APKs first, latest.json last, so a
 # phone never sees an offer for a file that isn't there yet.
 set -euo pipefail
 
@@ -30,10 +30,10 @@ VERSION=$(badging "$ARM64" | field versionName)
     || { echo "versionCode differs: arm64 $ARM64_CODE, universal $UNIVERSAL_CODE" >&2; exit 1; }
 
 python3 - "$VERSION" "$ARM64_CODE" "$NOTES" "$BASE" "$ARM64" "$UNIVERSAL" <<'EOF'
-import datetime, hashlib, json, os, sys
+import datetime, hashlib, json, sys
 version, build, notes, base, arm64, universal = sys.argv[1:]
 sha = lambda p: hashlib.sha256(open(p, "rb").read()).hexdigest()
-apk = lambda p: {"url": f"{base}/{os.path.basename(p)}", "sha256": sha(p)}
+apk = lambda p, name: {"url": f"{base}/{name}", "sha256": sha(p)}
 print(json.dumps({
     "version": version,
     "build": int(build),
@@ -42,6 +42,6 @@ print(json.dumps({
     "issued": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "expires": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "notes": open(notes, encoding="utf-8").read().strip(),
-    "apks": {"arm64-v8a": apk(arm64), "universal": apk(universal)},
+    "apks": {"arm64-v8a": apk(arm64, "cattunnel-arm64.apk"), "universal": apk(universal, "cattunnel-universal.apk")},
 }, ensure_ascii=False, indent=2))
 EOF

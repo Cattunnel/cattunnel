@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
+import 'package:trusttunnel/feature/traffic/traffic_collection_preferences.dart';
 
 /// One hour of one server's tunnel traffic, as counted on this phone.
 class TrafficRow {
@@ -39,6 +40,20 @@ abstract final class TrafficSource {
 
     // Off the UI isolate: months of hours for many servers is megabytes.
     return compute(parse, text);
+  }
+
+  static Future<void> setCollection(SharedPreferences prefs, bool enabled) async {
+    if (Platform.isAndroid) {
+      await _channel.invokeMethod<void>('setCollection', {
+        'enabled': enabled,
+        'deleteAt': TrafficCollectionPreferences.deletionDate(DateTime.now()).millisecondsSinceEpoch,
+      });
+      await prefs.reload();
+    } else if (DesktopTrafficRecorder.supported) {
+      await DesktopTrafficRecorder.instance.setCollection(prefs, enabled);
+    } else {
+      await TrafficCollectionPreferences.set(prefs, enabled);
+    }
   }
 
   /// Deletes everything counted so far.
@@ -86,7 +101,8 @@ abstract final class TrafficSource {
 abstract final class TrafficLimit {
   static const _key = 'traffic_monthly_limit_bytes';
 
-  static int get(SharedPreferences preferences) => preferences.getInt(_key) ?? 0;
+  static int get(SharedPreferences preferences) =>
+      TrafficCollectionPreferences.enabled(preferences) ? preferences.getInt(_key) ?? 0 : 0;
 
   static Future<void> set(SharedPreferences preferences, int bytes) =>
       bytes > 0 ? preferences.setInt(_key, bytes) : preferences.remove(_key);

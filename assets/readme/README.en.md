@@ -2,6 +2,10 @@
 
 An Android, Windows and Linux VPN client for the **TrustTunnel** protocol - a fork of the open-source TrustTunnel client (Apache-2.0 license). Mascot and helper: **Marsik** the cat.
 
+
+Release installers use stable names: `cattunnel-arm64.apk`, `cattunnel-universal.apk`, `cattunnel-windows-setup.exe`, `cattunnel-linux.deb`, `cattunnel-linux.pkg.tar.zst`.
+
+
 ## Quick start
 
 1. Get a subscription from the administrator of your VPN server: a link and an encryption key.
@@ -24,7 +28,7 @@ An Android, Windows and Linux VPN client for the **TrustTunnel** protocol - a fo
 ## Connecting
 
 - **Quick Settings tile.** Turns the VPN on and off without opening the app - even after a manual disconnect with the app closed: it connects to the last server. The app opens only if Android hasn't allowed CatTunnel to create a VPN yet or the connection failed.
-- **Tray icon (Windows, Linux).** Connect, disconnect, pick a server, open the window. The close button hides the window to the tray and the VPN keeps running; "Quit" in the tray menu disconnects and exits. On Linux the icon shows in KDE, XFCE, Cinnamon, MATE and Ubuntu; plain GNOME needs the AppIndicator extension, without it the close button closes the window as before.
+- **Tray icon (Windows, Linux).** Connect, disconnect, pick a server, open the window. The close button asks whether to minimize to tray or quit. You can remember the choice and change it in "Settings → Launch and connection → When closing the window". The VPN keeps running in the tray; "Quit" in the tray menu disconnects and exits. On Linux the icon shows in KDE, XFCE, Cinnamon, MATE and Ubuntu; plain GNOME needs the AppIndicator extension, without it closing the window asks for confirmation while VPN is active.
 - **Switching to another server.** If the selected server doesn't connect for 2 minutes while the internet works, CatTunnel moves to the next server of the same subscription (never a reserve or Russian-exit key) and tries to go back after 30 minutes. Off in "Settings → Launch and connection".
 - **Auto-connect on launch**, **Kill switch** (blocks traffic if the tunnel drops), **Russian services directly** (banks, government services etc. bypass the VPN; the list is editable), MTU, server check timeout - in "Settings → Launch and connection".
 - **A single notification** "CatTunnel - connected to …" instead of two. A server switch starts the engine once, so the button no longer hangs on "Connecting".
@@ -45,7 +49,7 @@ The "Routing" tab - the "Split tunneling" window opens by itself:
 
 "Settings → Traffic statistics" (Android, Windows, Linux): how much went through the VPN over 24 hours, 7, 30 or 90 days - by server, downloaded and uploaded, the peak hour and day, compared with the previous period. Charts: line, columns, area, ranking, shares and a heat map by hour and weekday, with a table of values below. You can set a **monthly limit** - Marsik warns when it's nearly used up.
 
-Counted on this device only, kept for 180 days and never sent anywhere. On a phone it's the app's traffic including encryption, on a computer the tunnel's traffic while CatTunnel is open. "Clear statistics" wipes it.
+Counted on this device only, kept for 180 days and never sent anywhere. On a phone it's the app's traffic including encryption, on a computer the tunnel's traffic while CatTunnel is open. You can turn off "Collect statistics": the limit becomes inactive and saved data is deleted after one calendar month. Turning collection back on before then keeps the data. "Clear statistics" wipes it immediately.
 
 ## Updates
 

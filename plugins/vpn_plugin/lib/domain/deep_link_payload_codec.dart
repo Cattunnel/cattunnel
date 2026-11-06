@@ -223,7 +223,7 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
     String? password;
     String? name;
     var customSni = '';
-    var clientRandom = '';
+    const clientRandom = '';
     var hasIpv6 = true;
     var skipVerification = false;
     var antiDpi = false;
@@ -299,12 +299,8 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
         case _DeepLinkPayloadTag.blockQuic:
           blockQuic = _bool(value);
         case _DeepLinkPayloadTag.clientRandomPrefix:
-          clientRandom = _string(value);
-          final hexPattern = RegExp(r'^([0-9a-fA-F]{2})*$');
-          final parts = clientRandom.split('/');
-          if (parts.length > 2 || !parts.every(hexPattern.hasMatch)) {
-            throw const FormatException('tt:// link: client random prefix must be hex');
-          }
+          // Fixed ClientHello prefixes fingerprint the connection. Ignore tag 0x0B.
+          break;
         case _DeepLinkPayloadTag.name:
           name = _string(value);
         case _DeepLinkPayloadTag.dnsUpstreams:

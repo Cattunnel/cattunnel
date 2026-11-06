@@ -6,7 +6,7 @@
 
 ## 1. Проверить подпись
 
-В релизе: готовый пакет `cattunnel-<ver>-1-x86_64.pkg.tar.zst` и то, из чего он собран - `PKGBUILD`,
+В релизе: готовый пакет `cattunnel-linux.pkg.tar.zst` и то, из чего он собран - `PKGBUILD`,
 `cattunnel.install`, `cattunnel-app-<ver>-x86_64.tar.gz`, `cattunnel-helper-src-<ver>.tar.gz`;
 плюс `SHA256SUMS` и `SHA256SUMS.sig` на всё это.
 
@@ -31,7 +31,7 @@ sha256sum -c SHA256SUMS                            # все OK
 
 Либо готовый пакет (собран тем же PKGBUILD в чистом контейнере Arch):
 ```
-sudo pacman -U cattunnel-<ver>-1-x86_64.pkg.tar.zst
+sudo pacman -U cattunnel-linux.pkg.tar.zst
 ```
 либо собрать самому из того же, что можно прочитать:
 ```

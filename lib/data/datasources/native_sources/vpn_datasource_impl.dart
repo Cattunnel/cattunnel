@@ -168,7 +168,9 @@ class VpnDataSourceImpl implements VpnDataSource {
       xhttpPath: server.xhttpPath,
       blockQuic: server.blockQuic,
       certificate: certificate,
-      clientRandom: server.tlsPrefix ?? '',
+      // Ignore legacy fixed prefixes stored before 1.5.9.
+      // ignore: avoid_redundant_argument_values
+      clientRandom: '',
       customSni: server.customSni ?? '',
       username: server.username,
       password: server.password,
@@ -282,7 +284,9 @@ class VpnDataSourceImpl implements VpnDataSource {
       ),
       customSni: server.customSni ?? '',
       certificate: certificate,
-      clientRandom: server.tlsPrefix ?? '',
+      // Ignore legacy fixed prefixes stored before 1.5.9.
+      // ignore: avoid_redundant_argument_values
+      clientRandom: '',
     );
 
     Future<void> command() => _platformApi.updateConfiguration(

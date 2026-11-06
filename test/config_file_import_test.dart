@@ -49,7 +49,7 @@ void main() {
     expect(server.ipAddress, '192.0.2.10:8443');
     expect(server.username, 'user1');
     expect(server.password, 'p@ss "word"');
-    expect(server.tlsPrefix, 'abcd');
+    expect(server.tlsPrefix, isNull);
     expect(server.antiDpi, isTrue);
     expect(server.ipv6, isFalse);
     expect(server.vpnProtocol, VpnProtocol.http2);
@@ -79,7 +79,8 @@ void main() {
 }
 
 void _backslashTests() {
-  String withPassword(String tomlValue) => _botConfig.replaceFirst(r'password = "p@ss \"word\""', 'password = "$tomlValue"');
+  String withPassword(String tomlValue) =>
+      _botConfig.replaceFirst(r'password = "p@ss \"word\""', 'password = "$tomlValue"');
 
   test(r'a backslash in the password survives (TOML "a\\b" is a\b)', () {
     final server = serverDataFromConfigFile(withPassword(r'a\\b'), routingProfileId: '1');
@@ -91,4 +92,3 @@ void _backslashTests() {
     expect(server.password, r'a\nb');
   });
 }
-

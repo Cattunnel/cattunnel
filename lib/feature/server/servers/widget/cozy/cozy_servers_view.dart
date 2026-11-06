@@ -76,7 +76,6 @@ class _CozyServersViewState extends State<CozyServersView> {
   /// from here (from app start if it was already connected then).
   DateTime? _connectedSince;
   Timer? _ticker;
-  String? _pingedServerId;
 
   @override
   void initState() {
@@ -110,16 +109,6 @@ class _CozyServersViewState extends State<CozyServersView> {
     }
   }
 
-  /// Measures the current server once when it becomes current, so the ping
-  /// is there without pressing "test all".
-  void _pingOnce(Server server) {
-    if (_pingedServerId == server.id) return;
-    _pingedServerId = server.id;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ServerLatencyScope.of(context, listen: false).testServer(server);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final servers = ServersScope.controllerOf(context, aspect: ServersScopeAspect.servers).servers;
@@ -129,7 +118,6 @@ class _CozyServersViewState extends State<CozyServersView> {
     final state = picked != null && current?.id == picked.id ? vpnState : VpnState.disconnected;
 
     _trackSession(state);
-    if (current != null) _pingOnce(current);
 
     if (widget.cityPop && current != null) {
       return _buildCityPop(context, servers, current, state);

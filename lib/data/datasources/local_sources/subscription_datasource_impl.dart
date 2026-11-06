@@ -136,7 +136,7 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         h2PaddingFrames: Value(server.h2PaddingFrames),
         blockQuic: Value(server.blockQuic),
         ruExit: Value(server.ruExit),
-        tlsPrefix: Value(server.tlsPrefix),
+        tlsPrefix: const Value(null),
         routingProfileId: int.parse(RoutingProfileUtils.defaultRoutingProfileId),
         customSni: Value(server.customSni),
         subscriptionId: Value(subscriptionId),
@@ -181,7 +181,7 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         blockQuic: server.blockQuic ? const Value(true) : const Value.absent(),
         // The subscription decides which key has a Russian exit.
         ruExit: Value(server.ruExit),
-        tlsPrefix: Value(server.tlsPrefix),
+        tlsPrefix: const Value(null),
         // The key is a credential like the password: the subscription owns it.
         clientRandomAuthKey: Value(server.tlsAuthKey),
         customSni: Value(server.customSni),

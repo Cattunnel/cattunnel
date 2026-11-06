@@ -946,7 +946,7 @@ class _VpnScopeState extends State<VpnScope> {
   void _onAppResumed() => unawaited(_refreshState());
 
   Future<AppExitResponse> _onExitRequested() async {
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
       // Only "Quit" in the tray gets here (the close button hides the
       // window): stop the tunnel cleanly, then let the window close.
       await _stopAndWaitUntilDisconnected();
@@ -991,6 +991,7 @@ class _VpnScopeState extends State<VpnScope> {
 
   @override
   void dispose() {
+    DesktopTrafficRecorder.instance.dispose();
     _clearAntiDpiStatus();
     _appLifecycleListener.dispose();
     _logStreamSub?.cancel().ignore();

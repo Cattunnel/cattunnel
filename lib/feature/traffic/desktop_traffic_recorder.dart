@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
+import 'package:trusttunnel/feature/traffic/traffic_collection_preferences.dart';
 
 /// Windows and Linux counterpart of TrafficRecorder.kt: the bytes of the
 /// engine's TUN interface every [_activeEvery] while the VPN is up, kept in
@@ -20,7 +21,8 @@ import 'package:trusttunnel/data/model/vpn_state.dart';
 /// apps, tx what they sent. Only counted while the app runs - on Linux the
 /// VPN can outlive the window, and that time isn't counted.
 class DesktopTrafficRecorder {
-  static bool get supported => !kIsWeb && (Platform.isWindows || Platform.isLinux);
+  static bool get supported =>
+      !kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux);
 
   static final instance = DesktopTrafficRecorder._();
 
@@ -29,9 +31,52 @@ class DesktopTrafficRecorder {
   static const _archiveName = 'traffic_hourly.tsv';
   static const _pendingName = 'traffic_pending.tsv';
 
-  DesktopTrafficRecorder._();
+  DesktopTrafficRecorder._() : _testCounters = null;
+
+  @visibleForTesting
+  DesktopTrafficRecorder.forTesting(Directory directory, {(int, int)? Function()? readCounters})
+    : _dir = directory,
+      _testCounters = readCounters;
+
+  final (int, int)? Function()? _testCounters;
+
+  @visibleForTesting
+  Future<void> sampleForTesting() => _sample();
+
+  void dispose() {
+    _active = false;
+    _timer?.cancel();
+    _timer = null;
+    _maintenanceTimer?.cancel();
+    _maintenanceTimer = null;
+    _lastRx = -1;
+    _lastTx = -1;
+  }
 
   Timer? _timer;
+  Timer? _maintenanceTimer;
+  Future<void> _queue = Future<void>.value();
+
+  Future<T> _serial<T>(Future<T> Function() work) {
+    final result = _queue.then((_) => work());
+    _queue = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return result;
+  }
+
+  Future<void> setCollection(SharedPreferences prefs, bool enabled) => _serial(() async {
+    await _expire(prefs);
+    await TrafficCollectionPreferences.set(prefs, enabled);
+    _lastRx = -1;
+    _lastTx = -1;
+  });
+
+  Future<void> _expire(SharedPreferences prefs) async {
+    if (TrafficCollectionPreferences.deletionDue(prefs, DateTime.now())) {
+      await _clear();
+      await prefs.remove(TrafficCollectionPreferences.deleteAtKey);
+    }
+  }
+
   bool _active = false;
   String _serverId = '';
   int _lastRx = -1;
@@ -47,6 +92,12 @@ class DesktopTrafficRecorder {
   /// Fed by VpnScope on every state change and server switch.
   void onState(VpnState state, String? serverId) {
     if (!supported) return;
+    _maintenanceTimer ??= Timer.periodic(const Duration(hours: 1), (_) => unawaited(_sample()));
+    unawaited(
+      _serial(() async {
+        await _expire(await SharedPreferences.getInstance());
+      }).catchError((Object _) {}),
+    );
     if (serverId != null) {
       _serverId = _clean(serverId);
     } else if (_serverId.isEmpty) {
@@ -67,10 +118,11 @@ class DesktopTrafficRecorder {
       _lastRx = -1;
       _lastTx = -1;
       _timer ??= Timer.periodic(_activeEvery, (_) => unawaited(_sample()));
+      unawaited(_sample());
     } else {
       // The last stretch before the stop still counts.
       unawaited(
-        _sample().whenComplete(() {
+        _serial(() => _sampleNow(finalSample: true)).whenComplete(() {
           if (!_active) {
             _timer?.cancel();
             _timer = null;
@@ -83,7 +135,8 @@ class DesktopTrafficRecorder {
   static String _clean(String id) => id.replaceAll(RegExp(r'[\t\r\n]'), ' ');
 
   /// Everything counted so far, archive first.
-  Future<String> read() async {
+  Future<String> read() => _serial(() async {
+    await _expire(await SharedPreferences.getInstance());
     final dir = await _directory();
     final buffer = StringBuffer();
     for (final name in [_archiveName, _pendingName]) {
@@ -92,11 +145,17 @@ class DesktopTrafficRecorder {
     }
 
     return buffer.toString();
-  }
+  });
 
-  Future<void> clear() async {
+  Future<void> clear() => _serial(_clear);
+
+  Future<void> _clear() async {
+    _lastRx = -1;
+    _lastTx = -1;
+    _foldedHour = null;
+    _trimmedDay = null;
     final dir = await _directory();
-    for (final name in [_archiveName, _pendingName]) {
+    for (final name in [_archiveName, _pendingName, '$_archiveName.tmp', '$_pendingName.tmp']) {
       final file = File('${dir.path}/$name');
       if (file.existsSync()) await file.delete();
     }
@@ -105,8 +164,17 @@ class DesktopTrafficRecorder {
   Future<Directory> _directory() async =>
       _dir ??= await Directory('${(await getApplicationSupportDirectory()).path}/traffic').create(recursive: true);
 
-  Future<void> _sample() async {
+  Future<void> _sample() => _serial(_sampleNow);
+
+  Future<void> _sampleNow({bool finalSample = false}) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await _expire(prefs);
+      if (!TrafficCollectionPreferences.enabled(prefs) || (!_active && !finalSample)) {
+        _lastRx = -1;
+        _lastTx = -1;
+        return;
+      }
       final counters = _readCounters();
       if (counters == null) return;
       final (rx, tx) = counters;
@@ -135,6 +203,7 @@ class DesktopTrafficRecorder {
   static int _currentHour() => DateTime.now().millisecondsSinceEpoch ~/ 1000 ~/ 3600 * 3600;
 
   (int, int)? _readCounters() {
+    if (_testCounters case final read?) return read();
     if (Platform.isLinux) {
       _linuxTun ??= _pickLinuxTun();
       final tun = _linuxTun;

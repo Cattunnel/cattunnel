@@ -96,11 +96,11 @@ CatTunnel - клиентское приложение: он подключает
 
 | Файл | Платформа | Примечание |
 | :--- | :--- | :--- |
-| `cattunnel-<версия>-arm64.apk` | Android 8.0+, `arm64-v8a` | Основная сборка |
-| `cattunnel-<версия>-universal.apk` | Android 8.0+, `arm64-v8a` + `armeabi-v7a` | Для старых 32-битных устройств |
-| `cattunnel-<версия>-windows-setup.exe` | Windows 10/11 x64 | Установщик |
-| `cattunnel_<версия>_amd64.deb` | Debian, Ubuntu | `sudo apt install ./cattunnel_<версия>_amd64.deb` |
-| `cattunnel-<версия>-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U …`; рядом `PKGBUILD` для сборки из исходников |
+| `cattunnel-arm64.apk` | Android 8.0+, `arm64-v8a` | Основная сборка |
+| `cattunnel-universal.apk` | Android 8.0+, `arm64-v8a` + `armeabi-v7a` | Для старых 32-битных устройств |
+| `cattunnel-windows-setup.exe` | Windows 10/11 x64 | Установщик |
+| `cattunnel-linux.deb` | Debian, Ubuntu | `sudo apt install ./cattunnel-linux.deb` |
+| `cattunnel-linux.pkg.tar.zst` | Arch Linux | `sudo pacman -U …`; рядом `PKGBUILD` для сборки из исходников |
 
 **Windows:** установщик пока не подписан сертификатом разработчика, поэтому SmartScreen может показать «Windows защитила ваш компьютер» - «Подробнее» → «Выполнить в любом случае». По той же причине отдельные антивирусы с эвристикой иногда помечают установщик (результаты VirusTotal - в описании каждого релиза). Подлинность файла проверяется по `SHA256SUMS` (см. ниже). Обновления затем приходят из самого приложения.
 

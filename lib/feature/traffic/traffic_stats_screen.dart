@@ -6,6 +6,7 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/traffic/traffic_charts.dart';
+import 'package:trusttunnel/feature/traffic/traffic_collection_preferences.dart';
 import 'package:trusttunnel/feature/traffic/traffic_data.dart';
 import 'package:trusttunnel/feature/traffic/traffic_dataset.dart';
 import 'package:trusttunnel/feature/traffic/traffic_style.dart';
@@ -115,7 +116,19 @@ class _TrafficStatsScreenState extends State<TrafficStatsScreen> {
             centerTitle: true,
             leadingIconType: AppBarLeadingIconType.back,
           ),
-          body: body,
+          body: Column(children: [
+            SwitchListTile(
+              title: Text(ln.trafficCollect),
+              subtitle: Text(TrafficCollectionPreferences.enabled(context.dependencyFactory.sharedPreferences)
+                ? ln.trafficCollectionInfo : ln.trafficCollectionDisabled),
+              value: TrafficCollectionPreferences.enabled(context.dependencyFactory.sharedPreferences),
+              onChanged: (value) async {
+                await TrafficSource.setCollection(context.dependencyFactory.sharedPreferences, value);
+                await _load();
+              },
+            ),
+            Expanded(child: body),
+          ]),
         ),
       ),
     );
@@ -436,6 +449,7 @@ class _MonthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ln = context.ln;
     final preferences = context.dependencyFactory.sharedPreferences;
+    final collecting = TrafficCollectionPreferences.enabled(preferences);
     final limit = TrafficLimit.get(preferences);
     final used = TrafficDataset.monthTotal(rows);
     final fraction = limit == 0 ? 0.0 : used / limit;
@@ -454,7 +468,7 @@ class _MonthCard extends StatelessWidget {
                 child: Text(ln.trafficThisMonth, style: context.textTheme.titleMedium?.copyWith(color: style.text)),
               ),
               TextButton(
-                onPressed: () => _editLimit(context, limit),
+                onPressed: collecting ? () => _editLimit(context, limit) : null,
                 child: Text(limit == 0 ? ln.trafficSetLimit : ln.trafficChangeLimit),
               ),
             ],
@@ -466,7 +480,9 @@ class _MonthCard extends StatelessWidget {
             style: context.textTheme.headlineSmall?.copyWith(color: style.text, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
-          if (limit == 0)
+          if (!collecting)
+            Text(ln.trafficLimitDisabled, style: context.textTheme.bodySmall?.copyWith(color: style.muted))
+          else if (limit == 0)
             Text(ln.trafficNoLimit, style: context.textTheme.bodySmall?.copyWith(color: style.muted))
           else ...[
             ClipRRect(

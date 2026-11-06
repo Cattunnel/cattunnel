@@ -5,6 +5,7 @@ import 'package:trusttunnel/common/assets/asset_icons.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/feature/app/controller/window_close_preferences.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
@@ -111,6 +112,23 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
       ),
       body: ListView(
         children: [
+          if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux)
+            ListTile(
+              title: Text(context.ln.onWindowClose),
+              trailing: DropdownButton<WindowCloseAction>(
+                value: WindowClosePreferences.read(context.dependencyFactory.sharedPreferences),
+                items: [
+                  DropdownMenuItem(value: WindowCloseAction.ask, child: Text(context.ln.closeAsk)),
+                  DropdownMenuItem(value: WindowCloseAction.tray, child: Text(context.ln.minimizeToTray)),
+                  DropdownMenuItem(value: WindowCloseAction.exit, child: Text(context.ln.quit)),
+                ],
+                onChanged: (value) async {
+                  if (value == null) return;
+                  await WindowClosePreferences.write(context.dependencyFactory.sharedPreferences, value);
+                  if (mounted) setState(() {});
+                },
+              ),
+            ),
           if (defaultTargetPlatform == TargetPlatform.macOS) ...[
             Padding(
               padding: const EdgeInsets.all(16),

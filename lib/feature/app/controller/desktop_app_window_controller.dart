@@ -3,21 +3,20 @@ import 'dart:async';
 import 'package:adguard_logger/adguard_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:tray_manager/tray_manager.dart';
 import 'package:trusttunnel/feature/app/controller/app_window_controller.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Windows and Linux: the close button hides the window to the tray, "Quit"
-/// in the tray menu exits. On Windows the VPN engine lives in the app's
-/// process, so closing the app would drop the tunnel. On Linux without a
-/// tray host (plain GNOME) the window closes as before - hidden, it would
-/// be lost; the helper keeps the VPN either way.
+/// Windows and Linux close requests are handled by TrayMenuScope, where
+/// localization, the saved preference and the live VPN state are available.
 final class DesktopAppWindowController with WindowListener implements AppWindowController {
   DesktopAppWindowController()
     : assert(
         defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux,
         'DesktopAppWindowController is only supported on Windows and Linux',
       );
+
+  Future<void> Function()? onCloseRequested;
+  bool _handlingClose = false;
 
   @override
   Future<void> showMainWindow() async {
@@ -43,17 +42,15 @@ final class DesktopAppWindowController with WindowListener implements AppWindowC
     await windowManager.ensureInitialized();
     await setPreventClose(true);
     windowManager.addListener(this);
-    logger.logInfo('window: close goes to the tray', additionalTags: ['window']);
+    logger.logInfo('window: close choice enabled', additionalTags: ['window']);
   }
 
   @override
   void onWindowClose() {
-    logger.logInfo('window close: tray=${LinuxSniTrayApi.available}', additionalTags: ['window']);
-    if (defaultTargetPlatform == TargetPlatform.linux && !LinuxSniTrayApi.available) {
-      unawaited(setPreventClose(false).then((_) => windowManager.close()));
-
-      return;
-    }
-    hideMainWindow().ignore();
+    if (_handlingClose) return;
+    final handler = onCloseRequested;
+    if (handler == null) return;
+    _handlingClose = true;
+    unawaited(handler().whenComplete(() => _handlingClose = false));
   }
 }

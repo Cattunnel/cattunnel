@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/theme/appearance_preferences.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/cozy/cozy_servers_view.dart';
+import 'package:trusttunnel/feature/server/servers/widget/home_latency_refresh.dart';
+import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_screen_view.dart';
+import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
 class ServersScreen extends StatefulWidget {
   final ServerData? deepLinkData;
@@ -29,12 +32,21 @@ class _ServersScreenState extends State<ServersScreen> {
   @override
   Widget build(BuildContext context) => ValueListenableBuilder(
     valueListenable: AppearancePreferences.style,
-    builder: (context, style, _) => switch (style) {
-      AppStyle.cozy => CozyServersView(deepLinkData: widget.deepLinkData),
-      AppStyle.y2k => CozyServersView(deepLinkData: widget.deepLinkData, y2k: true),
-      AppStyle.aero => CozyServersView(deepLinkData: widget.deepLinkData, aero: true),
-      AppStyle.cityPop => CozyServersView(deepLinkData: widget.deepLinkData, cityPop: true),
-      AppStyle.minimal => ServersScreenView(deepLinkData: widget.deepLinkData),
+    builder: (context, style, _) {
+      final servers = ServersScope.controllerOf(context);
+      final current = servers.selectedServer ?? (servers.servers.isEmpty ? null : servers.servers.first);
+      return HomeLatencyRefresh(
+        controller: ServerLatencyScope.of(context, listen: false),
+        server: current,
+        vpnState: VpnScope.vpnControllerOf(context).state,
+        child: switch (style) {
+          AppStyle.cozy => CozyServersView(deepLinkData: widget.deepLinkData),
+          AppStyle.y2k => CozyServersView(deepLinkData: widget.deepLinkData, y2k: true),
+          AppStyle.aero => CozyServersView(deepLinkData: widget.deepLinkData, aero: true),
+          AppStyle.cityPop => CozyServersView(deepLinkData: widget.deepLinkData, cityPop: true),
+          AppStyle.minimal => ServersScreenView(deepLinkData: widget.deepLinkData),
+        },
+      );
     },
   );
 }

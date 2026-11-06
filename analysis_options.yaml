@@ -8,6 +8,8 @@ analyzer:
   plugins:
     - drift
   exclude:
+    - stage-before/**
+    - stage-working/**
     - .fvm/**
     - build/**
     - lib/common/localization/generated/**

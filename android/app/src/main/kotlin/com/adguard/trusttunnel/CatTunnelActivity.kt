@@ -62,6 +62,30 @@ class CatTunnelActivity : FlutterFragmentActivity() {
             }
         }
 
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cattunnel/issue_file").setMethodCallHandler { call, result ->
+            if (call.method != "read") {
+                result.notImplemented()
+            } else {
+                try {
+                    val uri = android.net.Uri.parse(call.arguments as String)
+                    require(uri.scheme == "content" || uri.scheme == "file")
+                    val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+                        val out = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(4096)
+                        while (out.size() <= 65536) {
+                            val count = stream.read(buffer, 0, minOf(buffer.size, 65537 - out.size()))
+                            if (count < 0) break
+                            out.write(buffer, 0, count)
+                        }
+                        out.toByteArray() }
+                    require(bytes != null && bytes.size <= 65536)
+                    result.success(String(bytes, Charsets.UTF_8))
+                } catch (_: Exception) {
+                    result.error("issue_file", "Cannot read issue file", null)
+                }
+            }
+        }
+
         SecurityChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         UpdateChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         AppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)

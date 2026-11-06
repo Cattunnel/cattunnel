@@ -20,7 +20,7 @@ BASE=${BASE%/}
 [[ $BUILD =~ ^[0-9]+$ ]] || { echo "build must be a number" >&2; exit 1; }
 
 python3 - "$VERSION" "$BUILD" "$NOTES" "$BASE" "$SETUP" <<'PY'
-import datetime, hashlib, json, os, sys
+import datetime, hashlib, json, sys
 version, build, notes, base, setup = sys.argv[1:]
 print(json.dumps({
     "version": version,
@@ -30,7 +30,7 @@ print(json.dumps({
     "expires": (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "notes": open(notes, encoding="utf-8").read().strip(),
     "apks": {"windows-x64": {
-        "url": f"{base}/{os.path.basename(setup)}",
+        "url": f"{base}/cattunnel-windows-setup.exe",
         "sha256": hashlib.sha256(open(setup, "rb").read()).hexdigest(),
     }},
 }, ensure_ascii=False, indent=2))

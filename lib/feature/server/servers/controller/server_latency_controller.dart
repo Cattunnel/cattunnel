@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:trusttunnel/data/model/server.dart';
+import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/data/repository/server_test_timeout_repository.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_result.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.dart';
@@ -20,6 +21,28 @@ class ServerLatencyController extends ChangeNotifier {
 
   final Map<String, ServerLatencyResult> _results = {};
   final Set<String> _testingIds = {};
+  int _generation = 0;
+  bool _disposed = false;
+  bool _transitioning = false;
+
+  void invalidate({bool notify = true}) {
+    _generation++;
+    _results.clear();
+    _testingIds.clear();
+    if (notify && !_disposed) notifyListeners();
+  }
+
+  void connectionChanged(VpnState state, {bool notify = true}) {
+    _transitioning = state != VpnState.connected && state != VpnState.disconnected;
+    invalidate(notify: notify);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _generation++;
+    super.dispose();
+  }
 
   Map<String, ServerLatencyResult> get results => Map.unmodifiable(_results);
 
@@ -30,22 +53,28 @@ class ServerLatencyController extends ChangeNotifier {
   bool isTesting(String serverId) => _testingIds.contains(serverId);
 
   Future<void> testServer(Server server) async {
-    if (_testingIds.contains(server.id)) {
+    if (_disposed || _transitioning || _testingIds.contains(server.id)) {
       return;
     }
 
     _testingIds.add(server.id);
     notifyListeners();
 
-    final timeoutSeconds = await _timeoutRepository.getValueSeconds();
-    final result = await _tester.test(
-      server.serverData.ipAddress,
-      timeout: Duration(seconds: timeoutSeconds),
-    );
-
-    _results[server.id] = result;
-    _testingIds.remove(server.id);
-    notifyListeners();
+    final generation = _generation;
+    try {
+      final timeoutSeconds = await _timeoutRepository.getValueSeconds();
+      if (_disposed || generation != _generation) return;
+      final result = await _tester.test(
+        server.serverData.ipAddress,
+        timeout: Duration(seconds: timeoutSeconds),
+      );
+      if (!_disposed && generation == _generation) _results[server.id] = result;
+    } finally {
+      if (!_disposed && generation == _generation) {
+        _testingIds.remove(server.id);
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> testAll(List<Server> servers) => Future.wait(servers.map(testServer));

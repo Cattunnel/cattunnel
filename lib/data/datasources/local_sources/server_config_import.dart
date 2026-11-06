@@ -39,7 +39,6 @@ ServerData serverDataFromEndpoint(Endpoint endpoint, {required String routingPro
   xhttpPath: endpoint.xhttpPath,
   blockQuic: endpoint.blockQuic,
   ruExit: endpoint.ruExit,
-  tlsPrefix: endpoint.clientRandom,
   certificate: endpoint.certificate.isEmpty
       ? null
       : Certificate(

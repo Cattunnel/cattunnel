@@ -17,11 +17,10 @@ abstract class ServerDetailsService {
 
   /// The manually added server that [incoming] is a new version of, if any.
   ///
-  /// Same account on the same server = same domain, login, password and
-  /// connection key (client random prefix). Re-importing a link after the
-  /// server's port or address changed should then update that entry
-  /// instead of adding a «Name 2» duplicate. Subscription-managed servers
-  /// are never matched - their sync owns them.
+  /// Same account on the same server = same domain, login and password.
+  /// Re-importing a link after the server's port or address changed should
+  /// then update that entry instead of adding a «Name 2» duplicate.
+  /// Subscription-managed servers are never matched - their sync owns them.
   Server? findServerToReplace(ServerData incoming, List<Server> servers);
 }
 
@@ -87,15 +86,6 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
         data.dnsServers,
       ),
     );
-
-    if (data.tlsPrefix != null) {
-      _addIfNotNull(
-        fields,
-        _validateClientRandom(
-          data.tlsPrefix!,
-        ),
-      );
-    }
 
     // The TLS auth key: empty, or at least 16 bytes of even-length hex.
     final authKey = data.tlsAuthKey.trim();
@@ -186,59 +176,13 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
 
       if (existing.domain.trim().toLowerCase() == domain &&
           existing.username == incoming.username &&
-          existing.password == incoming.password &&
-          (existing.tlsPrefix ?? '') == (incoming.tlsPrefix ?? '')) {
+          existing.password == incoming.password) {
         return server;
       }
     }
 
     return null;
   }
-
-  PresentationField? _validateClientRandom(String value) {
-    final input = value.trim();
-
-    if (input.isEmpty) {
-      return null;
-    }
-
-    final parts = input.split('/');
-    if (parts.length > 2) {
-      return _getFieldWrongValue(PresentationFieldName.clientRandom);
-    }
-
-    final clientRandom = parts[0];
-    final mask = parts.length == 2 ? parts[1] : null;
-    final hexRegexp = RegExp(r'^[0-9A-Fa-f]+$');
-
-    if (!hexRegexp.hasMatch(clientRandom)) {
-      return _getFieldWrongValue(PresentationFieldName.clientRandom);
-    }
-
-    if (mask == null) {
-      if (!_isEvenLengthHex(clientRandom)) {
-        return _getFieldWrongValue(PresentationFieldName.clientRandomValue);
-      }
-
-      return null;
-    }
-
-    if (!hexRegexp.hasMatch(mask)) {
-      return _getFieldWrongValue(PresentationFieldName.clientRandom);
-    }
-
-    if (!_isEvenLengthHex(mask) || !_isEvenLengthHex(clientRandom)) {
-      return _getFieldWrongValue(PresentationFieldName.clientRandomMask);
-    }
-
-    if (clientRandom.length != mask.length) {
-      return _getFieldOutOfBounds(PresentationFieldName.clientRandom);
-    }
-
-    return null;
-  }
-
-  bool _isEvenLengthHex(String value) => value.isNotEmpty && value.length.isEven;
 
   PresentationField? _validateServerName(
     String serverName,

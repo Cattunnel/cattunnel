@@ -276,7 +276,7 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
     // it would only mark the connection again.
     final authKey = config.endpoint.clientRandomAuthKey.trim();
     final useAuthKey = ConfigurationCodecKeys.isValidAuthKey(authKey);
-    endpoint.setString(ConfigurationCodecKeys.clientRandom, useAuthKey ? '' : config.endpoint.clientRandom);
+    endpoint.setString(ConfigurationCodecKeys.clientRandom, '');
     if (useAuthKey) {
       endpoint.setString(ConfigurationCodecKeys.clientRandomAuthKey, authKey.toLowerCase());
     }
@@ -494,14 +494,12 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
           0,
           ConfigurationCodecKeys.h2PaddingBytesBudgetMax,
         );
-    final int keepaliveIntervalSecs =
-        (endpoint.getInt(ConfigurationCodecKeys.keepaliveIntervalSecs) ?? 0).clamp(
-          0,
-          ConfigurationCodecKeys.keepaliveIntervalSecsMax,
-        );
+    final int keepaliveIntervalSecs = (endpoint.getInt(ConfigurationCodecKeys.keepaliveIntervalSecs) ?? 0).clamp(
+      0,
+      ConfigurationCodecKeys.keepaliveIntervalSecsMax,
+    );
     final String keepaliveSignalRaw = endpoint.getString(ConfigurationCodecKeys.keepaliveSignal) ?? '';
-    final String keepaliveSignal =
-        Endpoint.keepaliveSignals.contains(keepaliveSignalRaw) ? keepaliveSignalRaw : '';
+    final String keepaliveSignal = Endpoint.keepaliveSignals.contains(keepaliveSignalRaw) ? keepaliveSignalRaw : '';
     final int sessionLifetimeSecs = (endpoint.getInt(ConfigurationCodecKeys.sessionLifetimeSecs) ?? 0).clamp(
       0,
       ConfigurationCodecKeys.sessionLifetimeSecsMax,
