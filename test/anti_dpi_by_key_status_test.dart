@@ -236,7 +236,7 @@ void main() {
         );
         final prefs = await _connect(
           tester,
-          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443'),
+          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443', subscriptionId: 'sub-1'),
           vpn: vpn,
           pumpSteps: 120,
           initial: {
@@ -261,7 +261,7 @@ void main() {
         final next = _FakeVpnRepository();
         await _connect(
           tester,
-          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443'),
+          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443', subscriptionId: 'sub-1'),
           vpn: next,
           initial: saved,
         );

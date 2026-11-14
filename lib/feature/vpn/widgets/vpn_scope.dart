@@ -558,7 +558,7 @@ class _VpnScopeState extends State<VpnScope> {
       final bypassTotal = planned.where((technique) => technique != 0).length;
       var bypassTried = 0;
       for (final (index, technique) in planned.indexed) {
-        if (!mounted || attempt != _startAttempt || (directFirst && !DailyBypassPreferences.enabled(preferences))) {
+        if (!mounted || attempt != _startAttempt || (directFirst && !DailyBypassPreferences.automaticFor(server.serverData, preferences))) {
           return;
         }
         if (index > 0) {

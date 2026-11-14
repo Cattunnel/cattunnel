@@ -198,6 +198,15 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
             },
           ),
           CustomSwitchTile(
+            title: context.ln.automaticBypassPersonal,
+            subtitle: context.ln.automaticBypassPersonalDescription,
+            value: DailyBypassPreferences.personalEnabled(context.dependencyFactory.sharedPreferences),
+            onChanged: (value) async {
+              await DailyBypassPreferences.setPersonalEnabled(context.dependencyFactory.sharedPreferences, value);
+              if (mounted) setState(() {});
+            },
+          ),
+          CustomSwitchTile(
             title: context.ln.autoFailover,
             subtitle: context.ln.autoFailoverDescription,
             value: _isAutoFailoverEnabled,

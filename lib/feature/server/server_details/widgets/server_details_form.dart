@@ -343,12 +343,27 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         values: _antiDpiChoices,
         toText: (mode) => _antiDpiModeText(context, mode),
         labelText: context.ln.antiDpiLabel,
-        onChanged: (mode) {
+        onChanged: (mode) async {
           if (mode == null) return;
+          var aboveSubscription = false;
+          if (SubscriptionChallenge.needsChallenge(_formData)) {
+            // The bypass of a subscription key changes only above the
+            // subscription: the question first, then the key keeps the choice.
+            final accepted = await showDialog<bool>(
+              context: context,
+              builder: (_) => const SubscriptionOverrideDialog(),
+            );
+            if (accepted != true || !context.mounted) {
+              if (mounted) setState(() {});
+              return;
+            }
+            aboveSubscription = true;
+          }
           _onDataChanged(
             context,
             antiDpi: mode != _antiDpiOff,
             antiDpiMode: mode == _antiDpiOff ? null : mode,
+            subscriptionOverride: aboveSubscription ? true : null,
           );
         },
       ),

@@ -1,11 +1,16 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/data/model/server_data.dart';
 
 abstract final class SubscriptionChallenge {
   static const answers = ['synack', 'ack', '53', '443', '404', 'udp', 'tcp', 'clienthello'];
   static String normalize(String text) => text.toLowerCase().replaceAll(RegExp(r'[\s-]'), '');
   static bool accepts(int question, String answer) => normalize(answer) == answers[question];
+
+  /// A key from a subscription obeys it; a manual change asks the question
+  /// first and then puts the key above the subscription (owner 14.11).
+  static bool needsChallenge(ServerData data) => data.subscriptionId != null && !data.subscriptionOverride;
   static int next(int previous, Random random) {
     final pick = random.nextInt(answers.length - 1);
     return pick >= previous ? pick + 1 : pick;

@@ -10,7 +10,7 @@ void main() {
   test('manual permission expires at local midnight; key setting has precedence', () async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    const data = ServerData.empty();
+    const data = ServerData.empty(subscriptionId: 'sub-1');
     final now = DateTime(2026, 11, 14, 23, 59);
     expect(DailyBypassPreferences.automaticFor(data, prefs, now: now), isFalse);
     await DailyBypassPreferences.setEnabled(prefs, true, now: now);
@@ -70,5 +70,25 @@ void main() {
         expect(SubscriptionChallenge.next(question, random), isNot(question));
       }
     }
+  });
+
+  test('personal keys have their own switch that stays on; subscription keys keep the daily one', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    const personal = ServerData.empty();
+    const fromSubscription = ServerData.empty(subscriptionId: 'sub-1');
+    final today = DateTime(2026, 11, 14, 12);
+    final nextWeek = DateTime(2026, 11, 21, 12);
+
+    await DailyBypassPreferences.setPersonalEnabled(prefs, true);
+    expect(DailyBypassPreferences.automaticFor(personal, prefs, now: today), isTrue);
+    expect(DailyBypassPreferences.automaticFor(personal, prefs, now: nextWeek), isTrue);
+    expect(DailyBypassPreferences.automaticFor(fromSubscription, prefs, now: today), isFalse);
+
+    await DailyBypassPreferences.setPersonalEnabled(prefs, false);
+    await DailyBypassPreferences.setEnabled(prefs, true, now: today);
+    expect(DailyBypassPreferences.automaticFor(fromSubscription, prefs, now: today), isTrue);
+    expect(DailyBypassPreferences.automaticFor(personal, prefs, now: today), isFalse);
+    expect(DailyBypassPreferences.automaticFor(fromSubscription, prefs, now: nextWeek), isFalse);
   });
 }
