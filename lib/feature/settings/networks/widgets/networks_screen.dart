@@ -6,6 +6,7 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
+import 'package:trusttunnel/feature/settings/networks/widgets/network_check_screen.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
 import 'package:trusttunnel/feature/vpn/domain/networks_memory.dart';
@@ -64,6 +65,11 @@ class _NetworksScreenState extends State<NetworksScreen> {
       appBar: CustomAppBar(title: context.ln.networksTitle),
       body: ListView(
         children: [
+          ListTile(
+            title: Text(context.ln.networkCheckTitle),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(const NetworkCheckScreen()),
+          ),
           if (_networks.isEmpty)
             Padding(
               padding: const EdgeInsets.all(24),
@@ -114,6 +120,12 @@ class _NetworksScreenState extends State<NetworksScreen> {
             const SizedBox(height: 8),
             Text(ln.networksDirectUntil(_NetworkTile._date(network.directFailsUntil!))),
           ],
+          for (final serverId in network.failedServerIds) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${servers[serverId]?.serverData.name ?? ln.networksDetailsGoneServer}: ${ln.networksBypassFailedToday}',
+            ),
+          ],
           for (final entry in network.modeByServer.entries) ...[
             const SizedBox(height: 8),
             Text(
@@ -133,7 +145,11 @@ class _NetworksScreenState extends State<NetworksScreen> {
         return CustomAlertDialog(
           title: title,
           content: SingleChildScrollView(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: lines),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: lines,
+            ),
           ),
           actionsBuilder: (_) => [
             TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(ln.networksForget)),
@@ -254,6 +270,7 @@ class _NetworkTile extends StatelessWidget {
   /// What the app knows about the network, in a line or two.
   String _facts(BuildContext context) {
     final facts = <String>[];
+    if (network.failedServerIds.isNotEmpty) facts.add(context.ln.networksBypassFailedToday);
     final until = network.directFailsUntil;
     if (until != null) {
       facts.add(context.ln.networksDirectUntil(_date(until)));

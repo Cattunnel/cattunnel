@@ -46,6 +46,7 @@ class ServerDataSourceImpl implements ServerDataSource {
         password: request.password,
         vpnProtocolId: request.vpnProtocol.value,
         ipv6Enabled: Value(request.ipv6),
+        subscriptionOverride: Value(request.subscriptionOverride),
         antiDpi: Value(request.antiDpi),
         antiDpiMode: Value(request.antiDpiMode),
         tlsProfile: Value(request.tlsProfile),
@@ -194,6 +195,8 @@ class ServerDataSourceImpl implements ServerDataSource {
             ruExit: e.ruExit,
             selected: e.selected,
             customSni: e.customSni,
+            subscriptionOverride: e.subscriptionOverride,
+            subscriptionId: e.subscriptionId?.toString(),
             subscriptionName: e.subscriptionId == null ? null : subscriptionNames[e.subscriptionId],
           ),
         );
@@ -234,65 +237,68 @@ class ServerDataSourceImpl implements ServerDataSource {
   /// list is inserted.
   @override
   Future<void> setNewServer({required String id, required ServerData request}) async {
-    final parsedId = int.parse(id);
+    await database.transaction(() async {
+      final parsedId = int.parse(id);
 
-    final update = database.servers.update()..where((e) => e.id.equals(parsedId));
+      final update = database.servers.update()..where((e) => e.id.equals(parsedId));
 
-    await database.dnsServers.deleteWhere((e) => e.serverId.equals(parsedId));
-    await database.dnsServers.insertAll(
-      request.dnsServers.map(
-        (s) => db.DnsServersCompanion.insert(
-          serverId: parsedId,
-          data: s,
+      await database.dnsServers.deleteWhere((e) => e.serverId.equals(parsedId));
+      await database.dnsServers.insertAll(
+        request.dnsServers.map(
+          (s) => db.DnsServersCompanion.insert(
+            serverId: parsedId,
+            data: s,
+          ),
         ),
-      ),
-    );
-
-    await update.write(
-      db.ServersCompanion(
-        name: Value(request.name),
-        ipAddress: Value(request.ipAddress),
-        domain: Value(request.domain),
-        login: Value(request.username),
-        password: Value(request.password),
-        vpnProtocolId: Value(request.vpnProtocol.value),
-        routingProfileId: Value(
-          int.parse(request.routingProfileId),
-        ),
-        ipv6Enabled: Value(request.ipv6),
-        antiDpi: Value(request.antiDpi),
-        antiDpiMode: Value(request.antiDpiMode),
-        tlsProfile: Value(request.tlsProfile),
-        clientRandomAuthKey: Value(request.tlsAuthKey),
-        antiDpiDesync: Value(request.antiDpiDesync),
-        h2PaddingFrames: Value(request.h2PaddingFrames),
-        h2PaddingFramesMin: Value(request.h2PaddingFramesMin),
-        h2PaddingPerStream: Value(request.h2PaddingPerStream),
-        h2PaddingMinBytes: Value(request.h2PaddingMinBytes),
-        h2PaddingMaxBytes: Value(request.h2PaddingMaxBytes),
-        h2PaddingStreamBytes: Value(request.h2PaddingStreamBytes),
-        h2PaddingSessionBytes: Value(request.h2PaddingSessionBytes),
-        keepaliveIntervalSecs: Value(request.keepaliveIntervalSecs),
-        keepaliveSignal: Value(request.keepaliveSignal),
-        sessionLifetimeSecs: Value(request.sessionLifetimeSecs),
-        xhttpEnabled: Value(request.xhttpEnabled),
-        xhttpPath: Value(request.xhttpPath),
-        blockQuic: Value(request.blockQuic),
-        ruExit: Value(request.ruExit),
-        tlsPrefix: const Value(null),
-        customSni: Value(request.customSni),
-      ),
-    );
-
-    final cert = request.certificate;
-
-    if (cert != null) {
-      await database.certificateTable.insertOnConflictUpdate(
-        CertificateEncoder(serverId: parsedId).convert(cert),
       );
-    } else {
-      await database.certificateTable.deleteWhere((c) => c.serverId.equals(parsedId));
-    }
+
+      await update.write(
+        db.ServersCompanion(
+          name: Value(request.name),
+          ipAddress: Value(request.ipAddress),
+          domain: Value(request.domain),
+          login: Value(request.username),
+          password: Value(request.password),
+          vpnProtocolId: Value(request.vpnProtocol.value),
+          routingProfileId: Value(
+            int.parse(request.routingProfileId),
+          ),
+          ipv6Enabled: Value(request.ipv6),
+          subscriptionOverride: Value(request.subscriptionOverride),
+          antiDpi: Value(request.antiDpi),
+          antiDpiMode: Value(request.antiDpiMode),
+          tlsProfile: Value(request.tlsProfile),
+          clientRandomAuthKey: Value(request.tlsAuthKey),
+          antiDpiDesync: Value(request.antiDpiDesync),
+          h2PaddingFrames: Value(request.h2PaddingFrames),
+          h2PaddingFramesMin: Value(request.h2PaddingFramesMin),
+          h2PaddingPerStream: Value(request.h2PaddingPerStream),
+          h2PaddingMinBytes: Value(request.h2PaddingMinBytes),
+          h2PaddingMaxBytes: Value(request.h2PaddingMaxBytes),
+          h2PaddingStreamBytes: Value(request.h2PaddingStreamBytes),
+          h2PaddingSessionBytes: Value(request.h2PaddingSessionBytes),
+          keepaliveIntervalSecs: Value(request.keepaliveIntervalSecs),
+          keepaliveSignal: Value(request.keepaliveSignal),
+          sessionLifetimeSecs: Value(request.sessionLifetimeSecs),
+          xhttpEnabled: Value(request.xhttpEnabled),
+          xhttpPath: Value(request.xhttpPath),
+          blockQuic: Value(request.blockQuic),
+          ruExit: Value(request.ruExit),
+          tlsPrefix: const Value(null),
+          customSni: Value(request.customSni),
+        ),
+      );
+
+      final cert = request.certificate;
+
+      if (cert != null) {
+        await database.certificateTable.insertOnConflictUpdate(
+          CertificateEncoder(serverId: parsedId).convert(cert),
+        );
+      } else {
+        await database.certificateTable.deleteWhere((c) => c.serverId.equals(parsedId));
+      }
+    });
   }
 
   /// {@macro server_data_source_get_server_by_id}
@@ -360,6 +366,8 @@ class ServerDataSourceImpl implements ServerDataSource {
         certificate: cert == null ? null : _parseCert(cert),
         customSni: server.customSni,
         subscriptionName: subscriptionName,
+        subscriptionId: server.subscriptionId?.toString(),
+        subscriptionOverride: server.subscriptionOverride,
       ),
     );
   }

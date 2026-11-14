@@ -173,6 +173,9 @@ class ServerData {
   /// subscription refresh.
   final String? subscriptionName;
 
+  final String? subscriptionId;
+  final bool subscriptionOverride;
+
   /// {@macro server}
   const ServerData({
     required this.name,
@@ -208,6 +211,8 @@ class ServerData {
     this.customSni,
     this.selected = false,
     this.subscriptionName,
+    this.subscriptionId,
+    this.subscriptionOverride = false,
   });
 
   const ServerData.empty({
@@ -244,6 +249,8 @@ class ServerData {
     this.customSni,
     this.selected = false,
     this.subscriptionName,
+    this.subscriptionId,
+    this.subscriptionOverride = false,
   });
 
   @override
@@ -281,6 +288,8 @@ class ServerData {
     tlsPrefix,
     customSni,
     subscriptionName,
+    subscriptionId,
+    subscriptionOverride,
   ]);
 
   @override
@@ -357,13 +366,16 @@ class ServerData {
         other.tlsPrefix == tlsPrefix &&
         other.certificate == certificate &&
         other.customSni == customSni &&
-        other.subscriptionName == subscriptionName;
+        other.subscriptionName == subscriptionName &&
+        other.subscriptionId == subscriptionId &&
+        other.subscriptionOverride == subscriptionOverride;
   }
 
   /// Creates a copy of this server with the given fields replaced.
   ///
   /// Fields that are not provided retain their original values.
   ServerData copyWith({
+    bool? subscriptionOverride,
     String? name,
     String? ipAddress,
     String? domain,
@@ -430,5 +442,7 @@ class ServerData {
     tlsPrefix: tlsPrefix != null ? tlsPrefix.value : this.tlsPrefix,
     customSni: customSni != null ? customSni.value : this.customSni,
     subscriptionName: subscriptionName,
+    subscriptionId: subscriptionId,
+    subscriptionOverride: subscriptionOverride ?? this.subscriptionOverride,
   );
 }

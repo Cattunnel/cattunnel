@@ -178,9 +178,21 @@
   "tlsProfileOkhttp": "Like an Android app",
   "tlsProfileSafari": "Like Safari (for iPhone and Mac)",
   "tlsProfileAutoBrowser": "Now: {profile}, like your browser",
-  "@tlsProfileAutoBrowser": {"placeholders": {"profile": {"type": "String"}}},
+  "@tlsProfileAutoBrowser": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "tlsProfileAutoRandom": "Now: {profile}, no browser found, picked at random",
-  "@tlsProfileAutoRandom": {"placeholders": {"profile": {"type": "String"}}},
+  "@tlsProfileAutoRandom": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "tlsProfileRedetect": "Detect again",
   "antiDpiModeBasic": "Basic: packet in pieces",
   "antiDpiModeAuto": "Auto: 1 → 2 → 3, remember what worked",
@@ -194,11 +206,29 @@
   "antiDpiDesyncHelper": "Space-separated parts: -s, -o or -d and a position. See \"?\" on the section",
   "antiDpiDesyncExamples": "Examples:",
   "antiDpiDesyncErrorUnknown": "\"{token}\": only -s, -o and -d are allowed",
-  "@antiDpiDesyncErrorUnknown": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorUnknown": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorRecordSplit": "\"{token}\": the server does not accept -r",
-  "@antiDpiDesyncErrorRecordSplit": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorRecordSplit": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorPosition": "\"{token}\": needs a position from -1500 to 1500, optionally followed by +s or +h",
-  "@antiDpiDesyncErrorPosition": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorPosition": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorTooMany": "At most 8 parts",
   "antiDpiDesyncErrorOobWithoutTtl": "-o needs a -d part after it, or the server stalls",
   "antiDpiDesyncWrongFieldError": "The bypass string has an error",
@@ -238,32 +268,44 @@
   "antiDpiStatusTechnique": "Turning on the bypass: technique {index} of {total}…",
   "@antiDpiStatusTechnique": {
     "placeholders": {
-      "index": {"type": "int"},
-      "total": {"type": "int"}
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "antiDpiStatusWorkedBypass": "It worked. Remembered: the network \"{network}\" needs the bypass",
   "@antiDpiStatusWorkedBypass": {
     "placeholders": {
-      "network": {"type": "String"}
+      "network": {
+        "type": "String"
+      }
     }
   },
   "antiDpiStatusWorkedPlain": "It worked. The network \"{network}\" does not need the bypass",
   "@antiDpiStatusWorkedPlain": {
     "placeholders": {
-      "network": {"type": "String"}
+      "network": {
+        "type": "String"
+      }
     }
   },
   "antiDpiStatusFailedPlain": "It did not help: I tried the plain connection and {count, plural, one{{count} technique} other{{count} techniques}}",
   "@antiDpiStatusFailedPlain": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "antiDpiStatusFailedModes": "It did not help: I tried {count, plural, one{{count} technique} other{{count} techniques}}",
   "@antiDpiStatusFailedModes": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "ruExitLabel": "Russian exit (for trips abroad)",
@@ -272,7 +314,13 @@
   "ruExitPromptBody": "\"{name}\" seems to be in Russia. Is it a key for trips abroad? Then only Russian sites and apps (banks, government services, marketplaces) go through it, everything else directly.\n\nIf you are in Russia and this is a regular VPN, pick \"No\". You can change it in the server settings.",
   "ruExitPromptYes": "Yes, for trips",
   "ruExitPromptNo": "No, regular",
-  "@ruExitPromptBody": {"placeholders": {"name": {"type": "String"}}},
+  "@ruExitPromptBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tlsOutOfBoundsError": "Mask and value should have the same length",
   "tlsWrongFieldError": "Hex sequence only allows 0-9, a-f characters",
   "tlsWrongValueError": "Value should have an even number of characters",
@@ -576,13 +624,17 @@
   "diagAutoFailedPlain": "I already tried without the bypass and {count, plural, one{{count} bypass technique} other{{count} bypass techniques}}, and none got through.",
   "@diagAutoFailedPlain": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "diagAutoFailedModes": "I already tried {count, plural, one{{count} bypass technique} other{{count} bypass techniques}}, and none got through.",
   "@diagAutoFailedModes": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "diagEngineHandshakeFreeze": "The server didn't answer the first message. The filter seems to have frozen its address.",
@@ -612,7 +664,7 @@
   "networkKindEthernet": "Ethernet",
   "networkKindOther": "Network",
   "networksTitle": "Networks",
-  "networksEmpty": "The networks where the plain connection does not work will show up here.",
+  "networksEmpty": "Daily bypass results for your networks will appear here.",
   "networksRename": "Rename",
   "networksForget": "Forget the network",
   "networksForgetTitle": "Forget the network?",
@@ -620,7 +672,7 @@
   "networksForgetAll": "Forget all the networks",
   "networksForgetAllTitle": "Forget all the networks?",
   "networksForgetAllDescription": "The app will forget where it needs the bypass and try the plain connection everywhere.",
-  "networksDirectUntil": "The plain connection does not work here until {date}",
+  "networksDirectUntil": "The plain connection does not work here until 00:00 on {date}",
   "@networksDirectUntil": {
     "placeholders": {
       "date": {
@@ -892,7 +944,13 @@
   "appSplitNoApps": "Couldn't get the list of apps",
   "appSplitDesktopNote": "Programs are picked by file name (for example chrome.exe or firefox). The list shows the running ones; type another program's name in the search to add it.",
   "appSplitAddProgram": "Add “{name}”",
-  "@appSplitAddProgram": {"placeholders": {"name": {"type": "String"}}},
+  "@appSplitAddProgram": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "appSplitSaved": "Saved. Applies on the next connect 🐾",
   "settingsAppliedReconnecting": "Saved. Reconnecting to apply 🐾",
   "reportProblem": "Report a problem",
@@ -937,7 +995,13 @@
   "appSplitForcedTag": "through the VPN - your choice",
   "appSplitRuTag": "Russian · always direct",
   "appSplitRuNote": "Russian apps (banks, government services, marketplaces, VK, Yandex) always bypass the VPN: they don't work with it. Installed now: {count}",
-  "@appSplitRuNote": {"placeholders": {"count": {"type": "int"}}},
+  "@appSplitRuNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@appSplitAutoDescription": {
     "placeholders": {
       "count": {
@@ -958,12 +1022,30 @@
   "trafficTilePeakHour": "Peak hour",
   "trafficTilePeakDay": "Peak day",
   "trafficDeltaUp": "▲ {percent}% vs previous period",
-  "@trafficDeltaUp": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficDeltaUp": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficDeltaDown": "▼ {percent}% vs previous period",
-  "@trafficDeltaDown": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficDeltaDown": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficNoPrevious": "no previous period yet",
   "trafficShareOfTotal": "{percent}% of traffic",
-  "@trafficShareOfTotal": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficShareOfTotal": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficDim": "Split",
   "trafficDimServer": "by server",
   "trafficDimDirection": "down / up",
@@ -992,7 +1074,16 @@
   "trafficPrivacyNote": "Counted on this device only and never sent anywhere.",
   "trafficThisMonth": "This month",
   "trafficUsedOf": "{used} of {limit}",
-  "@trafficUsedOf": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
+  "@trafficUsedOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "trafficNoLimit": "No limit set",
   "trafficSetLimit": "Set a limit",
   "trafficChangeLimit": "Change",
@@ -1028,7 +1119,16 @@
   "expertXhttpPathHint": "/api/v2/",
   "expertNumberWrong": "A whole number is required",
   "expertNumberOutOfRange": "Must be between {min} and {max}",
-  "@expertNumberOutOfRange": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
+  "@expertNumberOutOfRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "expertPathWrong": "The path must start with /",
   "helpKeepaliveTitle": "Keepalive",
   "helpKeepaliveBody": "An idle tunnel sometimes gets closed: the server counts the session as unneeded, and a mobile network can freeze the connection quietly. Keepalive sends a signal on an idle session, so it stays alive.\nInterval: the engine takes a random number from the value you set to four times that value, so with 60 seconds the ping goes every 60..240 seconds.\nSignal: a session check (a light request; the server counts it as a request and keeps the tunnel) or an HTTP/2 PING frame (what browsers send, but the server does not count it as a request, so it does not hold the tunnel).\nSession lifetime: how many seconds the session lives without a signal. 0 means: as long as the server keeps it.",
@@ -1061,5 +1161,33 @@
   "trafficCollect": "Collect statistics",
   "trafficCollectionInfo": "Data is stored only on this device.",
   "trafficCollectionDisabled": "Collection is off. Saved data is deleted one month after turning it off.",
-  "trafficLimitDisabled": "The limit is inactive while statistics collection is off."
+  "trafficLimitDisabled": "The limit is inactive while statistics collection is off.",
+  "subscriptionOverride": "Override subscription",
+  "subscriptionDifferent": "Key differs from the server",
+  "subscriptionRestore": "Restore server settings",
+  "subscriptionChallengeWrong": "Incorrect. Try another question.",
+  "subscriptionRestoreFailed": "Could not fetch the server key. Settings were kept.",
+  "subscriptionQuestion0": "I say SYN, what do you say?",
+  "subscriptionQuestion1": "I said SYN-ACK, what do you say?",
+  "subscriptionQuestion2": "Which port does DNS use?",
+  "subscriptionQuestion3": "Which port does HTTPS use?",
+  "subscriptionQuestion4": "Response code for “not found”?",
+  "subscriptionQuestion5": "The opposite of TCP?",
+  "subscriptionQuestion6": "The opposite of UDP?",
+  "subscriptionQuestion7": "Which friendly packet says hello first?",
+  "automaticBypass": "Automatic blocking bypass",
+  "automaticBypassUntilMidnight": "Until the end of today",
+  "automaticBypassDescription": "Try bypass techniques when a plain connection is cut. Memory expires at the end of today.",
+  "networkCheckTitle": "Check network",
+  "networkCheckDescription": "Basic check of your subscription servers: DNS, TCP ports and access. Starts only when requested. QUIC, TLS versions, Chrome fingerprint, 64 KB transfers and bypass comparisons are not tested yet.",
+  "networkCheckStopVpn": "Disconnect the VPN first to test the plain connection.",
+  "networkCheckNoServers": "No subscription servers to check.",
+  "networkCheckFailed": "The check was interrupted. You can try again.",
+  "networkCheckDnsMatch": "DNS matches the subscription address.",
+  "networkCheckDnsDifferent": "DNS differs from the subscription address. This can be load balancing, rather than spoofing.",
+  "networkCheckDnsUnknown": "Could not compare DNS with the subscription IP.",
+  "networkCheckReachable": "reachable",
+  "networkCheckUnreachable": "unresponsive or closed",
+  "networkCheckDiagnosis": "Marsik’s diagnosis",
+  "networksBypassFailedToday": "Bypass did not help; no more attempts until the end of today."
 }

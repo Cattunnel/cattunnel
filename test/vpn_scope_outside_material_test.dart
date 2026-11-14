@@ -106,5 +106,7 @@ void main() {
 
     await tester.tap(find.text('connect'));
     await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 7));
   });
 }

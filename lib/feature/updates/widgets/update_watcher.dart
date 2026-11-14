@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/feature/updates/domain/update_service.dart';
 import 'package:trusttunnel/feature/updates/widgets/update_dialogs.dart';
@@ -26,6 +28,7 @@ class _UpdateWatcherState extends State<UpdateWatcher> with WidgetsBindingObserv
   @override
   void initState() {
     super.initState();
+    unawaited(UpdateService.cleanupCache().catchError((Object _) {}));
     if (!UpdateService.enabled) return;
     WidgetsBinding.instance.addObserver(this);
     Future.delayed(_delayAfterLaunch, _autoCheck);

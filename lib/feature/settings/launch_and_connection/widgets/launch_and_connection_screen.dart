@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +15,7 @@ import 'package:trusttunnel/feature/settings/launch_and_connection/controller/mt
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope/launch_and_connection_scope.dart';
 import 'package:trusttunnel/feature/settings/launch_and_connection/widgets/scope/launch_and_connection_scope_controller.dart';
 import 'package:trusttunnel/feature/settings/ru_services/widgets/ru_services_rules_screen.dart';
+import 'package:trusttunnel/feature/vpn/domain/daily_bypass_preferences.dart';
 import 'package:trusttunnel/feature/vpn/widgets/auto_failover_scope.dart';
 import 'package:trusttunnel/widgets/common/custom_switch_tile.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
@@ -42,12 +45,14 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
   bool _isRuServicesBypassEnabled = true;
   bool _isConnectionNotificationsEnabled = true;
   late bool _isAutoFailoverEnabled = AutoFailoverPreferences.enabled(context.dependencyFactory.sharedPreferences);
+  Timer? _bypassExpiry;
   late final TextEditingController _mtuTextController;
   late final TextEditingController _testTimeoutTextController;
 
   @override
   void initState() {
     super.initState();
+    _scheduleBypassExpiry();
     final initialMtu = LaunchAndConnectionScope.controllerOf(context, listen: false).mtuValue;
     _mtuTextController = TextEditingController(text: initialMtu.toString());
 
@@ -91,6 +96,7 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
 
   @override
   void dispose() {
+    _bypassExpiry?.cancel();
     _mtuTextController.dispose();
     _testTimeoutTextController.dispose();
     super.dispose();
@@ -178,6 +184,20 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
             onChanged: _isKillSwitchLoading ? null : _setKillSwitchEnabled,
           ),
           CustomSwitchTile(
+            title: context.ln.automaticBypass,
+            subtitle: DailyBypassPreferences.enabled(context.dependencyFactory.sharedPreferences)
+                ? context.ln.automaticBypassUntilMidnight
+                : context.ln.automaticBypassDescription,
+            value: DailyBypassPreferences.enabled(context.dependencyFactory.sharedPreferences),
+            onChanged: (value) async {
+              await DailyBypassPreferences.setEnabled(context.dependencyFactory.sharedPreferences, value);
+              if (mounted) {
+                setState(() {});
+                _scheduleBypassExpiry();
+              }
+            },
+          ),
+          CustomSwitchTile(
             title: context.ln.autoFailover,
             subtitle: context.ln.autoFailoverDescription,
             value: _isAutoFailoverEnabled,
@@ -238,6 +258,17 @@ class _LaunchAndConnectionScreenState extends State<LaunchAndConnectionScreen> {
       ),
     ),
   );
+
+  void _scheduleBypassExpiry() {
+    _bypassExpiry?.cancel();
+    final now = DateTime.now();
+    _bypassExpiry = Timer(DailyBypassPreferences.midnightAfter(now).difference(now), () {
+      if (mounted) {
+        setState(() {});
+        _scheduleBypassExpiry();
+      }
+    });
+  }
 
   void _setLaunchAtSystemLogin(bool value) => _controller.setLaunchAtLoginEnabled(value);
 

@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.inMemory(super.e);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -176,6 +176,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 15) {
         await _runMigrationStep('v15', () => const MigrationsV15().migrate(this, m));
+      }
+      if (from < 16) {
+        await _runMigrationStep('v16', () => m.addColumn(servers, servers.subscriptionOverride));
       }
     },
   );

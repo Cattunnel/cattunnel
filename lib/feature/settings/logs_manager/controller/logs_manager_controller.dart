@@ -8,6 +8,7 @@ import 'package:trusttunnel/data/repository/export_logs_repository.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/controller/logs_manager_state.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/model/export_file_type.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/model/export_logs_archive.dart';
+import 'package:trusttunnel/feature/updates/domain/update_service.dart';
 
 final class LogsManagerController extends BaseStateController<LogsManagerState> with SequentialControllerHandler {
   final ExportLogsRepository _repository;
@@ -69,6 +70,7 @@ final class LogsManagerController extends BaseStateController<LogsManagerState> 
       );
 
       final tempDir = await getTemporaryDirectory();
+      await UpdateService.cleanupSharedArchives(tempDir);
       final filePath = '${tempDir.path}/${archive.name}';
 
       await _repository.saveRawFile(

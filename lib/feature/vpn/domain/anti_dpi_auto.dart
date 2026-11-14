@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:trusttunnel/feature/vpn/domain/daily_bypass_preferences.dart';
 
 /// Anti-DPI "auto" (ServerData.antiDpiAuto): VpnScope tries the DPI2
 /// techniques 1, 2, 3 in turn and this remembers two things about a
@@ -24,16 +25,8 @@ class AntiDpiAuto {
   /// turn, two at a time.
   static const modesPerAttempt = 2;
 
-  /// How long the app remembers that a network refused the plain
-  /// connection.
-  static const memoryTtl = Duration(days: 7);
-
-  /// The same on a mobile network during the first [mobileWarmup]: the
-  /// operator changes the gateway with the city, so a "yes, it is cut"
-  /// here says less than a Wi-Fi one and is worth checking again every
-  /// day. After the warmup the network behaves like Wi-Fi.
-  static const mobileMemoryTtl = Duration(days: 1);
-  static const mobileWarmup = Duration(days: 3);
+  /// Upper bound; all network facts expire at local midnight.
+  static const memoryTtl = Duration(days: 1);
 
   static const attemptTimeout = Duration(seconds: 6);
 
@@ -44,6 +37,8 @@ class AntiDpiAuto {
   /// say nothing about the network itself.
   static const modeKeyPrefix = 'anti_dpi_auto';
   static const cursorKeyPrefix = 'anti_dpi_cursor';
+  static const cursorSeenKeyPrefix = 'anti_dpi_cursor_seen';
+  static String cursorSeenKey(String serverId, String network) => '$cursorSeenKeyPrefix.$serverId.$network';
   static const directKeyPrefix = 'anti_dpi_direct';
 
   /// When the plain connection first failed in this network: the mobile
@@ -119,16 +114,32 @@ class AntiDpiAuto {
   ///
   /// [bySubscription]: the subscription asked for the bypass itself, the
   /// hint lives apart from the networks' memory (see [subHintKeyPrefix]).
-  List<int> order({required String serverId, required String network, bool bySubscription = false}) {
-    final hint = _preferences.getInt(
-      bySubscription ? subHintKey(serverId, network) : _hintKey(serverId, network),
-    );
-    final cursor = _preferences.getInt(_cursorKey(serverId, network)) ?? 0;
+  List<int> order({
+    required String serverId,
+    required String network,
+    bool bySubscription = false,
+    DateTime? now,
+    int limit = modesPerAttempt,
+  }) {
+    final seen = _preferences.getInt(seenKey(serverId, network));
+    final fresh =
+        seen != null &&
+        DailyBypassPreferences.sameDay(DateTime.fromMillisecondsSinceEpoch(seen), now ?? DateTime.now());
+    final hint = bySubscription || fresh
+        ? _preferences.getInt(
+            bySubscription ? subHintKey(serverId, network) : _hintKey(serverId, network),
+          )
+        : null;
+    final cursorAt = _preferences.getInt(cursorSeenKey(serverId, network));
+    final cursorFresh =
+        cursorAt != null &&
+        DailyBypassPreferences.sameDay(DateTime.fromMillisecondsSinceEpoch(cursorAt), now ?? DateTime.now());
+    final cursor = bySubscription || cursorFresh ? _preferences.getInt(_cursorKey(serverId, network)) ?? 0 : 0;
     final start = cursor.clamp(0, modes.length - 1);
     final rotated = <int>[...modes.skip(start), ...modes.take(start)];
     final withHint = hint != null && modes.contains(hint) ? [hint, ...rotated.where((m) => m != hint)] : rotated;
 
-    return withHint.take(modesPerAttempt).toList();
+    return withHint.take(limit).toList();
   }
 
   /// The technique that worked in this network.
@@ -147,12 +158,14 @@ class AntiDpiAuto {
       await _preferences.remove(_hintKey(serverId, network));
       await _preferences.remove(seenKey(serverId, network));
     } else {
+      await _preferences.remove(failedKey(serverId, network));
       await _preferences.setInt(_hintKey(serverId, network), mode);
       await _preferences.setInt(seenKey(serverId, network), (now ?? DateTime.now()).millisecondsSinceEpoch);
     }
     // The next round starts after the one that worked.
     final index = modes.indexOf(mode);
     await _preferences.setInt(_cursorKey(serverId, network), (index + 1) % modes.length);
+    await _preferences.setInt(cursorSeenKey(serverId, network), (now ?? DateTime.now()).millisecondsSinceEpoch);
   }
 
   /// Moves the round on after a failure, so the next attempt tries other
@@ -160,14 +173,34 @@ class AntiDpiAuto {
   Future<void> advance({required String serverId, required String network, required int count}) async {
     final cursor = _preferences.getInt(_cursorKey(serverId, network)) ?? 0;
     await _preferences.setInt(_cursorKey(serverId, network), (cursor + count) % modes.length);
+    await _preferences.setInt(cursorSeenKey(serverId, network), DateTime.now().millisecondsSinceEpoch);
   }
 
-  /// How long the memory of a direct failure lives, from when it was first
-  /// remembered in this network.
-  static Duration directTtl({required String kind, required DateTime since, required DateTime now}) {
-    if (kind == 'mobile' && now.difference(since) < mobileWarmup) return mobileMemoryTtl;
+  static Duration directTtl({required String kind, required DateTime since, required DateTime now}) =>
+      DailyBypassPreferences.midnightAfter(since).difference(since);
 
-    return memoryTtl;
+  static const failedKeyPrefix = 'anti_dpi_failed';
+  static String failedKey(String serverId, String network) => '$failedKeyPrefix.$serverId.$network';
+
+  bool failedToday({required String serverId, required String network, DateTime? now}) {
+    final at = _preferences.getInt(failedKey(serverId, network));
+    return at != null && DailyBypassPreferences.sameDay(DateTime.fromMillisecondsSinceEpoch(at), now ?? DateTime.now());
+  }
+
+  Future<void> rememberFailed({required String serverId, required String network, DateTime? now}) async {
+    await forgetDirectFailure(serverId: serverId, network: network);
+    await _preferences.remove(modeKey(serverId, network));
+    await _preferences.remove(seenKey(serverId, network));
+    await _preferences.setInt(failedKey(serverId, network), (now ?? DateTime.now()).millisecondsSinceEpoch);
+  }
+
+  Future<void> migrateLegacyDirectMemory() async {
+    const marker = 'dpi_daily_memory_migrated';
+    if (_preferences.getBool(marker) == true) return;
+    for (final key in _preferences.getKeys().toList()) {
+      if (key.startsWith(directKeyPrefix)) await _preferences.remove(key);
+    }
+    await _preferences.setBool(marker, true);
   }
 
   /// Whether the plain connection does not work in this network: it failed
@@ -181,16 +214,12 @@ class AntiDpiAuto {
     final at = _preferences.getInt(_directKey(serverId, network));
     if (at == null) return false;
     final when = now ?? DateTime.now();
-    final since = DateTime.fromMillisecondsSinceEpoch(
-      _preferences.getInt(_directSinceKey(serverId, network)) ?? at,
-    );
-
-    return when.difference(DateTime.fromMillisecondsSinceEpoch(at)) < directTtl(kind: kind, since: since, now: when);
+    final written = DateTime.fromMillisecondsSinceEpoch(at);
+    return !written.isAfter(when) && DailyBypassPreferences.sameDay(written, when);
   }
 
   /// Remembers that the plain connection does not work in this network.
-  /// The first failure starts the mobile warmup; later ones only refresh
-  /// the failure itself.
+  /// Call only after a technique succeeds in the same round.
   Future<void> rememberDirectFailure({
     required String serverId,
     required String network,
@@ -217,10 +246,12 @@ class AntiDpiAuto {
       for (final prefix in [
         modeKeyPrefix,
         cursorKeyPrefix,
+        cursorSeenKeyPrefix,
         directKeyPrefix,
         directSinceKeyPrefix,
         subHintKeyPrefix,
         seenKeyPrefix,
+        failedKeyPrefix,
       ]) {
         if (key.startsWith('$prefix.$serverId.')) {
           await _preferences.remove(key);

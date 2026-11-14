@@ -98,6 +98,7 @@ class _UpdateInstallDialogState extends State<_UpdateInstallDialog> {
       if (_apkInfo == null) throw StateError('no APK for this phone');
       _apk = await UpdateService.download(
         _apkInfo!,
+        build: widget.update.build,
         onProgress: (progress) {
           if (mounted) setState(() => _progress = progress);
         },

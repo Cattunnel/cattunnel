@@ -64,7 +64,9 @@ class _ServersCardState extends State<ServersCard> {
     final latencyResult = latencyScope.resultFor(widget.server.id);
     final isUnreachable = latencyResult != null && !latencyResult.reachable && vpnManagerState != VpnState.connected;
 
-    final baseSubtitle = widget.server.serverData.ipAddress;
+    final baseSubtitle = widget.server.serverData.subscriptionOverride
+        ? '${widget.server.serverData.ipAddress} · ${context.ln.subscriptionDifferent}'
+        : widget.server.serverData.ipAddress;
 
     return CustomListTileSeparated(
       title: widget.server.serverData.name,

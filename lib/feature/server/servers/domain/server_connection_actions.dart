@@ -12,6 +12,7 @@ import 'package:trusttunnel/feature/server/servers/domain/ru_exit_prompt.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/settings/app_logging/widgets/scope/app_logging_scope.dart';
 import 'package:trusttunnel/feature/settings/excluded_routes/widgets/scope/excluded_routes_scope.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/widgets/connection_error_dialog.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
@@ -65,9 +66,11 @@ abstract final class ServerConnectionActions {
     }
 
     _connecting = true;
+    final clock = DoctorTrace.beginConnection(server.id);
     try {
-      await _prepareAndConnect(context, server);
+      await _prepareAndConnect(context, server, clock);
     } finally {
+      DoctorTrace.discardConnectionClock(server.id);
       _connecting = false;
     }
   }
@@ -75,6 +78,7 @@ abstract final class ServerConnectionActions {
   static Future<void> _prepareAndConnect(
     BuildContext context,
     Server server,
+    Stopwatch clock,
   ) async {
     final serversController = ServersScope.controllerOf(context, listen: false);
     final controller = VpnScope.vpnControllerOf(context, listen: false);
@@ -107,6 +111,7 @@ abstract final class ServerConnectionActions {
 
     serversController.pickServer(serverChecked.id);
     try {
+      DoctorTrace.add('start step UI preparation: ${clock.elapsedMilliseconds} ms');
       await controller.start(
         server: serverChecked,
         routingProfile: routingProfile,

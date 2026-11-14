@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:trusttunnel/common/assets/asset_icons.dart';
+import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/error/model/enum/presentation_field_name.dart';
 import 'package:trusttunnel/common/error/model/presentation_field.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
@@ -13,15 +14,19 @@ import 'package:trusttunnel/common/models/value_data.dart';
 import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/common/utils/validation_utils.dart';
 import 'package:trusttunnel/data/model/routing_profile.dart';
+import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/vpn_protocol.dart';
 import 'package:trusttunnel/feature/server/server_details/widgets/scope/server_details_scope.dart';
 import 'package:trusttunnel/feature/server/server_details/widgets/scope/server_details_scope_aspect.dart';
 import 'package:trusttunnel/feature/server/server_details/widgets/server_help_sheet.dart';
+import 'package:trusttunnel/feature/server/server_details/widgets/subscription_override_dialog.dart';
+import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/vpn/domain/tls_profile_auto.dart';
 import 'package:trusttunnel/widgets/buttons/custom_icon_button.dart';
 import 'package:trusttunnel/widgets/inputs/custom_text_field.dart';
 import 'package:trusttunnel/widgets/menu/custom_dropdown_menu.dart';
+import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
 import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
 import 'package:vpn_plugin/models/endpoint.dart';
@@ -152,6 +157,14 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
                 summary,
                 style: context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark),
               ),
+            ),
+          if (_formData.subscriptionOverride)
+            Row(
+              children: [
+                const MarsikImage(AssetImages.catAlert, height: 32),
+                const SizedBox(width: 8),
+                Expanded(child: Text(context.ln.subscriptionDifferent)),
+              ],
             ),
           const SizedBox(height: 4),
           _section(
@@ -541,7 +554,38 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     ),
   ];
 
+  Future<void> _restoreSubscription() async {
+    final controller = ServerDetailsScope.controllerOf(context, listen: false);
+    final id = controller.id;
+    if (id == null) return;
+    final dependencies = context.dependencyFactory;
+    try {
+      await dependencies.subscriptionSyncService.restoreServer(Server(id: id, serverData: _formData));
+      if (!mounted) return;
+      controller.fetchServer();
+      ServersScope.controllerOf(context, listen: false).fetchServers();
+    } on Object {
+      if (mounted) context.showInfoSnackBar(message: context.ln.subscriptionRestoreFailed);
+    }
+  }
+
   List<Widget> _expertFields(BuildContext context) => [
+    if (_formData.subscriptionId != null) ...[
+      SwitchListTile(
+        title: Text(context.ln.subscriptionOverride),
+        value: _formData.subscriptionOverride,
+        onChanged: (value) async {
+          if (!value) {
+            await _restoreSubscription();
+            return;
+          }
+          final accepted = await showDialog<bool>(context: context, builder: (_) => const SubscriptionOverrideDialog());
+          if (accepted == true && context.mounted) _onDataChanged(context, subscriptionOverride: true);
+        },
+      ),
+      if (_formData.subscriptionOverride)
+        TextButton(onPressed: _restoreSubscription, child: Text(context.ln.subscriptionRestore)),
+    ],
     CustomDropdownMenu<VpnProtocol>.expanded(
       value: _formData.vpnProtocol,
       values: VpnProtocol.values,
@@ -853,6 +897,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     String? password,
     ValueData<String>? clientRandom,
     bool? enableIpv6,
+    bool? subscriptionOverride,
     bool? antiDpi,
     int? antiDpiMode,
     String? tlsProfile,
@@ -889,6 +934,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         protocol: protocol,
         clientRandom: clientRandom,
         enableIpv6: enableIpv6,
+        subscriptionOverride: subscriptionOverride,
         antiDpi: antiDpi,
         antiDpiMode: antiDpiMode,
         tlsProfile: tlsProfile,

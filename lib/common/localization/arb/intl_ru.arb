@@ -96,9 +96,21 @@
   "tlsProfileOkhttp": "Как приложение Android",
   "tlsProfileSafari": "Как Safari (для iPhone и Mac)",
   "tlsProfileAutoBrowser": "Сейчас: {profile} - как ваш браузер",
-  "@tlsProfileAutoBrowser": {"placeholders": {"profile": {"type": "String"}}},
+  "@tlsProfileAutoBrowser": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "tlsProfileAutoRandom": "Сейчас: {profile} - браузер не определён, выбрано случайно",
-  "@tlsProfileAutoRandom": {"placeholders": {"profile": {"type": "String"}}},
+  "@tlsProfileAutoRandom": {
+    "placeholders": {
+      "profile": {
+        "type": "String"
+      }
+    }
+  },
   "tlsProfileRedetect": "Определить заново",
   "antiDpiModeBasic": "Обычный: пакет по частям",
   "antiDpiModeAuto": "Авто: 1 → 2 → 3, запомнить удачный",
@@ -112,11 +124,29 @@
   "antiDpiDesyncHelper": "Части через пробел: -s, -o или -d и позиция. Подробнее - «?» у раздела",
   "antiDpiDesyncExamples": "Примеры:",
   "antiDpiDesyncErrorUnknown": "«{token}»: можно только -s, -o и -d",
-  "@antiDpiDesyncErrorUnknown": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorUnknown": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorRecordSplit": "«{token}»: -r сервер не принимает",
-  "@antiDpiDesyncErrorRecordSplit": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorRecordSplit": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorPosition": "«{token}»: нужна позиция от -1500 до 1500, после неё можно только +s или +h",
-  "@antiDpiDesyncErrorPosition": {"placeholders": {"token": {"type": "String"}}},
+  "@antiDpiDesyncErrorPosition": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
   "antiDpiDesyncErrorTooMany": "Не больше 8 частей",
   "antiDpiDesyncErrorOobWithoutTtl": "После -o нужна часть -d, иначе сервер зависнет",
   "antiDpiDesyncWrongFieldError": "В строке обхода ошибка",
@@ -156,32 +186,44 @@
   "antiDpiStatusTechnique": "Включаю обход: способ {index} из {total}…",
   "@antiDpiStatusTechnique": {
     "placeholders": {
-      "index": {"type": "int"},
-      "total": {"type": "int"}
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "antiDpiStatusWorkedBypass": "Получилось. Запомнил: в сети «{network}» нужен обход",
   "@antiDpiStatusWorkedBypass": {
     "placeholders": {
-      "network": {"type": "String"}
+      "network": {
+        "type": "String"
+      }
     }
   },
   "antiDpiStatusWorkedPlain": "Получилось. В сети «{network}» обход не нужен",
   "@antiDpiStatusWorkedPlain": {
     "placeholders": {
-      "network": {"type": "String"}
+      "network": {
+        "type": "String"
+      }
     }
   },
   "antiDpiStatusFailedPlain": "Не помогло: пробовал напрямую и {count, plural, one{{count} способ обхода} few{{count} способа обхода} many{{count} способов обхода} other{{count} способа обхода}}",
   "@antiDpiStatusFailedPlain": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "antiDpiStatusFailedModes": "Не помогло: пробовал {count, plural, one{{count} способ обхода} few{{count} способа обхода} many{{count} способов обхода} other{{count} способа обхода}}",
   "@antiDpiStatusFailedModes": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "ruExitLabel": "Российский выход (для поездок за границу)",
@@ -190,7 +232,13 @@
   "ruExitPromptBody": "Похоже, «{name}» стоит в России. Это ключ для поездок за границу? Тогда через него пойдут только российские сайты и приложения (банки, Госуслуги, маркетплейсы), а всё остальное - напрямую.\n\nЕсли ты сейчас в России и это обычный VPN - выбери «Нет». Поменять можно в настройках сервера.",
   "ruExitPromptYes": "Да, для поездок",
   "ruExitPromptNo": "Нет, обычный",
-  "@ruExitPromptBody": {"placeholders": {"name": {"type": "String"}}},
+  "@ruExitPromptBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "tlsOutOfBoundsError": "Маска и значение должны быть одинаковой длины",
   "tlsWrongFieldError": "В hex-последовательности допустимы только символы 0-9, a-f",
   "tlsWrongValueError": "Значение должно содержать чётное число символов",
@@ -422,13 +470,17 @@
   "diagAutoFailedPlain": "Я уже пробовал без обхода и {count, plural, one{{count} способ обхода} few{{count} способа обхода} many{{count} способов обхода} other{{count} способа обхода}}, ни один не прошёл.",
   "@diagAutoFailedPlain": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "diagAutoFailedModes": "Я уже пробовал {count, plural, one{{count} способ обхода} few{{count} способа обхода} many{{count} способов обхода} other{{count} способа обхода}}, ни один не прошёл.",
   "@diagAutoFailedModes": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "diagEngineHandshakeFreeze": "Сервер не ответил на первое сообщение. Похоже, фильтр заморозил его адрес.",
@@ -458,7 +510,7 @@
   "networkKindEthernet": "Ethernet",
   "networkKindOther": "Сеть",
   "networksTitle": "Сети",
-  "networksEmpty": "Здесь появятся сети, в которых обычное соединение не работает.",
+  "networksEmpty": "Здесь появятся дневные результаты обхода в твоих сетях.",
   "networksRename": "Переименовать",
   "networksForget": "Забыть сеть",
   "networksForgetTitle": "Забыть сеть?",
@@ -466,7 +518,7 @@
   "networksForgetAll": "Забыть все сети",
   "networksForgetAllTitle": "Забыть все сети?",
   "networksForgetAllDescription": "Приложение забудет, где ему нужен обход, и попробует обычное соединение везде.",
-  "networksDirectUntil": "Обычное соединение здесь не работает до {date}",
+  "networksDirectUntil": "Обычное соединение здесь не работает до 00:00 {date}",
   "@networksDirectUntil": {
     "placeholders": {
       "date": {
@@ -738,7 +790,13 @@
   "appSplitNoApps": "Не удалось получить список приложений",
   "appSplitDesktopNote": "Программы выбираются по имени файла (например, chrome.exe или firefox). В списке те, что запущены сейчас; другую можно добавить, набрав её имя в поиске.",
   "appSplitAddProgram": "Добавить «{name}»",
-  "@appSplitAddProgram": {"placeholders": {"name": {"type": "String"}}},
+  "@appSplitAddProgram": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "appSplitSaved": "Сохранено. Применится при следующем подключении 🐾",
   "settingsAppliedReconnecting": "Сохранено. Переподключаюсь, чтобы применить 🐾",
   "reportProblem": "Сообщить о проблеме",
@@ -783,7 +841,13 @@
   "appSplitForcedTag": "через VPN - выбрано вручную",
   "appSplitRuTag": "российское · всегда напрямую",
   "appSplitRuNote": "Российские приложения (банки, Госуслуги, маркетплейсы, VK, Яндекс) всегда идут мимо VPN: с ним они не работают. Сейчас установлено: {count}",
-  "@appSplitRuNote": {"placeholders": {"count": {"type": "int"}}},
+  "@appSplitRuNote": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "@appSplitAutoDescription": {
     "placeholders": {
       "count": {
@@ -804,12 +868,30 @@
   "trafficTilePeakHour": "Пиковый час",
   "trafficTilePeakDay": "Пиковый день",
   "trafficDeltaUp": "▲ {percent}% к прошлому периоду",
-  "@trafficDeltaUp": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficDeltaUp": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficDeltaDown": "▼ {percent}% к прошлому периоду",
-  "@trafficDeltaDown": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficDeltaDown": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficNoPrevious": "прошлый период ещё не накоплен",
   "trafficShareOfTotal": "{percent}% трафика",
-  "@trafficShareOfTotal": {"placeholders": {"percent": {"type": "String"}}},
+  "@trafficShareOfTotal": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "trafficDim": "Разрез",
   "trafficDimServer": "по серверам",
   "trafficDimDirection": "скачано / отдано",
@@ -838,7 +920,16 @@
   "trafficPrivacyNote": "Считается только на этом устройстве и никуда не отправляется.",
   "trafficThisMonth": "Этот месяц",
   "trafficUsedOf": "{used} из {limit}",
-  "@trafficUsedOf": {"placeholders": {"used": {"type": "String"}, "limit": {"type": "String"}}},
+  "@trafficUsedOf": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
   "trafficNoLimit": "Лимит не задан",
   "trafficSetLimit": "Задать лимит",
   "trafficChangeLimit": "Изменить",
@@ -874,7 +965,16 @@
   "expertXhttpPathHint": "/api/v2/",
   "expertNumberWrong": "Нужно целое число",
   "expertNumberOutOfRange": "Допустимо от {min} до {max}",
-  "@expertNumberOutOfRange": {"placeholders": {"min": {"type": "int"}, "max": {"type": "int"}}},
+  "@expertNumberOutOfRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "expertPathWrong": "Путь должен начинаться с /",
   "helpKeepaliveTitle": "Keepalive",
   "helpKeepaliveBody": "Простаивающий туннель иногда закрывается: сервер считает сессию ненужной, а мобильная сеть может тихо заморозить соединение. Keepalive шлёт сигнал на пустой сессии, чтобы она осталась живой.\nИнтервал: движок берёт случайное число от указанного до четырёх указанных, так что при 60 секундах пинг будет раз в 60..240 секунд.\nСигнал: проверка сессии (лёгкий запрос, сервер считает его запросом и не закрывает туннель) или кадр HTTP/2 PING (так делают браузеры, но сервер его запросом не считает, поэтому туннель он не держит).\nВремя жизни сессии: сколько секунд сессия живёт без сигнала. 0 значит: пока сервер держит сессию.",
@@ -907,5 +1007,33 @@
   "trafficCollect": "Собирать статистику",
   "trafficCollectionInfo": "Данные хранятся только на устройстве.",
   "trafficCollectionDisabled": "Сбор выключен. Сохранённые данные удалятся через месяц после выключения.",
-  "trafficLimitDisabled": "Лимит не работает, пока сбор статистики выключен."
+  "trafficLimitDisabled": "Лимит не работает, пока сбор статистики выключен.",
+  "subscriptionOverride": "Выше подписки",
+  "subscriptionDifferent": "Ключ отличается от серверного",
+  "subscriptionRestore": "Вернуть как на сервере",
+  "subscriptionChallengeWrong": "Неверно. Попробуй другой вопрос.",
+  "subscriptionRestoreFailed": "Не удалось получить ключ с сервера. Настройки сохранены.",
+  "subscriptionQuestion0": "Я говорю тебе SYN, а ты мне?",
+  "subscriptionQuestion1": "Я сказал SYN-ACK, а ты мне?",
+  "subscriptionQuestion2": "На каком порту DNS?",
+  "subscriptionQuestion3": "На каком порту HTTPS?",
+  "subscriptionQuestion4": "Код ответа «не найдено»?",
+  "subscriptionQuestion5": "Антоним TCP?",
+  "subscriptionQuestion6": "Антоним UDP?",
+  "subscriptionQuestion7": "Очень дружный есть пакет — первым говорит «привет» — кто это?",
+  "automaticBypass": "Обход блокировок сам",
+  "automaticBypassUntilMidnight": "До конца дня",
+  "automaticBypassDescription": "Пробовать обход, если обычное подключение перерезано. Память действует до конца дня.",
+  "networkCheckTitle": "Проверить сеть",
+  "networkCheckDescription": "Базовая проверка своих серверов подписки: DNS, TCP-порты и доступ. Запускается только по кнопке. QUIC, версии TLS, профиль Chrome, передача 64 КБ и сравнение способов обхода здесь пока не проверяются.",
+  "networkCheckStopVpn": "Сначала отключи VPN, чтобы проверить обычное подключение.",
+  "networkCheckNoServers": "Нет серверов из подписки для проверки.",
+  "networkCheckFailed": "Проверка прервалась. Можно попробовать снова.",
+  "networkCheckDnsMatch": "DNS совпадает с адресом подписки.",
+  "networkCheckDnsDifferent": "DNS отличается от адреса подписки. Это может быть балансировка, а не подмена.",
+  "networkCheckDnsUnknown": "Не удалось сравнить DNS с IP подписки.",
+  "networkCheckReachable": "доступен",
+  "networkCheckUnreachable": "не отвечает или закрыт",
+  "networkCheckDiagnosis": "Вывод Марсика",
+  "networksBypassFailedToday": "Обход не помог; повторять не будем до конца дня."
 }

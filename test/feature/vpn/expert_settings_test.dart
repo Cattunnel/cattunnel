@@ -142,11 +142,12 @@ void main() {
       expect(text, contains('xhttp_path = "/api/v2/"'));
     });
 
-    test('an off keepalive and XHTTP stay out of the config', () {
+    test('disabled keepalive, session lifetime and XHTTP are explicit in the engine config', () {
       final text = _codec.encode(_config(_endpoint()));
 
-      expect(text, isNot(contains('keepalive_interval_secs')));
-      expect(text, isNot(contains('xhttp_enable')));
+      expect(text, contains('keepalive_interval_secs = 0'));
+      expect(text, contains('session_lifetime_secs = 0'));
+      expect(text, contains('xhttp_enable = false'));
     });
 
     test('an XHTTP path without a slash is not written', () {
@@ -159,26 +160,28 @@ void main() {
     });
 
     test('the values survive the round trip', () {
-      final decoded = _codec.decode(
-        _codec.encode(
-          _config(
-            _endpoint(
-              h2PaddingFrames: 8,
-              h2PaddingFramesMin: 3,
-              h2PaddingPerStream: false,
-              h2PaddingMinBytes: 8,
-              h2PaddingMaxBytes: 32,
-              h2PaddingStreamBytes: 1024,
-              h2PaddingSessionBytes: 2048,
-              keepaliveIntervalSecs: 120,
-              keepaliveSignal: 'check',
-              sessionLifetimeSecs: 900,
-              xhttpEnabled: true,
-              xhttpPath: '/x/',
+      final decoded = _codec
+          .decode(
+            _codec.encode(
+              _config(
+                _endpoint(
+                  h2PaddingFrames: 8,
+                  h2PaddingFramesMin: 3,
+                  h2PaddingPerStream: false,
+                  h2PaddingMinBytes: 8,
+                  h2PaddingMaxBytes: 32,
+                  h2PaddingStreamBytes: 1024,
+                  h2PaddingSessionBytes: 2048,
+                  keepaliveIntervalSecs: 120,
+                  keepaliveSignal: 'check',
+                  sessionLifetimeSecs: 900,
+                  xhttpEnabled: true,
+                  xhttpPath: '/x/',
+                ),
+              ),
             ),
-          ),
-        ),
-      ).endpoint;
+          )
+          .endpoint;
 
       expect(decoded.h2PaddingFrames, 8);
       expect(decoded.h2PaddingFramesMin, 3);
@@ -195,22 +198,24 @@ void main() {
     });
 
     test('a value out of range is clamped to what the engine takes', () {
-      final decoded = _codec.decode(
-        _codec.encode(
-          _config(
-            _endpoint(
-              h2PaddingFrames: 1000,
-              h2PaddingFramesMin: 1000,
-              h2PaddingMinBytes: 1000,
-              h2PaddingMaxBytes: 1000,
-              h2PaddingStreamBytes: 100000000,
-              h2PaddingSessionBytes: 100000000,
-              keepaliveIntervalSecs: 100000,
-              sessionLifetimeSecs: 100000,
+      final decoded = _codec
+          .decode(
+            _codec.encode(
+              _config(
+                _endpoint(
+                  h2PaddingFrames: 1000,
+                  h2PaddingFramesMin: 1000,
+                  h2PaddingMinBytes: 1000,
+                  h2PaddingMaxBytes: 1000,
+                  h2PaddingStreamBytes: 100000000,
+                  h2PaddingSessionBytes: 100000000,
+                  keepaliveIntervalSecs: 100000,
+                  sessionLifetimeSecs: 100000,
+                ),
+              ),
             ),
-          ),
-        ),
-      ).endpoint;
+          )
+          .endpoint;
 
       expect(decoded.h2PaddingFrames, ConfigurationCodecKeys.h2PaddingFramesMax);
       expect(decoded.h2PaddingFramesMin, ConfigurationCodecKeys.h2PaddingFramesMinMax);
@@ -223,11 +228,13 @@ void main() {
     });
 
     test('an unknown keepalive signal is dropped', () {
-      final decoded = _codec.decode(
-        _codec.encode(
-          _config(_endpoint(keepaliveIntervalSecs: 60, keepaliveSignal: 'pong')),
-        ),
-      ).endpoint;
+      final decoded = _codec
+          .decode(
+            _codec.encode(
+              _config(_endpoint(keepaliveIntervalSecs: 60, keepaliveSignal: 'pong')),
+            ),
+          )
+          .endpoint;
 
       expect(decoded.keepaliveIntervalSecs, 60);
       expect(decoded.keepaliveSignal, isEmpty);

@@ -94,7 +94,7 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
       final incomingNames = servers.map((s) => s.name).toSet();
 
       for (final row in existingRows) {
-        if (!incomingNames.contains(row.name) && !row.selected) {
+        if (!incomingNames.contains(row.name) && !row.selected && !row.subscriptionOverride) {
           await _deleteServerRow(row.id);
         }
       }
@@ -110,7 +110,7 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         final existing = existingByName[server.name];
 
         if (existing != null) {
-          await _updateServerRow(existing.id, server);
+          if (!existing.subscriptionOverride) await _updateServerRow(existing.id, server);
         } else {
           await _insertServerRow(subscriptionId, server);
         }
@@ -134,6 +134,17 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         clientRandomAuthKey: Value(server.tlsAuthKey),
         antiDpiDesync: Value(server.antiDpiDesync),
         h2PaddingFrames: Value(server.h2PaddingFrames),
+        h2PaddingFramesMin: Value(server.h2PaddingFramesMin),
+        h2PaddingPerStream: Value(server.h2PaddingPerStream),
+        h2PaddingMinBytes: Value(server.h2PaddingMinBytes),
+        h2PaddingMaxBytes: Value(server.h2PaddingMaxBytes),
+        h2PaddingStreamBytes: Value(server.h2PaddingStreamBytes),
+        h2PaddingSessionBytes: Value(server.h2PaddingSessionBytes),
+        keepaliveIntervalSecs: Value(server.keepaliveIntervalSecs),
+        keepaliveSignal: Value(server.keepaliveSignal),
+        sessionLifetimeSecs: Value(server.sessionLifetimeSecs),
+        xhttpEnabled: Value(server.xhttpEnabled),
+        xhttpPath: Value(server.xhttpPath),
         blockQuic: Value(server.blockQuic),
         ruExit: Value(server.ruExit),
         tlsPrefix: const Value(null),
@@ -168,17 +179,23 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         password: Value(server.password),
         vpnProtocolId: Value(server.vpnProtocol.value),
         ipv6Enabled: Value(server.ipv6),
-        // A link can turn anti-DPI on; it never turns off the user's own pick.
-        antiDpi: server.antiDpi ? const Value(true) : const Value.absent(),
-        // The same for the technique: set only when the link names one.
-        antiDpiMode: server.antiDpi && server.antiDpiMode != 0 ? Value(server.antiDpiMode) : const Value.absent(),
-        // Likewise the fingerprint: only when the link names one.
-        tlsProfile: server.tlsProfile.isNotEmpty ? Value(server.tlsProfile) : const Value.absent(),
-        // And the custom split (it comes with mode 5, set just above).
-        antiDpiDesync: server.antiDpiDesync.isNotEmpty ? Value(server.antiDpiDesync) : const Value.absent(),
-        // Padding and QUIC off too: only when the link turns them on.
-        h2PaddingFrames: server.h2PaddingFrames > 0 ? Value(server.h2PaddingFrames) : const Value.absent(),
-        blockQuic: server.blockQuic ? const Value(true) : const Value.absent(),
+        antiDpi: Value(server.antiDpi),
+        antiDpiMode: Value(server.antiDpiMode),
+        tlsProfile: Value(server.tlsProfile),
+        antiDpiDesync: Value(server.antiDpiDesync),
+        h2PaddingFrames: Value(server.h2PaddingFrames),
+        h2PaddingFramesMin: Value(server.h2PaddingFramesMin),
+        h2PaddingPerStream: Value(server.h2PaddingPerStream),
+        h2PaddingMinBytes: Value(server.h2PaddingMinBytes),
+        h2PaddingMaxBytes: Value(server.h2PaddingMaxBytes),
+        h2PaddingStreamBytes: Value(server.h2PaddingStreamBytes),
+        h2PaddingSessionBytes: Value(server.h2PaddingSessionBytes),
+        keepaliveIntervalSecs: Value(server.keepaliveIntervalSecs),
+        keepaliveSignal: Value(server.keepaliveSignal),
+        sessionLifetimeSecs: Value(server.sessionLifetimeSecs),
+        xhttpEnabled: Value(server.xhttpEnabled),
+        xhttpPath: Value(server.xhttpPath),
+        blockQuic: Value(server.blockQuic),
         // The subscription decides which key has a Russian exit.
         ruExit: Value(server.ruExit),
         tlsPrefix: const Value(null),

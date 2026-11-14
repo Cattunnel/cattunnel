@@ -9,6 +9,18 @@ import 'package:trusttunnel/feature/vpn/widgets/anti_dpi_status_line.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 
 void main() {
+  test('the tap clock includes preparation before VpnScope and is consumed once', () {
+    final clock = DoctorTrace.beginConnection('7');
+    expect(DoctorTrace.takeConnectionClock('other'), isNull);
+    expect(identical(DoctorTrace.takeConnectionClock('7'), clock), isTrue);
+    expect(clock.isRunning, isTrue);
+    expect(DoctorTrace.takeConnectionClock('7'), isNull);
+    clock.stop();
+    final abandoned = DoctorTrace.beginConnection('8');
+    DoctorTrace.discardConnectionClock('8');
+    expect(abandoned.isRunning, isFalse);
+  });
+
   group('alternativeHelps', () {
     test('another server only where the trouble is on the way to this one', () {
       final helps = DiagnosisVerdict.values.where(ConnectionDoctor.alternativeHelps).toSet();

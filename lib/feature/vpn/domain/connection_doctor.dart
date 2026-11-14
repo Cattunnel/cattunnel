@@ -72,6 +72,26 @@ abstract final class DoctorTrace {
   static const _max = 80;
   static final _lines = <String>[];
 
+  static String? _requestedServer;
+  static Stopwatch? _requestedClock;
+
+  /// Starts at the connect action, before subscription refresh or prompts.
+  static Stopwatch beginConnection(String serverId) {
+    _requestedClock?.stop();
+    _requestedServer = serverId;
+    return _requestedClock = Stopwatch()..start();
+  }
+
+  static Stopwatch? takeConnectionClock(String serverId) {
+    if (_requestedServer != serverId) return null;
+    final clock = _requestedClock;
+    _requestedClock = null;
+    _requestedServer = null;
+    return clock;
+  }
+
+  static void discardConnectionClock(String serverId) => takeConnectionClock(serverId)?.stop();
+
   /// The lines of this app session, oldest first, with the local time.
   static List<String> get lines => List.unmodifiable(_lines);
 

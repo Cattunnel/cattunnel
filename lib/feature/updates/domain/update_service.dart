@@ -132,10 +132,54 @@ class UpdateService {
     );
   }
 
+  /// Only completed, newer installers younger than an hour survive a restart.
+  /// Legacy downloads have no build metadata, so cannot be reused safely.
+  static Future<void> cleanupCache({Directory? temporaryDirectory, int? installedBuild, DateTime? now}) async {
+    final temp = temporaryDirectory ?? await getTemporaryDirectory();
+    final current = installedBuild ?? int.parse((await PackageInfo.fromPlatform()).buildNumber);
+    final at = now ?? DateTime.now();
+    final dir = Directory('${temp.path}/updates');
+    if (await dir.exists()) {
+      var keep = false;
+      try {
+        final metadata = jsonDecode(await File('${dir.path}/build.json').readAsString()) as Map;
+        final build = metadata['build'];
+        for (final name in ['cattunnel-update.apk', 'CatTunnel-Setup.exe']) {
+          final file = File('${dir.path}/$name');
+          if (!await file.exists()) continue;
+          final age = at.difference(await file.lastModified());
+          if (build is int && build > current && !age.isNegative && age < const Duration(hours: 1)) keep = true;
+        }
+      } on Object {
+        // Interrupted and pre-metadata downloads are stale.
+      }
+      if (!keep) await dir.delete(recursive: true);
+    }
+    await cleanupSharedArchives(temp, now: at);
+  }
+
+  /// Keep the latest share readable by its recipient; remove only old app ZIPs.
+  static Future<void> cleanupSharedArchives(Directory temp, {DateTime? now}) async {
+    final at = now ?? DateTime.now();
+    final pattern = RegExp(r'^trusttunnel_[a-z]+_logs_\d{8}T\d{6}\.zip$');
+    await for (final entity in temp.list(followLinks: false)) {
+      if (entity is! File || !pattern.hasMatch(entity.uri.pathSegments.last)) continue;
+      try {
+        if (at.difference(await entity.lastModified()) >= const Duration(hours: 1)) await entity.delete();
+      } on FileSystemException {
+        // A recipient or another window may have removed the file already.
+      }
+    }
+  }
+
   /// Downloads [apk] into cache/updates/ (replacing an older download) and
   /// returns the file. [onProgress] gets 0..1, or null while the size is
   /// unknown.
-  static Future<File> download(AppUpdateApk apk, {required ValueChanged<double?> onProgress}) async {
+  static Future<File> download(
+    AppUpdateApk apk, {
+    required int build,
+    required ValueChanged<double?> onProgress,
+  }) async {
     final dir = Directory('${(await getTemporaryDirectory()).path}/updates');
     if (dir.existsSync()) dir.deleteSync(recursive: true);
     dir.createSync(recursive: true);
@@ -162,6 +206,10 @@ class UpdateService {
       } finally {
         await sink.close();
       }
+      await File('${dir.path}/build.json').writeAsString(jsonEncode({'build': build}));
+    } catch (_) {
+      if (await dir.exists()) await dir.delete(recursive: true);
+      rethrow;
     } finally {
       client.close();
     }

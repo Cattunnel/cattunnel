@@ -331,23 +331,21 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
         config.endpoint.h2PaddingSessionBytes.clamp(0, ConfigurationCodecKeys.h2PaddingBytesBudgetMax),
       );
     }
-    if (config.endpoint.keepaliveIntervalSecs > 0) {
-      endpoint.setInt(
-        ConfigurationCodecKeys.keepaliveIntervalSecs,
-        config.endpoint.keepaliveIntervalSecs.clamp(1, ConfigurationCodecKeys.keepaliveIntervalSecsMax),
-      );
-      if (Endpoint.keepaliveSignals.contains(config.endpoint.keepaliveSignal)) {
-        endpoint.setString(ConfigurationCodecKeys.keepaliveSignal, config.endpoint.keepaliveSignal);
-      }
+    // Write disabled values too: omitting them delegates to engine defaults.
+    endpoint.setInt(
+      ConfigurationCodecKeys.keepaliveIntervalSecs,
+      config.endpoint.keepaliveIntervalSecs.clamp(0, ConfigurationCodecKeys.keepaliveIntervalSecsMax),
+    );
+    if (config.endpoint.keepaliveIntervalSecs > 0 &&
+        Endpoint.keepaliveSignals.contains(config.endpoint.keepaliveSignal)) {
+      endpoint.setString(ConfigurationCodecKeys.keepaliveSignal, config.endpoint.keepaliveSignal);
     }
-    if (config.endpoint.sessionLifetimeSecs > 0) {
-      endpoint.setInt(
-        ConfigurationCodecKeys.sessionLifetimeSecs,
-        config.endpoint.sessionLifetimeSecs.clamp(1, ConfigurationCodecKeys.sessionLifetimeSecsMax),
-      );
-    }
+    endpoint.setInt(
+      ConfigurationCodecKeys.sessionLifetimeSecs,
+      config.endpoint.sessionLifetimeSecs.clamp(0, ConfigurationCodecKeys.sessionLifetimeSecsMax),
+    );
+    endpoint.setBool(ConfigurationCodecKeys.xhttpEnable, config.endpoint.xhttpEnabled);
     if (config.endpoint.xhttpEnabled) {
-      endpoint.setBool(ConfigurationCodecKeys.xhttpEnable, true);
       final path = config.endpoint.xhttpPath;
       if (path.isNotEmpty && path.startsWith('/')) {
         endpoint.setString(ConfigurationCodecKeys.xhttpPath, path);

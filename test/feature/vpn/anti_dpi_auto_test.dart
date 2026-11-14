@@ -50,13 +50,13 @@ void main() {
     expect(auto.directFails(serverId: '7', network: 'net2', now: now), isFalse);
     expect(auto.directFails(serverId: '8', network: 'net1', now: now), isFalse);
 
-    // The memory has a week of life.
+    // The memory expires at local midnight.
     expect(
-      auto.directFails(serverId: '7', network: 'net1', now: now.add(const Duration(days: 6))),
-      isTrue,
+      auto.directFails(serverId: '7', network: 'net1', now: DateTime(2026, 10, 22)),
+      isFalse,
     );
     expect(
-      auto.directFails(serverId: '7', network: 'net1', now: now.add(const Duration(days: 8))),
+      auto.directFails(serverId: '7', network: 'net1', now: now.add(const Duration(days: 1))),
       isFalse,
     );
 
@@ -65,50 +65,14 @@ void main() {
     expect(auto.directFails(serverId: '7', network: 'net1', now: now), isFalse);
   });
 
-  test('a mobile network checks the plain connection daily for the first three days', () async {
+  test('mobile memory expires at midnight too', () async {
     SharedPreferences.setMockInitialValues({});
     final auto = AntiDpiAuto(await SharedPreferences.getInstance());
-    final first = DateTime(2026, 10, 21, 12);
-
+    final first = DateTime(2026, 10, 21, 23, 59);
     await auto.rememberDirectFailure(serverId: '7', network: 'mobile:25001', now: first);
+    expect(auto.directFails(serverId: '7', network: 'mobile:25001', kind: 'mobile', now: first), isTrue);
     expect(
-      auto.directFails(
-        serverId: '7',
-        network: 'mobile:25001',
-        kind: 'mobile',
-        now: first.add(const Duration(hours: 12)),
-      ),
-      isTrue,
-    );
-    expect(
-      auto.directFails(
-        serverId: '7',
-        network: 'mobile:25001',
-        kind: 'mobile',
-        now: first.add(const Duration(hours: 25)),
-      ),
-      isFalse,
-    );
-
-    // After the warmup the network keeps the memory like Wi-Fi.
-    final fourthDay = first.add(const Duration(days: 4));
-    await auto.rememberDirectFailure(serverId: '7', network: 'mobile:25001', now: fourthDay);
-    expect(
-      auto.directFails(
-        serverId: '7',
-        network: 'mobile:25001',
-        kind: 'mobile',
-        now: fourthDay.add(const Duration(days: 6)),
-      ),
-      isTrue,
-    );
-    expect(
-      auto.directFails(
-        serverId: '7',
-        network: 'mobile:25001',
-        kind: 'mobile',
-        now: fourthDay.add(const Duration(days: 8)),
-      ),
+      auto.directFails(serverId: '7', network: 'mobile:25001', kind: 'mobile', now: DateTime(2026, 10, 22)),
       isFalse,
     );
   });

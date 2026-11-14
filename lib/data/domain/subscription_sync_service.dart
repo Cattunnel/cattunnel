@@ -130,8 +130,25 @@ class SubscriptionSyncService {
     }
   }
 
+  /// Fetch before writing: a failed request leaves the override and key intact.
+  Future<void> restoreServer(Server server) async {
+    final subscriptionId = server.serverData.subscriptionId;
+    final subscriptions = await _subscriptionDataSource.getAllSubscriptions();
+    final subscription = subscriptions.firstWhere((s) => s.id == subscriptionId);
+    final incoming = await _parse(await _decode(await _fetch(subscription), subscription));
+    final data = incoming.firstWhere((s) => s.name == server.serverData.name);
+    await _serverDataSource.setNewServer(
+      id: server.id,
+      request: data.copyWith(
+        routingProfileId: server.serverData.routingProfileId,
+        selected: server.serverData.selected,
+        subscriptionOverride: false,
+      ),
+    );
+  }
+
   /// The servers whose subscription turned anti-DPI on (false -> true).
-  /// A subscription can turn it on, never off.
+  /// Subscription changes can enable or disable the setting.
   @visibleForTesting
   static List<String> turnedOnAntiDpi(Map<String, bool> before, List<Server> after) => [
     for (final server in after)

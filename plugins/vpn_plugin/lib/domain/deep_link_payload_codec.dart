@@ -49,25 +49,36 @@ abstract final class _DeepLinkPayloadTag {
   static const ruExit = 0x40;
 
   /// CatTunnel: anti-DPI technique, one byte: 1..3 or 4 = auto (see
-  /// Endpoint.antiDpiMode). Absent - the app keeps its own pick.
+  /// Endpoint.antiDpiMode). Absent - the default is used.
   static const antiDpiMode = 0x41;
 
   /// CatTunnel: ClientHello fingerprint, UTF-8 (chrome, firefox, safari,
-  /// okhttp; see Endpoint.tlsProfile). Absent - the app keeps its own pick.
+  /// okhttp; see Endpoint.tlsProfile). Absent - the default is used.
   static const tlsProfile = 0x42;
 
   /// CatTunnel: custom anti-DPI split, UTF-8 byedpi syntax (see
   /// Endpoint.antiDpiDesync); the app shows it as mode 5. An invalid string
-  /// is dropped. Absent - the app keeps its own pick.
+  /// is dropped. Absent - the default is used.
   static const antiDpiDesync = 0x43;
 
   /// CatTunnel: HTTP/2 padding, one byte: frames to pad, 1..64 (see
-  /// Endpoint.h2PaddingFrames). Absent - the app keeps its own pick.
+  /// Endpoint.h2PaddingFrames). Absent - the default is used.
   static const h2PaddingFrames = 0x44;
 
   /// CatTunnel: refuse QUIC (UDP 443), bool (see Endpoint.blockQuic).
-  /// Absent - the app keeps its own pick.
+  /// Absent - the default is used.
   static const blockQuic = 0x45;
+  static const h2PaddingFramesMin = 0x46;
+  static const h2PaddingPerStream = 0x47;
+  static const h2PaddingMinBytes = 0x48;
+  static const h2PaddingMaxBytes = 0x49;
+  static const h2PaddingStreamBytes = 0x4A;
+  static const h2PaddingSessionBytes = 0x4B;
+  static const keepaliveIntervalSecs = 0x4C;
+  static const keepaliveSignal = 0x4D;
+  static const sessionLifetimeSecs = 0x4E;
+  static const xhttpEnabled = 0x4F;
+  static const xhttpPath = 0x50;
 }
 
 const _payloadVersion = 0x01;
@@ -107,6 +118,17 @@ final class DeepLinkPayloadEncoder extends Converter<Endpoint, String> {
         _tlv(_DeepLinkPayloadTag.h2PaddingFrames, [
           input.h2PaddingFrames.clamp(1, ConfigurationCodecKeys.h2PaddingFramesMax),
         ]),
+      _tlv(_DeepLinkPayloadTag.h2PaddingFramesMin, _writeVarint(input.h2PaddingFramesMin.clamp(0, 64))),
+      _tlvBool(_DeepLinkPayloadTag.h2PaddingPerStream, input.h2PaddingPerStream),
+      _tlv(_DeepLinkPayloadTag.h2PaddingMinBytes, _writeVarint(input.h2PaddingMinBytes.clamp(0, 256))),
+      _tlv(_DeepLinkPayloadTag.h2PaddingMaxBytes, _writeVarint(input.h2PaddingMaxBytes.clamp(0, 256))),
+      _tlv(_DeepLinkPayloadTag.h2PaddingStreamBytes, _writeVarint(input.h2PaddingStreamBytes.clamp(0, 1048576))),
+      _tlv(_DeepLinkPayloadTag.h2PaddingSessionBytes, _writeVarint(input.h2PaddingSessionBytes.clamp(0, 1048576))),
+      _tlv(_DeepLinkPayloadTag.keepaliveIntervalSecs, _writeVarint(input.keepaliveIntervalSecs.clamp(0, 3600))),
+      _tlvString(_DeepLinkPayloadTag.keepaliveSignal, input.keepaliveSignal),
+      _tlv(_DeepLinkPayloadTag.sessionLifetimeSecs, _writeVarint(input.sessionLifetimeSecs.clamp(0, 86400))),
+      _tlvBool(_DeepLinkPayloadTag.xhttpEnabled, input.xhttpEnabled),
+      _tlvString(_DeepLinkPayloadTag.xhttpPath, input.xhttpPath),
       if (input.blockQuic) _tlvBool(_DeepLinkPayloadTag.blockQuic, true),
       if (input.skipVerification) _tlvBool(_DeepLinkPayloadTag.skipVerification, true),
       if (input.certificate.isNotEmpty) _tlv(_DeepLinkPayloadTag.certificate, _pemToDer(input.certificate)),
@@ -239,6 +261,7 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
     final addresses = <String>[];
     var dnsUpstreams = <String>[];
 
+    final extended = <String, Object>{};
     var offset = 0;
     while (offset < payload.length) {
       final (tag, afterTag) = _readVarint(payload, offset);
@@ -298,6 +321,28 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           h2PaddingFrames = value.length == 1 && value[0] <= ConfigurationCodecKeys.h2PaddingFramesMax ? value[0] : 0;
         case _DeepLinkPayloadTag.blockQuic:
           blockQuic = _bool(value);
+        case _DeepLinkPayloadTag.h2PaddingFramesMin:
+          extended['h2_padding_frames_min'] = _boundedInt(value, 64);
+        case _DeepLinkPayloadTag.h2PaddingPerStream:
+          extended['h2_padding_per_stream'] = _bool(value);
+        case _DeepLinkPayloadTag.h2PaddingMinBytes:
+          extended['h2_padding_min_bytes'] = _boundedInt(value, 256);
+        case _DeepLinkPayloadTag.h2PaddingMaxBytes:
+          extended['h2_padding_max_bytes'] = _boundedInt(value, 256);
+        case _DeepLinkPayloadTag.h2PaddingStreamBytes:
+          extended['h2_padding_stream_bytes'] = _boundedInt(value, 1048576);
+        case _DeepLinkPayloadTag.h2PaddingSessionBytes:
+          extended['h2_padding_session_bytes'] = _boundedInt(value, 1048576);
+        case _DeepLinkPayloadTag.keepaliveIntervalSecs:
+          extended['keepalive_interval_secs'] = _boundedInt(value, 3600);
+        case _DeepLinkPayloadTag.keepaliveSignal:
+          extended['keepalive_signal'] = _string(value);
+        case _DeepLinkPayloadTag.sessionLifetimeSecs:
+          extended['session_lifetime_secs'] = _boundedInt(value, 86400);
+        case _DeepLinkPayloadTag.xhttpEnabled:
+          extended['xhttp_enable'] = _bool(value);
+        case _DeepLinkPayloadTag.xhttpPath:
+          extended['xhttp_path'] = _string(value);
         case _DeepLinkPayloadTag.clientRandomPrefix:
           // Fixed ClientHello prefixes fingerprint the connection. Ignore tag 0x0B.
           break;
@@ -338,6 +383,13 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           ..setBool('block_quic', blockQuic)
           ..setString('custom_sni', customSni)
           ..setStringList('dns_upstreams', dnsUpstreams);
+    for (final entry in extended.entries) {
+      switch (entry.value) {
+        case final bool value: endpoint.setBool(entry.key, value);
+        case final int value: endpoint.setInt(entry.key, value);
+        case final String value: endpoint.setString(entry.key, value);
+      }
+    }
     if (name != null) {
       // ConfigurationDecoder un-escapes the name (JSON string rules).
       final escaped = jsonEncode(name);
@@ -345,6 +397,14 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
     }
 
     return document.toString();
+  }
+
+  static int _boundedInt(List<int> value, int max) {
+    final (number, end) = _readVarint(value, 0);
+    if (end != value.length || number > max) {
+      throw const FormatException('tt:// link: invalid numeric field');
+    }
+    return number;
   }
 
   static String _string(List<int> value) {

@@ -318,7 +318,9 @@ class _CozyServersViewState extends State<CozyServersView> with WidgetsBindingOb
           body: CityHomeBody(
             state: state,
             serverName: current.serverData.name,
-            serverSub: current.serverData.ipAddress,
+            serverSub: current.serverData.subscriptionOverride
+                ? context.ln.subscriptionDifferent
+                : current.serverData.ipAddress,
             pingMs: latency?.latency?.inMilliseconds,
             unreachable: latency != null && !latency.reachable,
             session: since == null ? null : DateTime.now().difference(since),

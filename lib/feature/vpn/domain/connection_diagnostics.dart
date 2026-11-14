@@ -264,7 +264,7 @@ class ConnectionDiagnostics {
       }
 
       return round.failed
-          ? ConnectionDiagnosis(verdict: DiagnosisVerdict.networkCuts, auto: round)
+          ? ConnectionDiagnosis(verdict: DiagnosisVerdict.addressFrozen, auto: round)
           : ConnectionDiagnosis(verdict: DiagnosisVerdict.inconclusive, auto: round);
     }
 

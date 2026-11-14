@@ -222,9 +222,16 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                         },
                         title: Text(server.serverData.name, style: context.textTheme.titleSmall),
                         subtitle: y2k
-                            ? Y2kMicro(server.serverData.ipAddress, color: Y2kColors.dim)
+                            ? Y2kMicro(
+                                server.serverData.subscriptionOverride
+                                    ? context.ln.subscriptionDifferent
+                                    : server.serverData.ipAddress,
+                                color: Y2kColors.dim,
+                              )
                             : Text(
-                                server.serverData.ipAddress,
+                                server.serverData.subscriptionOverride
+                                    ? context.ln.subscriptionDifferent
+                                    : server.serverData.ipAddress,
                                 style: context.textTheme.bodySmall?.copyWith(color: colors.neutralDark),
                               ),
                         trailing: panel

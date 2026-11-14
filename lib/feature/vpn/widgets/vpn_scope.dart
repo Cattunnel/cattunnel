@@ -23,6 +23,7 @@ import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
 import 'package:trusttunnel/feature/vpn/domain/anti_dpi_auto.dart';
 import 'package:trusttunnel/feature/vpn/domain/connect_failures.dart';
 import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
+import 'package:trusttunnel/feature/vpn/domain/daily_bypass_preferences.dart';
 import 'package:trusttunnel/feature/vpn/domain/net_diagnostics.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_fingerprint.dart';
 import 'package:trusttunnel/feature/vpn/domain/network_name.dart';
@@ -332,10 +333,13 @@ class _VpnScopeState extends State<VpnScope> {
   static const _sameStartWindow = Duration(seconds: 3);
 
   Timer? _antiDpiStatusTimer;
+  Stopwatch? _sinceTap;
+  late final Future<void> _legacyMemoryReady;
 
   @override
   void initState() {
     super.initState();
+    _legacyMemoryReady = AntiDpiAuto(context.dependencyFactory.sharedPreferences).migrateLegacyDirectMemory();
     _stateNotifier = ValueNotifier(widget.initialState);
     // The app may come up with the VPN already running (Linux keeps it).
     DesktopTrafficRecorder.instance.onState(widget.initialState, null);
@@ -405,7 +409,9 @@ class _VpnScopeState extends State<VpnScope> {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
   }) async {
+    final preferences = context.dependencyFactory.sharedPreferences;
     _clearAntiDpiStatus();
+    final tapClock = DoctorTrace.takeConnectionClock(server.id);
     final key = Object.hash(server, routingProfile, Object.hashAll(excludedRoutes), logLevel);
     final now = DateTime.now();
     final recent = now.difference(_lastStartAt) < _sameStartWindow;
@@ -415,13 +421,18 @@ class _VpnScopeState extends State<VpnScope> {
       return;
     }
 
+    _sinceTap = tapClock ?? (Stopwatch()..start());
+    AntiDpiAuto.lastRound.value = null;
+    final stopClock = Stopwatch()..start();
     // Marked before the stop: a second call arrives while the first one is
     // still stopping.
     _lastStartKey = key;
     _lastStartAt = now;
     _preparingServerId = server.id;
     try {
+      await _legacyMemoryReady;
       await _stop(fromStart: true);
+      DoctorTrace.add('start step stop: ${stopClock.elapsedMilliseconds} ms');
     } catch (_) {
       _preparingServerId = null;
       rethrow;
@@ -435,7 +446,9 @@ class _VpnScopeState extends State<VpnScope> {
     _autoAntiDpiMode = null;
     _autoServerId = null;
     // Windows: diagnostics must reach these while the tunnel owns DNS.
+    final primeClock = Stopwatch()..start();
     await PhysicalNet.prime([ServerLatencyTester.parseAddress(server.serverData.ipAddress).$1]);
+    DoctorTrace.add('start step PhysicalNet.prime: ${primeClock.elapsedMilliseconds} ms');
 
     final data = server.serverData;
     if (data.antiDpi && data.antiDpiMode == ServerData.antiDpiAuto) {
@@ -451,7 +464,7 @@ class _VpnScopeState extends State<VpnScope> {
       return;
     }
 
-    if (!data.antiDpi) {
+    if (!data.antiDpi && DailyBypassPreferences.automaticFor(data, preferences)) {
       // The subscription says no anti-DPI. The plain connection goes first,
       // and the techniques follow only if the network says the path is cut.
       await _startWithTechniques(
@@ -505,7 +518,9 @@ class _VpnScopeState extends State<VpnScope> {
     final ln = Localization.ln;
     final auto = AntiDpiAuto(preferences);
     _autoServerId = server.id;
+    final fingerprintClock = Stopwatch()..start();
     final fingerprint = await NetworkFingerprints.current(kind: await AntiDpiAuto.networkKind());
+    DoctorTrace.add('round step fingerprint: ${fingerprintClock.elapsedMilliseconds} ms');
     final kind = fingerprint.kind;
     final network = fingerprint.key;
     // The list of the networks shows what kind each of them is.
@@ -521,7 +536,13 @@ class _VpnScopeState extends State<VpnScope> {
     }
     final techniques = <int>[
       if (directFirst && !directFails) 0,
-      ...auto.order(serverId: server.id, network: network, bySubscription: bySubscription),
+      if (!directFirst || !auto.failedToday(serverId: server.id, network: network))
+        ...auto.order(
+          serverId: server.id,
+          network: network,
+          bySubscription: bySubscription,
+          limit: directFirst ? AntiDpiAuto.modes.length : AntiDpiAuto.modesPerAttempt,
+        ),
     ];
     // A frozen address gets one technique only: another handshake into the
     // freeze only extends it.
@@ -537,10 +558,11 @@ class _VpnScopeState extends State<VpnScope> {
       final bypassTotal = planned.where((technique) => technique != 0).length;
       var bypassTried = 0;
       for (final (index, technique) in planned.indexed) {
-        if (!mounted || attempt != _startAttempt) {
+        if (!mounted || attempt != _startAttempt || (directFirst && !DailyBypassPreferences.enabled(preferences))) {
           return;
         }
         if (index > 0) {
+          final switchClock = Stopwatch()..start();
           _autoSwitching = true;
           try {
             await widget.vpnRepository.stop();
@@ -548,6 +570,7 @@ class _VpnScopeState extends State<VpnScope> {
             // Not right after the previous ClientHello: handshakes milliseconds
             // apart are one of the freeze triggers.
             await Future<void>.delayed(AntiDpiAuto.switchPause);
+            DoctorTrace.add('round step stop and pause: ${switchClock.elapsedMilliseconds} ms');
           } finally {
             _autoSwitching = false;
           }
@@ -588,6 +611,9 @@ class _VpnScopeState extends State<VpnScope> {
             await auto.forgetDirectFailure(serverId: server.id, network: network);
           } else {
             triedModes.add(technique);
+            if (directFirst && pathCut) {
+              await auto.rememberDirectFailure(serverId: server.id, network: network);
+            }
             await auto.remember(
               serverId: server.id,
               network: network,
@@ -620,14 +646,14 @@ class _VpnScopeState extends State<VpnScope> {
           return;
         }
         if (outcome == _TechniqueOutcome.unreachable) {
+          if (directFirst && technique != 0) await auto.rememberFailed(serverId: server.id, network: network);
           _clearAntiDpiStatus();
 
           return; // the engine goes on with this technique
         }
         pathCut = true;
         if (technique == 0) {
-          // The plain connection was cut: the network needs the techniques.
-          await auto.rememberDirectFailure(serverId: server.id, network: network);
+          // A cut alone proves nothing about whether a technique can help.
           _showAntiDpiStatus(
             AntiDpiStatus(step: AntiDpiStep.cut, networkName: networkName),
           );
@@ -642,6 +668,7 @@ class _VpnScopeState extends State<VpnScope> {
     if (!mounted || attempt != _startAttempt) {
       return;
     }
+    if (directFirst) await auto.rememberFailed(serverId: server.id, network: network);
     // Nothing worked: the next attempt starts with other techniques.
     await auto.advance(
       serverId: server.id,
@@ -699,6 +726,7 @@ class _VpnScopeState extends State<VpnScope> {
     required int technique,
     required bool first,
   }) async {
+    final techniqueClock = Stopwatch()..start();
     _autoAntiDpiMode = technique == 0 ? null : technique;
     final failure = _failures.stream.first.then<ConnectFailure?>((f) => f, onError: (_) => null);
     await widget.vpnRepository.start(
@@ -722,6 +750,7 @@ class _VpnScopeState extends State<VpnScope> {
       failure,
     ]);
     final label = technique == 0 ? 'plain' : 'mode $technique';
+    DoctorTrace.add('round step $label: ${techniqueClock.elapsedMilliseconds} ms');
     if (outcome == true) {
       DoctorTrace.add('$label: connected');
 
@@ -852,6 +881,11 @@ class _VpnScopeState extends State<VpnScope> {
   void _setVpnState(VpnState state) {
     if (state != VpnState.disconnected) {
       _leftDisconnectedSinceStart = true;
+    }
+    if (state == VpnState.connected && _sinceTap != null) {
+      DoctorTrace.add('connected in ${_sinceTap!.elapsedMilliseconds} ms since tap');
+      _sinceTap!.stop();
+      _sinceTap = null;
     }
     if (state == VpnState.connected && _currentServerId != null) {
       ConnectFailures.clear(_currentServerId!);

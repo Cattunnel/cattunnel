@@ -18,6 +18,7 @@ import 'package:trusttunnel/di/model/dependency_factory.dart';
 import 'package:trusttunnel/di/model/repository_factory.dart';
 import 'package:trusttunnel/di/widgets/dependency_scope.dart';
 import 'package:trusttunnel/feature/traffic/desktop_traffic_recorder.dart';
+import 'package:trusttunnel/feature/vpn/domain/connection_doctor.dart';
 import 'package:trusttunnel/feature/vpn/domain/networks_memory.dart';
 import 'package:trusttunnel/feature/vpn/widgets/vpn_scope.dart';
 import 'package:vpn_plugin/models/connect_failure.dart';
@@ -25,6 +26,10 @@ import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 class _FakeVpnRepository implements VpnRepository {
   final _states = StreamController<VpnState>.broadcast();
+  final _failures = StreamController<ConnectFailure>.broadcast();
+  final List<ConnectFailure?> outcomes;
+  final modes = <int>[];
+  _FakeVpnRepository([this.outcomes = const [null]]);
 
   @override
   Future<void> start({
@@ -33,7 +38,14 @@ class _FakeVpnRepository implements VpnRepository {
     required List<String> excludedRoutes,
     required VpnConfigurationLogLevel logLevel,
   }) async {
-    _states.add(VpnState.connected);
+    modes.add(server.serverData.antiDpi ? server.serverData.antiDpiMode : 0);
+    final outcome = outcomes[(modes.length - 1).clamp(0, outcomes.length - 1)];
+    if (outcome == null) {
+      _states.add(VpnState.connected);
+    } else {
+      _states.add(VpnState.connecting);
+      _failures.add(outcome);
+    }
   }
 
   @override
@@ -50,13 +62,15 @@ class _FakeVpnRepository implements VpnRepository {
   @override
   Future<Stream<VpnLog>> listenToLogs() async => const Stream<VpnLog>.empty();
   @override
-  Stream<ConnectFailure> get connectFailures => const Stream<ConnectFailure>.empty();
+  Stream<ConnectFailure> get connectFailures => _failures.stream;
   @override
   Stream<NetDiagnostic> get netDiagnostics => const Stream<NetDiagnostic>.empty();
   @override
   Future<VpnState> requestState() async => VpnState.disconnected;
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async {
+    _states.add(VpnState.disconnected);
+  }
 }
 
 class _FakeDependencyFactory implements DependencyFactory {
@@ -68,11 +82,14 @@ class _FakeDependencyFactory implements DependencyFactory {
 
 class _FakeConnNotif extends ConnectionNotificationsSettingsRepository {
   @override
+  Future<bool> isEnabled() async => false;
+  @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 class _FakeRepositoryFactory implements RepositoryFactory {
-  final VpnRepository _vpn = _FakeVpnRepository();
+  final VpnRepository _vpn;
+  _FakeRepositoryFactory([VpnRepository? vpn]) : _vpn = vpn ?? _FakeVpnRepository();
   final _cn = _FakeConnNotif();
   @override
   VpnRepository get vpnRepository => _vpn;
@@ -82,7 +99,13 @@ class _FakeRepositoryFactory implements RepositoryFactory {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-Future<SharedPreferences> _connect(WidgetTester tester, ServerData data, {Map<String, Object> initial = const {}}) async {
+Future<SharedPreferences> _connect(
+  WidgetTester tester,
+  ServerData data, {
+  Map<String, Object> initial = const {},
+  VpnRepository? vpn,
+  int pumpSteps = 20,
+}) async {
   SharedPreferences.setMockInitialValues(initial);
   // Wi-Fi; on iOS (the variant) there is no platform fingerprint to wait for.
   tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -91,7 +114,7 @@ Future<SharedPreferences> _connect(WidgetTester tester, ServerData data, {Map<St
   );
   final prefs = await SharedPreferences.getInstance();
   final depFactory = _FakeDependencyFactory()..sharedPreferences = prefs;
-  final repoFactory = _FakeRepositoryFactory();
+  final repoFactory = _FakeRepositoryFactory(vpn);
   final server = Server(id: 's1', serverData: data);
 
   await tester.pumpWidget(
@@ -120,7 +143,7 @@ Future<SharedPreferences> _connect(WidgetTester tester, ServerData data, {Map<St
     ),
   );
   await tester.tap(find.text('connect'));
-  for (var i = 0; i < 20; i++) {
+  for (var i = 0; i < pumpSteps; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
@@ -171,7 +194,12 @@ void main() {
           antiDpi: true,
           antiDpiMode: ServerData.antiDpiAuto,
         ),
-        initial: {'anti_dpi_auto.s1.oldnet': 2, 'anti_dpi_seen.s1.oldnet': 1, 'anti_dpi_auto.s2.oldnet': 3},
+        initial: {
+          'anti_dpi_auto.s1.oldnet': 2,
+          'anti_dpi_seen.s1.oldnet': 1,
+          'anti_dpi_auto.s2.oldnet': 3,
+          'anti_dpi_seen.s2.oldnet': DateTime.now().millisecondsSinceEpoch,
+        },
       );
 
       expect(prefs.getInt('anti_dpi_auto.s1.oldnet'), isNull);
@@ -186,14 +214,61 @@ void main() {
   );
 
   testWidgets(
-    'the key says nothing: the line says the plain connection worked',
+    'the key says nothing: automatic bypass is off and memory is not written',
     (tester) async {
-      await _connect(tester, const ServerData.empty(name: 'srv', ipAddress: '1.2.3.4:443'));
-
-      expect(VpnScope.antiDpiStatus.value?.step, AntiDpiStep.worked);
-      expect(VpnScope.antiDpiStatus.value?.plainWorked, isTrue);
+      DoctorTrace.clear();
+      final prefs = await _connect(tester, const ServerData.empty(name: 'srv', ipAddress: '1.2.3.4:443'));
+      expect(VpnScope.antiDpiStatus.value, isNull);
+      expect(NetworksMemory.all(prefs), isEmpty);
+      expect(DoctorTrace.lines.any((line) => RegExp(r'connected in \d+ ms since tap').hasMatch(line)), isTrue);
       await _finish(tester);
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
+  for (final successful in [true, false]) {
+    testWidgets(
+      'direct failure is remembered only after a successful technique: $successful',
+      (tester) async {
+        final vpn = _FakeVpnRepository(
+          successful
+              ? [ConnectFailure.helloReset, null]
+              : [ConnectFailure.helloReset, ConnectFailure.helloReset, ConnectFailure.helloReset],
+        );
+        final prefs = await _connect(
+          tester,
+          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443'),
+          vpn: vpn,
+          pumpSteps: 120,
+          initial: {
+            'automatic_bypass_until': DateTime(
+              DateTime.now().year,
+              DateTime.now().month,
+              DateTime.now().day + 1,
+            ).millisecondsSinceEpoch,
+          },
+        );
+        final marks = prefs.getKeys().where((key) => key.startsWith('anti_dpi_direct.s1.'));
+        expect(marks.isNotEmpty, successful);
+        expect(vpn.modes, successful ? [0, 1] : [0, 1, 2, 3]);
+        expect(prefs.getKeys().any((key) => key.startsWith('anti_dpi_failed.s1.')), !successful);
+        if (!successful) {
+          expect(NetworksMemory.all(prefs).single.needsDpi, isFalse);
+          expect(NetworksMemory.all(prefs).single.failedServerIds, {'s1'});
+        }
+        final saved = {for (final key in prefs.getKeys()) key: prefs.get(key)!};
+        await _finish(tester);
+        VpnScope.antiDpiAutoFailed.value = false;
+        final next = _FakeVpnRepository();
+        await _connect(
+          tester,
+          const ServerData.empty(name: 'srv', ipAddress: '203.0.113.5:443'),
+          vpn: next,
+          initial: saved,
+        );
+        expect(next.modes, successful ? [1] : [0]);
+        await _finish(tester);
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+  }
 }

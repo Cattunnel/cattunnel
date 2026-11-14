@@ -14,6 +14,7 @@ typedef DataChangedCallback =
       String? username,
       String? password,
       bool? enableIpv6,
+      bool? subscriptionOverride,
       bool? antiDpi,
       int? antiDpiMode,
       String? tlsProfile,

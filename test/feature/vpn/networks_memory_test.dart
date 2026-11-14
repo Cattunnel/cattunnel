@@ -43,7 +43,7 @@ void main() {
     expect(NetworksMemory.all(preferences), isEmpty);
   });
 
-  test('the memory of a network has a week of life', () async {
+  test('the memory of a network expires at local midnight', () async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final auto = AntiDpiAuto(preferences);
@@ -54,8 +54,8 @@ void main() {
 
     expect(until, isNotNull);
     expect(until!.isAfter(now), isTrue);
-    // A week later the fact is gone.
-    expect(NetworksMemory.all(preferences, now: now.add(const Duration(days: 8))), isEmpty);
+    // At midnight the fact is gone.
+    expect(NetworksMemory.all(preferences, now: DateTime(2026, 10, 22)), isEmpty);
   });
 
   test('forgetting a network and forgetting all of them', () async {
@@ -92,7 +92,7 @@ void main() {
     await auto.remember(serverId: 'server.de.1', network: network.key, mode: 2, now: at);
     await auto.remember(serverId: 'nl', network: network.key, mode: 1, now: at);
 
-    final details = NetworksMemory.all(preferences).single;
+    final details = NetworksMemory.all(preferences, now: at).single;
     expect(details.modeByServer, {'server.de.1': 2, 'nl': 1});
     expect(details.seenByServer['server.de.1'], at);
     expect(details.modes, [1, 2]);

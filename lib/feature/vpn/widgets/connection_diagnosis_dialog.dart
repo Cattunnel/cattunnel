@@ -37,6 +37,9 @@ class ConnectionDiagnosisDialog extends StatefulWidget {
   final Server server;
   final List<Server> otherServers;
 
+  /// Display a completed explicit network check without starting new probes.
+  final ConnectionDiagnosis? completedDiagnosis;
+
   /// Test-only: show this state without running the probes. The QA
   /// screenshots need every verdict, and a real probe cannot produce all of
   /// them; the normal app passes nothing here.
@@ -60,6 +63,7 @@ class ConnectionDiagnosisDialog extends StatefulWidget {
     super.key,
     required this.server,
     required this.otherServers,
+    this.completedDiagnosis,
     this.debugDiagnosis,
     this.debugSteps,
     this.debugNetworkName,
@@ -102,6 +106,7 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
 
   bool get _debug =>
       widget.debugSkipDiagnostics ||
+      widget.completedDiagnosis != null ||
       widget.debugDiagnosis != null ||
       widget.debugSteps != null ||
       widget.debugNetworkName != null;
@@ -117,10 +122,10 @@ class _ConnectionDiagnosisDialogState extends State<ConnectionDiagnosisDialog> w
       _statuses.addAll(
         widget.debugSteps ?? {for (final step in DiagnosisStep.values) step: DiagnosisStepStatus.skipped},
       );
-      _result = widget.debugDiagnosis;
+      _result = widget.completedDiagnosis ?? widget.debugDiagnosis;
       _connectedMeanwhile = widget.debugConnectedMeanwhile;
       _debugNetworkName = widget.debugNetworkName;
-      _attemptRunning = widget.debugAttemptRunning;
+      _attemptRunning = widget.completedDiagnosis == null && widget.debugAttemptRunning;
     } else {
       ConnectionDoctor.marsikOpen.value = true;
       _bobController.repeat(reverse: true);

@@ -84,7 +84,7 @@ void main() {
       serverRepository: _UnusedServerRepository(),
     ).run(server, otherServers: [], onStep: (step, status) => steps[step] = status);
 
-    expect(result.verdict, DiagnosisVerdict.networkCuts);
+    expect(result.verdict, DiagnosisVerdict.addressFrozen);
     expect(result.auto?.triedModes, [1, 2]);
     expect(result.auto?.triedPlain, isTrue);
     expect(steps[DiagnosisStep.tls], DiagnosisStepStatus.skipped);
