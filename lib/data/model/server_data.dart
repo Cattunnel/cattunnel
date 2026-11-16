@@ -148,9 +148,22 @@ class ServerData {
   /// the engine default (`/api/v2/`).
   final String xhttpPath;
 
+  /// NineLives: the server's public key from the subscription (tag 0x51,
+  /// engine `xhttp_server_key`). Empty - the server sent no key.
+  final String xhttpServerKey;
+
+  /// NineLives: encrypt the XHTTP body inside TLS (the local switch). The key
+  /// itself is kept when this is off, only the engine does not get it.
+  final bool xhttpEncryptionEnabled;
+
   /// QUIC off: the engine refuses UDP to port 443 (`block_quic`, own build),
   /// browsers and apps fall back to TCP inside the tunnel.
   final bool blockQuic;
+
+  /// The NineLives key the engine gets: only when XHTTP and the local
+  /// encryption switch are both on. Without it the engine sends no HELLO and
+  /// protects the tunnel with TLS alone.
+  String get engineXhttpServerKey => xhttpEnabled && xhttpEncryptionEnabled ? xhttpServerKey : '';
 
   /// The custom split the engine gets: empty unless [antiDpiCustom] with a
   /// valid string (an invalid one would make the engine reject the key).
@@ -204,6 +217,8 @@ class ServerData {
     this.sessionLifetimeSecs = 0,
     this.xhttpEnabled = false,
     this.xhttpPath = '',
+    this.xhttpServerKey = '',
+    this.xhttpEncryptionEnabled = true,
     this.blockQuic = false,
     this.ruExit = false,
     this.certificate,
@@ -242,6 +257,8 @@ class ServerData {
     this.sessionLifetimeSecs = 0,
     this.xhttpEnabled = false,
     this.xhttpPath = '',
+    this.xhttpServerKey = '',
+    this.xhttpEncryptionEnabled = true,
     this.blockQuic = false,
     this.ruExit = false,
     this.certificate,
@@ -283,6 +300,8 @@ class ServerData {
     sessionLifetimeSecs,
     xhttpEnabled,
     xhttpPath,
+    xhttpServerKey,
+    xhttpEncryptionEnabled,
     blockQuic,
     ruExit,
     tlsPrefix,
@@ -322,6 +341,8 @@ class ServerData {
       'sessionLifetimeSecs: $sessionLifetimeSecs,'
       'xhttpEnabled: $xhttpEnabled,'
       'xhttpPath: $xhttpPath,'
+      'xhttpServerKey: ${xhttpServerKey.isEmpty ? '' : '***'},'
+      'xhttpEncryptionEnabled: $xhttpEncryptionEnabled,'
       'blockQuic: $blockQuic,'
       'ruExit: $ruExit,'
       'tlsPrefix: $tlsPrefix,'
@@ -361,6 +382,8 @@ class ServerData {
         other.sessionLifetimeSecs == sessionLifetimeSecs &&
         other.xhttpEnabled == xhttpEnabled &&
         other.xhttpPath == xhttpPath &&
+        other.xhttpServerKey == xhttpServerKey &&
+        other.xhttpEncryptionEnabled == xhttpEncryptionEnabled &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
         other.tlsPrefix == tlsPrefix &&
@@ -403,6 +426,8 @@ class ServerData {
     int? sessionLifetimeSecs,
     bool? xhttpEnabled,
     String? xhttpPath,
+    String? xhttpServerKey,
+    bool? xhttpEncryptionEnabled,
     bool? blockQuic,
     bool? ruExit,
     ValueData<Certificate>? certificate,
@@ -436,6 +461,8 @@ class ServerData {
     sessionLifetimeSecs: sessionLifetimeSecs ?? this.sessionLifetimeSecs,
     xhttpEnabled: xhttpEnabled ?? this.xhttpEnabled,
     xhttpPath: xhttpPath ?? this.xhttpPath,
+    xhttpServerKey: xhttpServerKey ?? this.xhttpServerKey,
+    xhttpEncryptionEnabled: xhttpEncryptionEnabled ?? this.xhttpEncryptionEnabled,
     blockQuic: blockQuic ?? this.blockQuic,
     ruExit: ruExit ?? this.ruExit,
     certificate: certificate != null ? certificate.value : this.certificate,

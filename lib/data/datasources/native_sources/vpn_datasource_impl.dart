@@ -166,6 +166,7 @@ class VpnDataSourceImpl implements VpnDataSource {
       sessionLifetimeSecs: server.sessionLifetimeSecs,
       xhttpEnabled: server.xhttpEnabled,
       xhttpPath: server.xhttpPath,
+      xhttpServerKey: server.engineXhttpServerKey,
       blockQuic: server.blockQuic,
       certificate: certificate,
       // Ignore legacy fixed prefixes stored before 1.5.9.
@@ -271,6 +272,7 @@ class VpnDataSourceImpl implements VpnDataSource {
       sessionLifetimeSecs: server.sessionLifetimeSecs,
       xhttpEnabled: server.xhttpEnabled,
       xhttpPath: server.xhttpPath,
+      xhttpServerKey: server.engineXhttpServerKey,
       blockQuic: server.blockQuic,
       username: server.username,
       password: server.password,

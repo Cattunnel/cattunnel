@@ -10,6 +10,7 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/router/deeplink/deep_link_source.dart';
 import 'package:trusttunnel/common/utils/device_issue_file.dart';
 import 'package:trusttunnel/common/utils/subscription_share_link.dart';
+import 'package:trusttunnel/data/domain/subscription_code_exchange.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/repository/deep_link_repository.dart';
 import 'package:trusttunnel/feature/app/app_keys.dart';
@@ -164,10 +165,12 @@ class _DeepLinkScopeState extends State<DeepLinkScope> {
       if (widget.exchangeCode case final exchange?) {
         await exchange(code, base);
       } else {
-        final syncService = context.dependencyFactory.subscriptionSyncService;
-        final repository = context.repositoryFactory.subscriptionRepository;
-        final subscription = await syncService.exchangeCode(code, base);
-        await repository.addSubscription(request: subscription);
+        await exchangeSubscriptionCode(
+          syncService: context.dependencyFactory.subscriptionSyncService,
+          repository: context.repositoryFactory.subscriptionRepository,
+          code: code,
+          base: base,
+        );
       }
       _message(true);
     } on Object catch (e, st) {

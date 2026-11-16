@@ -37,6 +37,7 @@ ServerData serverDataFromEndpoint(Endpoint endpoint, {required String routingPro
   sessionLifetimeSecs: endpoint.sessionLifetimeSecs,
   xhttpEnabled: endpoint.xhttpEnabled,
   xhttpPath: endpoint.xhttpPath,
+  xhttpServerKey: endpoint.xhttpServerKey,
   blockQuic: endpoint.blockQuic,
   ruExit: endpoint.ruExit,
   certificate: endpoint.certificate.isEmpty

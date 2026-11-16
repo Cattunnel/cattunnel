@@ -145,6 +145,8 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         sessionLifetimeSecs: Value(server.sessionLifetimeSecs),
         xhttpEnabled: Value(server.xhttpEnabled),
         xhttpPath: Value(server.xhttpPath),
+        xhttpServerKey: Value(server.xhttpServerKey),
+        xhttpEncryptionEnabled: Value(server.xhttpEncryptionEnabled),
         blockQuic: Value(server.blockQuic),
         ruExit: Value(server.ruExit),
         tlsPrefix: const Value(null),
@@ -195,6 +197,8 @@ class SubscriptionDataSourceImpl implements SubscriptionDataSource {
         sessionLifetimeSecs: Value(server.sessionLifetimeSecs),
         xhttpEnabled: Value(server.xhttpEnabled),
         xhttpPath: Value(server.xhttpPath),
+        // The key comes from the subscription; the encryption switch is local.
+        xhttpServerKey: Value(server.xhttpServerKey),
         blockQuic: Value(server.blockQuic),
         // The subscription decides which key has a Russian exit.
         ruExit: Value(server.ruExit),

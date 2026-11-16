@@ -588,6 +588,8 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     if (_formData.subscriptionId != null) ...[
       SwitchListTile(
         title: Text(context.ln.subscriptionOverride),
+        subtitle: Text(context.ln.subscriptionOverrideDescription),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
         value: _formData.subscriptionOverride,
         onChanged: (value) async {
           if (!value) {
@@ -599,7 +601,14 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         },
       ),
       if (_formData.subscriptionOverride)
-        TextButton(onPressed: _restoreSubscription, child: Text(context.ln.subscriptionRestore)),
+        TextButton(
+          style: TextButton.styleFrom(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+          ),
+          onPressed: _restoreSubscription,
+          child: Text(context.ln.subscriptionRestore),
+        ),
     ],
     CustomDropdownMenu<VpnProtocol>.expanded(
       value: _formData.vpnProtocol,
@@ -643,7 +652,10 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         xhttpEnabled: value,
       ),
     ),
-    if (_formData.xhttpEnabled) ..._xhttpFields(context),
+    if (_formData.xhttpEnabled) ...[
+      ..._xhttpFields(context),
+      _nineLivesEncryptionSwitch(context),
+    ],
     SwitchListTile(
       value: _formData.blockQuic,
       title: Text(context.ln.blockQuicLabel),
@@ -784,6 +796,28 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
       onChanged: (value) => _onDataChanged(context, sessionLifetimeSecs: value),
     ),
   ];
+
+  /// NineLives: the XHTTP body is encrypted inside TLS with the key from the
+  /// subscription. Off keeps the key but does not send it to the engine, so
+  /// only TLS protects the tunnel. Without a key there is nothing to switch.
+  Widget _nineLivesEncryptionSwitch(BuildContext context) {
+    final hasKey = _formData.xhttpServerKey.isNotEmpty;
+
+    return SwitchListTile(
+      value: hasKey && _formData.xhttpEncryptionEnabled,
+      title: Text(context.ln.expertNineLivesEncryptionLabel),
+      subtitle: Text(
+        hasKey ? context.ln.expertNineLivesEncryptionDescription : context.ln.expertNineLivesEncryptionNoKey,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      onChanged: hasKey
+          ? (value) => _onDataChanged(
+              context,
+              xhttpEncryptionEnabled: value,
+            )
+          : null,
+    );
+  }
 
   /// The XHTTP transport: the path prefix the requests go to.
   List<Widget> _xhttpFields(BuildContext context) {
@@ -933,6 +967,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     int? sessionLifetimeSecs,
     bool? xhttpEnabled,
     String? xhttpPath,
+    bool? xhttpEncryptionEnabled,
     bool? blockQuic,
     bool? ruExit,
     VpnProtocol? protocol,
@@ -970,6 +1005,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         sessionLifetimeSecs: sessionLifetimeSecs,
         xhttpEnabled: xhttpEnabled,
         xhttpPath: xhttpPath,
+        xhttpEncryptionEnabled: xhttpEncryptionEnabled,
         blockQuic: blockQuic,
         ruExit: ruExit,
         routingProfileId: routingProfileId,

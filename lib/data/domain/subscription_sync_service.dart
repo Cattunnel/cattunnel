@@ -143,6 +143,8 @@ class SubscriptionSyncService {
         routingProfileId: server.serverData.routingProfileId,
         selected: server.serverData.selected,
         subscriptionOverride: false,
+        // The NineLives switch is local, like the override itself.
+        xhttpEncryptionEnabled: server.serverData.xhttpEncryptionEnabled,
       ),
     );
   }

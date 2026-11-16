@@ -32,6 +32,7 @@ typedef DataChangedCallback =
       int? sessionLifetimeSecs,
       bool? xhttpEnabled,
       String? xhttpPath,
+      bool? xhttpEncryptionEnabled,
       bool? blockQuic,
       bool? ruExit,
       String? pathToPemFile,

@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/common/utils/qr_import.dart';
+import 'package:trusttunnel/data/domain/subscription_code_exchange.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/add_server_options_sheet.dart';
@@ -47,6 +49,8 @@ Future<void> presentAddServerFlow(
           if (context.mounted) {
             ServersScope.controllerOf(context, listen: false).fetchServers();
           }
+        case QrImportSubscriptionCode(:final code, :final base):
+          await _importSubscriptionCode(context, code: code, base: base);
       }
     case AddServerOption.link:
       final server = await showDialog<ServerData>(
@@ -69,6 +73,38 @@ Future<void> presentAddServerFlow(
       if (context.mounted) {
         ServersScope.controllerOf(context, listen: false).fetchServers();
       }
+  }
+}
+
+/// Exchanges a one-time code and saves the subscription, then shows the list.
+///
+/// A code is already a subscription by the time the screen opens, so it must
+/// not be passed as `imported`: that would open the add form again and save a
+/// duplicate.
+Future<void> _importSubscriptionCode(BuildContext context, {required String code, required String base}) async {
+  try {
+    await exchangeSubscriptionCode(
+      syncService: context.dependencyFactory.subscriptionSyncService,
+      repository: context.repositoryFactory.subscriptionRepository,
+      code: code,
+      base: base,
+    );
+  } on Object {
+    if (context.mounted) {
+      context.showInfoSnackBar(message: context.ln.subscriptionLinkFailed);
+    }
+
+    return;
+  }
+
+  if (!context.mounted) {
+    return;
+  }
+
+  await context.push(const SubscriptionsScreen());
+
+  if (context.mounted) {
+    ServersScope.controllerOf(context, listen: false).fetchServers();
   }
 }
 

@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS servers(
   session_lifetime_secs INTEGER NOT NULL DEFAULT 0,
   xhttp_enabled BOOLEAN NOT NULL DEFAULT false,
   xhttp_path TEXT NOT NULL DEFAULT '',
+  xhttp_server_key TEXT NOT NULL DEFAULT '',
+  xhttp_encryption_enabled BOOLEAN NOT NULL DEFAULT true,
   block_quic BOOLEAN NOT NULL DEFAULT false,
   ru_exit BOOLEAN NOT NULL DEFAULT false,
   tls_prefix TEXT,
