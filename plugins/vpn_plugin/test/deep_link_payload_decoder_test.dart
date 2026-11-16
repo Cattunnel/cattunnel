@@ -145,6 +145,7 @@ void main() {
     }
 
     expect(engineConfig('chrome'), contains('tls_profile = "chrome"'));
+    expect(engineConfig('chrome_canary'), contains('tls_profile = "chrome_canary"'));
     expect(engineConfig('okhttp'), contains('tls_profile = "okhttp"'));
     // "No mimicry" profiles look like no browser at all - never written.
     expect(engineConfig('openssl'), isNot(contains('tls_profile')));
@@ -255,6 +256,43 @@ void main() {
     expect(const ConfigurationCodec().encode(roundTrip(true)), contains('block_quic = true'));
     expect(roundTrip(false).endpoint.blockQuic, isFalse);
     expect(const ConfigurationCodec().encode(roundTrip(false)), isNot(contains('block_quic')));
+  });
+
+  test('xhttp_server_key: tag 0x51 carries the endpoint key; malformed is dropped', () {
+    // RFC 8032 test vector: seed 9d61b19d... -> this public key.
+    const key = '11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=';
+
+    Configuration roundTrip(String serverKey) => const ConfigurationCodec().decode(
+      const DeepLinkPayloadDecoder().convert(
+        'tt://?${const DeepLinkPayloadEncoder().convert(Endpoint(
+          name: 'Server',
+          hostName: 'www.example.org',
+          addresses: const ['198.51.100.7:443'],
+          username: 'bob',
+          password: 'pw',
+          upStreamProtocol: UpStreamProtocol.http2,
+          hasIpv6: true,
+          xhttpEnabled: true,
+          xhttpServerKey: serverKey,
+        ))}',
+      ),
+    );
+
+    final ok = roundTrip(key);
+    expect(ok.endpoint.xhttpServerKey, key);
+    expect(const ConfigurationCodec().encode(ok), contains('xhttp_server_key = "$key"'));
+
+    // Wrong length, a 16-byte blob and a non-base64 string never reach the engine.
+    for (final bad in [
+      '',
+      'abc',
+      base64.encode(List.filled(16, 0)),
+      'X' * 44,
+    ]) {
+      final decoded = roundTrip(bad);
+      expect(decoded.endpoint.xhttpServerKey, isEmpty, reason: bad);
+      expect(const ConfigurationCodec().encode(decoded), isNot(contains('xhttp_server_key')), reason: bad);
+    }
   });
 
   test('also takes tt://<payload> without the question mark', () {

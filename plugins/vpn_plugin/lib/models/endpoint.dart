@@ -175,6 +175,12 @@ final class Endpoint {
   /// XHTTP requests; empty - the engine default (`/api/v2/`).
   final String xhttpPath;
 
+  /// CatTunnel: engine `xhttp_server_key` (own build) - base64 public key of
+  /// the endpoint, the pair of its `xhttp_secret_key`. The client checks the
+  /// signature of HELLO_ACK with it, so a man in the middle cannot pretend to
+  /// be the endpoint. Not a secret. Empty - no check (behaviour before 1.5.9).
+  final String xhttpServerKey;
+
   /// The engine's own default for `h2_padding_frames_min`.
   static const h2PaddingFramesMinDefault = 2;
 
@@ -260,6 +266,7 @@ final class Endpoint {
     this.sessionLifetimeSecs = 0,
     this.xhttpEnabled = false,
     this.xhttpPath = '',
+    this.xhttpServerKey = '',
     this.blockQuic = false,
     this.ruExit = false,
     this.skipVerification = false,
@@ -273,7 +280,7 @@ final class Endpoint {
 
   @override
   String toString() =>
-      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, h2PaddingFramesMin: $h2PaddingFramesMin, h2PaddingPerStream: $h2PaddingPerStream, h2PaddingMinBytes: $h2PaddingMinBytes, h2PaddingMaxBytes: $h2PaddingMaxBytes, h2PaddingStreamBytes: $h2PaddingStreamBytes, h2PaddingSessionBytes: $h2PaddingSessionBytes, keepaliveIntervalSecs: $keepaliveIntervalSecs, keepaliveSignal: $keepaliveSignal, sessionLifetimeSecs: $sessionLifetimeSecs, xhttpEnabled: $xhttpEnabled, xhttpPath: $xhttpPath, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
+      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, h2PaddingFramesMin: $h2PaddingFramesMin, h2PaddingPerStream: $h2PaddingPerStream, h2PaddingMinBytes: $h2PaddingMinBytes, h2PaddingMaxBytes: $h2PaddingMaxBytes, h2PaddingStreamBytes: $h2PaddingStreamBytes, h2PaddingSessionBytes: $h2PaddingSessionBytes, keepaliveIntervalSecs: $keepaliveIntervalSecs, keepaliveSignal: $keepaliveSignal, sessionLifetimeSecs: $sessionLifetimeSecs, xhttpEnabled: $xhttpEnabled, xhttpPath: $xhttpPath, xhttpServerKey: $xhttpServerKey, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
 
   @override
   bool operator ==(covariant Endpoint other) {
@@ -307,6 +314,7 @@ final class Endpoint {
         other.sessionLifetimeSecs == sessionLifetimeSecs &&
         other.xhttpEnabled == xhttpEnabled &&
         other.xhttpPath == xhttpPath &&
+        other.xhttpServerKey == xhttpServerKey &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
         other.hasIpv6 == hasIpv6 &&
@@ -343,6 +351,7 @@ final class Endpoint {
     sessionLifetimeSecs,
     xhttpEnabled,
     xhttpPath,
+    xhttpServerKey,
     blockQuic,
     ruExit,
     hasIpv6,

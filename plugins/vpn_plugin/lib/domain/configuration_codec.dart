@@ -109,7 +109,7 @@ abstract final class ConfigurationCodecKeys {
 
   /// The values the app writes; the engine knows `openssl`/`default` too,
   /// but those look like no browser at all.
-  static const tlsProfiles = {'chrome', 'firefox', 'safari', 'okhttp'};
+  static const tlsProfiles = {'chrome', 'chrome_canary', 'firefox', 'safari', 'okhttp'};
 
   /// Engine 1.3 TLS authorization key (see Endpoint.clientRandomAuthKey).
   static const clientRandomAuthKey = 'client_random_auth_key';
@@ -184,6 +184,20 @@ abstract final class ConfigurationCodecKeys {
   /// Own engine build: the path prefix of the XHTTP requests, see
   /// Endpoint.xhttpPath.
   static const xhttpPath = 'xhttp_path';
+
+  /// Own engine build: the public key of the endpoint, see
+  /// Endpoint.xhttpServerKey.
+  static const xhttpServerKey = 'xhttp_server_key';
+
+  /// A usable endpoint key: base64 of 32 bytes (an Ed25519 public key).
+  static bool isValidXhttpServerKey(String key) {
+    if (key.length != 44) return false;
+    try {
+      return base64Decode(key).length == 32;
+    } on FormatException {
+      return false;
+    }
+  }
 
   /// Own engine build: refuse QUIC, see Endpoint.blockQuic.
   static const blockQuic = 'block_quic';
@@ -350,6 +364,10 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
       if (path.isNotEmpty && path.startsWith('/')) {
         endpoint.setString(ConfigurationCodecKeys.xhttpPath, path);
       }
+      final key = config.endpoint.xhttpServerKey.trim();
+      if (key.isNotEmpty) {
+        endpoint.setString(ConfigurationCodecKeys.xhttpServerKey, key);
+      }
     }
     if (config.endpoint.blockQuic) {
       endpoint.setBool(ConfigurationCodecKeys.blockQuic, true);
@@ -505,6 +523,7 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
     final bool xhttpEnabled = endpoint.getBool(ConfigurationCodecKeys.xhttpEnable) ?? false;
     final String xhttpPathRaw = (endpoint.getString(ConfigurationCodecKeys.xhttpPath) ?? '').trim();
     final String xhttpPath = xhttpPathRaw.startsWith('/') ? xhttpPathRaw : '';
+    final String xhttpServerKey = (endpoint.getString(ConfigurationCodecKeys.xhttpServerKey) ?? '').trim();
     final bool blockQuic = endpoint.getBool(ConfigurationCodecKeys.blockQuic) ?? false;
 
     final List<String> includedRoutes =
@@ -574,6 +593,7 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
         sessionLifetimeSecs: sessionLifetimeSecs,
         xhttpEnabled: xhttpEnabled,
         xhttpPath: xhttpPath,
+        xhttpServerKey: xhttpServerKey,
         blockQuic: blockQuic,
         ruExit: ruExit,
       ),

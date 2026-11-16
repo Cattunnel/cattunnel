@@ -78,7 +78,7 @@ class ServerData {
 
   static const tlsProfileAuto = '';
 
-  static const tlsProfiles = ['chrome', 'firefox', 'safari', 'okhttp'];
+  static const tlsProfiles = ['chrome', 'chrome_canary', 'firefox', 'safari', 'okhttp'];
 
   /// TLS authorization key (engine 1.3 `client_random_auth_key`, hex): part of
   /// the ClientHello random is derived from it and the SNI, so the server

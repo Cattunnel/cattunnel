@@ -872,13 +872,15 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
   static final _tlsProfiles = [
     ServerData.tlsProfileAuto,
     'chrome',
+    'chrome_canary',
     'firefox',
     if (Platform.isAndroid) 'okhttp',
     'safari',
   ];
 
   String _profileName(String profile) => switch (profile) {
-    'chrome' => 'Chrome',
+    'chrome' => 'Chrome 150',
+    'chrome_canary' => 'Chrome 156',
     'firefox' => 'Firefox',
     'safari' => 'Safari',
     'okhttp' => 'Android',
@@ -887,6 +889,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
 
   String _tlsProfileText(BuildContext context, String profile) => switch (profile) {
     'chrome' => context.ln.tlsProfileChrome,
+    'chrome_canary' => context.ln.tlsProfileChrome156,
     'firefox' => context.ln.tlsProfileFirefox,
     'safari' => context.ln.tlsProfileSafari,
     'okhttp' => context.ln.tlsProfileOkhttp,

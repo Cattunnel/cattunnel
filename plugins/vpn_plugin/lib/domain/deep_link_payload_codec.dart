@@ -79,6 +79,11 @@ abstract final class _DeepLinkPayloadTag {
   static const sessionLifetimeSecs = 0x4E;
   static const xhttpEnabled = 0x4F;
   static const xhttpPath = 0x50;
+
+  /// CatTunnel: base64 Ed25519 public key of the endpoint (44 chars, 32
+  /// bytes), the pair of its `xhttp_secret_key` (see
+  /// Endpoint.xhttpServerKey). Absent or malformed - no endpoint check.
+  static const xhttpServerKey = 0x51;
 }
 
 const _payloadVersion = 0x01;
@@ -129,6 +134,8 @@ final class DeepLinkPayloadEncoder extends Converter<Endpoint, String> {
       _tlv(_DeepLinkPayloadTag.sessionLifetimeSecs, _writeVarint(input.sessionLifetimeSecs.clamp(0, 86400))),
       _tlvBool(_DeepLinkPayloadTag.xhttpEnabled, input.xhttpEnabled),
       _tlvString(_DeepLinkPayloadTag.xhttpPath, input.xhttpPath),
+      if (ConfigurationCodecKeys.isValidXhttpServerKey(input.xhttpServerKey))
+        _tlvString(_DeepLinkPayloadTag.xhttpServerKey, input.xhttpServerKey),
       if (input.blockQuic) _tlvBool(_DeepLinkPayloadTag.blockQuic, true),
       if (input.skipVerification) _tlvBool(_DeepLinkPayloadTag.skipVerification, true),
       if (input.certificate.isNotEmpty) _tlv(_DeepLinkPayloadTag.certificate, _pemToDer(input.certificate)),
@@ -343,6 +350,9 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           extended['xhttp_enable'] = _bool(value);
         case _DeepLinkPayloadTag.xhttpPath:
           extended['xhttp_path'] = _string(value);
+        case _DeepLinkPayloadTag.xhttpServerKey:
+          final key = _string(value);
+          if (ConfigurationCodecKeys.isValidXhttpServerKey(key)) extended['xhttp_server_key'] = key;
         case _DeepLinkPayloadTag.clientRandomPrefix:
           // Fixed ClientHello prefixes fingerprint the connection. Ignore tag 0x0B.
           break;
