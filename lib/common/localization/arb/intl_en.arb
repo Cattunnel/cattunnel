@@ -1116,8 +1116,8 @@
   "expertKeepaliveSignalPing": "HTTP/2 PING frame",
   "expertSessionLifetimeLabel": "Session lifetime, seconds",
   "expertSessionLifetimeHint": "0 means: as long as the server keeps it",
-  "expertXhttpLabel": "XHTTP transport",
-  "expertXhttpDescription": "The data goes as a pair of GET and POST requests instead of CONNECT. The live servers do not have it yet, turn it on only against the lab",
+  "expertXhttpLabel": "NineLives transport",
+  "expertXhttpDescription": "The data goes as a pair of GET and POST requests instead of CONNECT",
   "expertNineLivesEncryptionLabel": "NineLives encryption",
   "expertNineLivesEncryptionDescription": "Extra encryption inside TLS. Off: TLS only",
   "expertNineLivesEncryptionNoKey": "The server sent no key",
@@ -1138,8 +1138,8 @@
   "expertPathWrong": "The path must start with /",
   "helpKeepaliveTitle": "Keepalive",
   "helpKeepaliveBody": "An idle tunnel sometimes gets closed: the server counts the session as unneeded, and a mobile network can freeze the connection quietly. Keepalive sends a signal on an idle session, so it stays alive.\nInterval: the engine takes a random number from the value you set to four times that value, so with 60 seconds the ping goes every 60..240 seconds.\nSignal: a session check (a light request; the server counts it as a request and keeps the tunnel) or an HTTP/2 PING frame (what browsers send, but the server does not count it as a request, so it does not hold the tunnel).\nSession lifetime: how many seconds the session lives without a signal. 0 means: as long as the server keeps it.",
-  "helpXhttpTitle": "XHTTP",
-  "helpXhttpBody": "Usually the tunnel talks to the server with CONNECT requests. In the XHTTP mode every connection of an app carries a pair of requests: GET down and POST up, and the destination address rides inside the body. On the wire these are ordinary HTTP requests, so the transport can go through a CDN and it survives a broken connection better.\nThe mode is not finished yet: there is no session resume after a break, no acknowledgements and no body encryption yet. The live servers do not have it, turn it on only against the lab.",
+  "helpXhttpTitle": "NineLives",
+  "helpXhttpBody": "Usually the tunnel talks to the server with CONNECT requests. In the NineLives mode every connection of an app carries a pair of requests: GET down and POST up, and the destination address rides inside the body. On the wire these are ordinary HTTP requests.\nInside TLS the data is encrypted once more with the server key (the «NineLives encryption» switch). After a short break the session goes on and the connections of your apps stay open.",
   "expertSettingsWrong": "Check the values in the expert settings",
   "reportDesktopSaved": "Report saved: {path}. The text is already on the clipboard. Send the file or text to your administrator.",
   "reportOpenFolder": "Open folder",
@@ -1199,4 +1199,28 @@
   "networkCheckUnreachable": "unresponsive or closed",
   "networkCheckDiagnosis": "Marsik’s diagnosis",
   "networksBypassFailedToday": "Bypass did not help; no more attempts until the end of today."
+,
+  "subscriptionPollUpdated": "Updated {time} via {host} in {duration}",
+  "subscriptionPollFailed": "Failed: {count, plural, =1{1 mirror} other{{count} mirrors}}",
+  "subscriptionPollRefreshing": "Refreshing…",
+  "subscriptionPollAsking": "Asking {host}…",
+  "subscriptionPollDialogTitle": "Subscription poll",
+  "subscriptionPollDialogDescription": "Mirrors in the order they were asked. Address only, no subscription token.",
+  "subscriptionPollOk": "HTTP 200",
+  "subscriptionPollHttp": "HTTP {code}",
+  "subscriptionPollTimeout": "Timeout",
+  "subscriptionPollNoNetwork": "No connection",
+  "subscriptionPollTls": "TLS error",
+  "subscriptionPollOther": "Error",
+  "subscriptionPollDecrypt": "Decryption failed",
+  "subscriptionPollMilliseconds": "{value} ms",
+  "subscriptionPollSeconds": "{value} s",
+  "subscriptionPollClose": "Close",
+  "@subscriptionPollFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

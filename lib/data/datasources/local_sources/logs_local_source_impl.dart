@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/common/logging/sanitizer/engine_line_scrubber.dart';
 import 'package:trusttunnel/data/datasources/app_state_logging_datasource.dart';
 import 'package:trusttunnel/data/datasources/logs_local_source.dart';
+import 'package:trusttunnel/data/domain/subscription_poll_log.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/model/export_file_type.dart';
 import 'package:trusttunnel/feature/settings/logs_manager/model/export_logs_archive.dart';
 import 'package:vpn_plugin/models/logs/log_platform_files.dart';
@@ -25,6 +26,7 @@ final class LogsLocalSourceImpl implements LogsLocalSource {
   final FilePicker _filePicker;
   final VpnPlugin _vpnPlugin;
   final SharedPreferences _sharedPreferences;
+  final SubscriptionPollLog? _subscriptionPollLog;
 
   LogsLocalSourceImpl({
     required FileLogAppender logAppender,
@@ -32,11 +34,13 @@ final class LogsLocalSourceImpl implements LogsLocalSource {
     required FilePicker filePicker,
     required VpnPlugin vpnPlugin,
     required SharedPreferences sharedPreferences,
+    SubscriptionPollLog? subscriptionPollLog,
   }) : _logAppender = logAppender,
        _appStateLoggingDataSource = appStateLoggingDataSource,
        _vpnPlugin = vpnPlugin,
        _sharedPreferences = sharedPreferences,
-       _filePicker = filePicker;
+       _filePicker = filePicker,
+       _subscriptionPollLog = subscriptionPollLog;
 
   @override
   Future<ExportLogsArchive> createArchive() async {
@@ -58,6 +62,15 @@ final class LogsLocalSourceImpl implements LogsLocalSource {
     logFiles['app_state.log'] = utf8.encode(
       const JsonEncoder.withIndent('  ').convert(snapshot.toJson()),
     );
+
+    // Which subscriptions were refreshed, through which mirror and how it
+    // ended. Hosts only: never the URL with its token.
+    final pollLog = _subscriptionPollLog;
+    if (pollLog != null) {
+      logFiles['subscription_polls.log'] = utf8.encode(
+        pollLog.toLogLines().join(Platform.lineTerminator),
+      );
+    }
 
     final archivedData = await _logAppender.archiveData(
       additionalFiles: logFiles,

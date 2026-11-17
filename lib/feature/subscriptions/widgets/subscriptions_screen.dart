@@ -4,11 +4,13 @@ import 'package:trusttunnel/common/assets/asset_icons.dart';
 import 'package:trusttunnel/common/assets/assets_images.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
+import 'package:trusttunnel/data/domain/subscription_poll_log.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/subscriptions/controller/subscriptions_controller.dart';
 import 'package:trusttunnel/feature/subscriptions/widgets/subscription_card.dart';
 import 'package:trusttunnel/feature/subscriptions/widgets/subscription_edit_dialog.dart';
+import 'package:trusttunnel/feature/subscriptions/widgets/subscription_poll_dialog.dart';
 import 'package:trusttunnel/feature/subscriptions/widgets/subscription_share_dialog.dart';
 import 'package:trusttunnel/widgets/arb_parser/arb_parser.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
@@ -30,6 +32,8 @@ class SubscriptionsScreen extends StatefulWidget {
 
 class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   late final SubscriptionsController _controller;
+  late final SubscriptionPollLog _pollLog;
+  late final Listenable _listenable;
 
   @override
   void initState() {
@@ -37,6 +41,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     _controller = SubscriptionsController(
       repository: context.repositoryFactory.subscriptionRepository,
     );
+    _pollLog = context.dependencyFactory.subscriptionPollLog;
+    _listenable = Listenable.merge([_controller, _pollLog]);
     _controller.addListener(_onStateChanged);
     _controller.fetch();
 
@@ -67,7 +73,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _controller,
+    listenable: _listenable,
     builder: (context, _) => ScaffoldWrapper(
       child: Scaffold(
         appBar: CustomAppBar(
@@ -93,6 +99,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                       SubscriptionCard(
                         subscription: subscription,
                         refreshing: _controller.state.refreshingIds.contains(subscription.id),
+                        poll: _pollLog.pollOf(subscription.id),
+                        onShowPoll: () => _onShowPoll(context, subscription),
                         onRefresh: () => _controller.refresh(subscription),
                         onEdit: () => _onEdit(context, subscription),
                         onShare: () => showDialog<void>(
@@ -114,6 +122,16 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       ),
     ),
   );
+
+  void _onShowPoll(BuildContext context, SubscriptionData subscription) {
+    final poll = _pollLog.pollOf(subscription.id);
+    if (poll == null || poll.attempts.isEmpty) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (_) => SubscriptionPollDialog(poll: poll),
+    );
+  }
 
   Future<void> _onAdd(BuildContext context, {SubscriptionData? prefill}) async {
     final result = await showDialog<SubscriptionData>(

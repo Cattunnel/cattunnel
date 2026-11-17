@@ -15,9 +15,11 @@ import 'package:trusttunnel/common/utils/routing_profile_utils.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
 import 'package:trusttunnel/data/domain/device_identity.dart';
+import 'package:trusttunnel/data/domain/subscription_poll_log.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
+import 'package:trusttunnel/data/model/subscription_poll.dart';
 
 class SubscriptionFetchException implements Exception {
   final String message;
@@ -65,6 +67,11 @@ class SubscriptionSyncService {
   final ServerDataSource _serverDataSource;
   final SharedPreferences? _pins;
 
+  /// What the last mirror poll of each subscription was. Only records and
+  /// shows what [_fetch] already does; it does not change the mirror order,
+  /// the timeouts or the number of requests.
+  final SubscriptionPollLog? _pollLog;
+
   /// Called with the id of a server whose subscription just turned
   /// anti-DPI on: what the automation learnt about it before says nothing
   /// now, so it forgets it.
@@ -79,10 +86,12 @@ class SubscriptionSyncService {
     required ServerDataSource serverDataSource,
     SharedPreferences? pinStore,
     Future<void> Function(String serverId)? onAntiDpiEnabled,
+    SubscriptionPollLog? pollLog,
   }) : _subscriptionDataSource = subscriptionDataSource,
        _serverDataSource = serverDataSource,
        _pins = pinStore,
-       _onAntiDpiEnabled = onAntiDpiEnabled;
+       _onAntiDpiEnabled = onAntiDpiEnabled,
+       _pollLog = pollLog;
 
   /// {@macro subscription_sync_service}
   Future<void> refresh(SubscriptionData subscription) async {
@@ -92,31 +101,51 @@ class SubscriptionSyncService {
       throw ArgumentError('Cannot refresh a subscription that has not been saved yet');
     }
 
-    final bytes = await _fetch(subscription);
-    final body = await _decode(bytes, subscription);
-    final servers = await _parse(body);
-    final before = {for (final server in await _serverDataSource.getAllServers()) server.id: server.serverData.antiDpi};
+    final pollLog = _pollLog;
+    pollLog?.beginPoll(subscriptionId: id, subscriptionName: subscription.name);
 
-    // An empty result would make the sync below delete every server of this
-    // subscription except the selected one. Far more likely a broken response
-    // (server-side error, a link format [_parse] silently skipped) than a
-    // real "you have no servers" - keep what we have instead.
-    if (servers.isEmpty) {
-      throw const SubscriptionFetchException('Subscription returned no usable servers');
+    try {
+      final bytes = await _fetch(subscription, pollId: id);
+      final String body;
+      try {
+        body = await _decode(bytes, subscription);
+      } catch (_) {
+        // The mirror answered, but the body did not open: that is the
+        // outcome of the last attempt, not a plain 200.
+        pollLog?.markDecryptionFailed(id);
+        rethrow;
+      }
+      final servers = await _parse(body);
+      final before = {
+        for (final server in await _serverDataSource.getAllServers()) server.id: server.serverData.antiDpi,
+      };
+
+      // An empty result would make the sync below delete every server of this
+      // subscription except the selected one. Far more likely a broken response
+      // (server-side error, a link format [_parse] silently skipped) than a
+      // real "you have no servers" - keep what we have instead.
+      if (servers.isEmpty) {
+        throw const SubscriptionFetchException('Subscription returned no usable servers');
+      }
+
+      await _subscriptionDataSource.syncServersForSubscription(id: id, servers: servers);
+      await _forgetTurnedOnAntiDpi(before);
+
+      final mirrors = _parseMirrors(body);
+      if (mirrors.isNotEmpty && SubscriptionData.joinUrls(mirrors) != SubscriptionData.joinUrls(subscription.urls)) {
+        await _subscriptionDataSource.updateSubscription(
+          id: id,
+          request: subscription.copyWith(url: SubscriptionData.joinUrls(mirrors)),
+        );
+      }
+
+      await _subscriptionDataSource.markRefreshed(id: id, at: DateTime.now());
+    } catch (_) {
+      await pollLog?.finishPoll(id, succeeded: false);
+      rethrow;
     }
 
-    await _subscriptionDataSource.syncServersForSubscription(id: id, servers: servers);
-    await _forgetTurnedOnAntiDpi(before);
-
-    final mirrors = _parseMirrors(body);
-    if (mirrors.isNotEmpty && SubscriptionData.joinUrls(mirrors) != SubscriptionData.joinUrls(subscription.urls)) {
-      await _subscriptionDataSource.updateSubscription(
-        id: id,
-        request: subscription.copyWith(url: SubscriptionData.joinUrls(mirrors)),
-      );
-    }
-
-    await _subscriptionDataSource.markRefreshed(id: id, at: DateTime.now());
+    await pollLog?.finishPoll(id, succeeded: true);
   }
 
   /// A server whose subscription turned anti-DPI on: the automation memory
@@ -159,7 +188,10 @@ class SubscriptionSyncService {
 
   /// Tries the subscription's mirrors in their fixed order; the first one
   /// that answers 200 wins.
-  Future<Uint8List> _fetch(SubscriptionData subscription) async {
+  ///
+  /// [pollId] only records what happens into [_pollLog] - the loop itself is
+  /// unchanged.
+  Future<Uint8List> _fetch(SubscriptionData subscription, {String? pollId}) async {
     final urls = subscription.urls;
     if (urls.isEmpty) {
       throw const SubscriptionFetchException('Subscription URL is empty');
@@ -169,8 +201,25 @@ class SubscriptionSyncService {
     Object? lastError;
 
     for (final url in urls) {
+      final host = SubscriptionPoll.hostOf(url);
+      if (pollId != null) _pollLog?.startAttempt(pollId, host);
+      final watch = Stopwatch()..start();
       try {
-        return await _fetchOne(url, skipVerification: subscription.skipVerification);
+        final bytes = await _fetchOne(url, skipVerification: subscription.skipVerification);
+        watch.stop();
+        if (pollId != null) {
+          _pollLog?.recordAttempt(
+            pollId,
+            SubscriptionPollAttempt(
+              host: host,
+              durationMs: watch.elapsedMilliseconds,
+              outcome: SubscriptionPollOutcome.ok,
+              statusCode: 200,
+            ),
+          );
+        }
+
+        return bytes;
       } on SubscriptionFetchException catch (e) {
         // A mirror that actually replied (e.g. 404 - token revoked) says
         // more than one that timed out, so that's what gets reported.
@@ -178,8 +227,12 @@ class SubscriptionSyncService {
           answered ??= e;
         }
         lastError = e;
+        watch.stop();
+        if (pollId != null) _pollLog?.recordAttempt(pollId, _attemptFrom(host, watch, e));
       } catch (e) {
         lastError = e;
+        watch.stop();
+        if (pollId != null) _pollLog?.recordAttempt(pollId, _attemptFrom(host, watch, e));
       }
     }
 
@@ -190,6 +243,44 @@ class SubscriptionSyncService {
       throw lastError;
     }
     throw SubscriptionFetchException('Subscription unreachable: $lastError');
+  }
+
+  static SubscriptionPollAttempt _attemptFrom(String host, Stopwatch watch, Object error) {
+    if (error is SubscriptionFetchException) {
+      return SubscriptionPollAttempt(
+        host: host,
+        durationMs: watch.elapsedMilliseconds,
+        outcome: error.statusCode == null ? SubscriptionPollOutcome.other : SubscriptionPollOutcome.http,
+        statusCode: error.statusCode,
+      );
+    }
+    if (error is TimeoutException) {
+      return SubscriptionPollAttempt(
+        host: host,
+        durationMs: watch.elapsedMilliseconds,
+        outcome: SubscriptionPollOutcome.timeout,
+      );
+    }
+    if (error is HandshakeException || error is TlsException) {
+      return SubscriptionPollAttempt(
+        host: host,
+        durationMs: watch.elapsedMilliseconds,
+        outcome: SubscriptionPollOutcome.tls,
+      );
+    }
+    if (error is SocketException) {
+      return SubscriptionPollAttempt(
+        host: host,
+        durationMs: watch.elapsedMilliseconds,
+        outcome: SubscriptionPollOutcome.noNetwork,
+      );
+    }
+
+    return SubscriptionPollAttempt(
+      host: host,
+      durationMs: watch.elapsedMilliseconds,
+      outcome: SubscriptionPollOutcome.other,
+    );
   }
 
   Future<Uint8List> _fetchOne(String url, {required bool skipVerification}) => retryDirectRead(

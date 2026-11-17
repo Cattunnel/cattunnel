@@ -51,6 +51,7 @@ import 'package:trusttunnel/data/datasources/server_test_timeout_datasource.dart
 import 'package:trusttunnel/data/datasources/settings_datasource.dart';
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
 import 'package:trusttunnel/data/datasources/vpn_datasource.dart';
+import 'package:trusttunnel/data/domain/subscription_poll_log.dart';
 import 'package:trusttunnel/data/domain/subscription_sync_service.dart';
 import 'package:trusttunnel/data/ru_lists/ru_lists_service.dart';
 import 'package:trusttunnel/feature/app/controller/app_window_controller.dart';
@@ -126,6 +127,8 @@ abstract class DependencyFactory {
   SubscriptionDataSource get subscriptionDataSource;
 
   SubscriptionSyncService get subscriptionSyncService;
+
+  SubscriptionPollLog get subscriptionPollLog;
 
   MtuSettingsDataSource get mtuSettingsDataSource;
 
@@ -209,6 +212,8 @@ class DependencyFactoryImpl implements DependencyFactory {
   SubscriptionDataSource? _subscriptionDataSource;
 
   SubscriptionSyncService? _subscriptionSyncService;
+
+  SubscriptionPollLog? _subscriptionPollLog;
 
   MtuSettingsDataSource? _mtuSettingsDataSource;
 
@@ -321,6 +326,7 @@ class DependencyFactoryImpl implements DependencyFactory {
     filePicker: FilePicker.platform,
     vpnPlugin: vpnPlugin,
     sharedPreferences: sharedPreferences,
+    subscriptionPollLog: subscriptionPollLog,
   );
 
   @override
@@ -368,10 +374,15 @@ class DependencyFactoryImpl implements DependencyFactory {
       _subscriptionDataSource ??= SubscriptionDataSourceImpl(database: database);
 
   @override
+  SubscriptionPollLog get subscriptionPollLog =>
+      _subscriptionPollLog ??= SubscriptionPollLog(preferences: sharedPreferences);
+
+  @override
   SubscriptionSyncService get subscriptionSyncService => _subscriptionSyncService ??= SubscriptionSyncService(
     subscriptionDataSource: subscriptionDataSource,
     serverDataSource: serverDataSource,
     pinStore: sharedPreferences,
+    pollLog: subscriptionPollLog,
     onAntiDpiEnabled: (serverId) => AntiDpiAuto(sharedPreferences).forgetServer(serverId),
   );
 
