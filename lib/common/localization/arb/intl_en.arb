@@ -908,7 +908,7 @@
     }
   },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• City pop is livelier: a Tokyo street of the 80s that follows the phone's clock, with a traffic light that pedestrians press, metro trains on the viaduct and shop signs that light up one by one when the VPN connects\n• A song for City pop: the ♪ button left of the cat turns it on and off. It is off by default\n• Settings → Networks: tap a network to see which technique worked for each key and when\n• The same news on Android, Windows and Linux",
+  "whatsNewBody": "• The blocking bypass no longer turns on by itself. \"Settings → Launch and connection\" has two switches: for subscription keys it stays on until the end of the day, for personal keys it stays on\n• The subscription owns its keys: an update changes every value, even the ones that are off. Your own settings for a key are behind the \"Override subscription\" switch\n• Under a subscription you see how the update went: through which address and how long it took. Tap it for all the attempts\n• A QR code can come from the gallery, and a one-time link from the browser: the subscription is downloaded at once\n• Fewer connections to the server, opened with pauses, without a burst of handshakes",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",
@@ -1119,7 +1119,7 @@
   "expertXhttpLabel": "NineLives transport",
   "expertXhttpDescription": "The data goes as a pair of GET and POST requests instead of CONNECT",
   "expertNineLivesEncryptionLabel": "NineLives encryption",
-  "expertNineLivesEncryptionDescription": "Extra encryption inside TLS. Off: TLS only",
+  "expertNineLivesEncryptionDescription": "Own encryption inside TLS. If turned off, only TLS protects the data",
   "expertNineLivesEncryptionNoKey": "The server sent no key",
   "expertXhttpPathLabel": "Path prefix",
   "expertXhttpPathHint": "/api/v2/",
