@@ -58,9 +58,9 @@ CatTunnel - клиентское приложение: он подключает
 
 **Устойчивость к DPI**
 - Своя сборка ядра TrustTunnelClient: ClientHello уходит приёмами из [ByeDPI](https://github.com/hufrea/byedpi) - «срочный» байт, кусок с TTL 1, разрыв внутри имени сервера. Способы 1-3, своя строка в синтаксисе ByeDPI и режим **«Авто»**: сначала обычное соединение, потом способы по очереди; удачный способ для сервера и сети запоминается до конца дня.
-- **Отпечаток TLS** для каждого сервера (по умолчанию - как у браузера устройства), **маскировка размеров** (HTTP/2 padding), **отключение QUIC**.
+- **Отпечаток TLS** для каждого сервера: по умолчанию как у браузера устройства, на выбор Chrome 150, Chrome 156, Firefox, Safari и приложение Android. **Маскировка размеров** (HTTP/2 padding), **отключение QUIC**.
 - Соединения приложений идут через 2-4 TLS-соединения с сервером, новые открываются с паузой, а не залпом.
-- **NineLives** (в «Для экспертов», нужен сервер с его поддержкой): пара запросов GET и POST вместо CONNECT, своё шифрование внутри TLS ключом сервера, продолжение сессии после короткого обрыва.
+- **NineLives** (в «Для экспертов», нужен [сервер CatTunnel](https://github.com/Cattunnel/cattunnel-server) или другой с его поддержкой): пара запросов GET и POST вместо CONNECT, своё шифрование внутри TLS ключом сервера (без ключа в ссылке данные защищает только TLS), продолжение сессии после обрыва до 60 секунд. С XHTTP из Xray не совместим, форма трафика ещё дорабатывается.
 - Понятные причины отказа и бережные повторы, если фильтр временно «заморозил» адрес сервера. Подробно - [docs/anti-dpi.md](docs/anti-dpi.md).
 
 **Раздельное туннелирование**
@@ -156,7 +156,9 @@ ORG_GRADLE_PROJECT_appId=org.example.myvpn flutter build apk ...
 
 **Windows и Linux:** установщик - [`windows/installer/`](windows/installer/), пакеты Arch и Debian - [`linux/packaging/`](linux/packaging/README.md).
 
-**Сетевое ядро:** собственная сборка TrustTunnelClient с патчем [`tools/engine_native/0001-anti-dpi-desync.patch`](tools/engine_native/0001-anti-dpi-desync.patch) - [`tools/engine_native/`](tools/engine_native/README.md); патчи Android-движка - [`tools/engine_patch/`](tools/engine_patch/).
+**Сетевое ядро:** собственная сборка TrustTunnelClient с патчами CatTunnel - [`tools/engine_native/`](tools/engine_native/README.md); патчи Android-движка - [`tools/engine_patch/`](tools/engine_patch/). В 1.5.9 приложение на всех платформах и роутер собраны из одной ревизии ядра (`82963908`).
+
+**Сервер:** форк TrustTunnel с NineLives - [Cattunnel/cattunnel-server](https://github.com/Cattunnel/cattunnel-server).
 
 <details>
 <summary>Заметки по сборке</summary>

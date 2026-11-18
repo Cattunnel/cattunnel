@@ -1,7 +1,7 @@
 # CatTunnel Linux 1.4.5 (build 2013) - known issues (security audit in progress, 2026-09-29)
 
-Pre-release for testing. Desktop security audit (skill security-audit, standard) is not finished: the items
-below are candidates from hunters; independent verification is still pending. All will be fixed in the next build.
+Pre-release for testing. The internal desktop security audit is not finished: the items
+below are candidates; independent verification is still pending. All will be fixed in the next build.
 "Group" = members of `cattunnel` (on a single-user machine: only you and root).
 
 
