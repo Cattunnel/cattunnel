@@ -2,7 +2,7 @@
 
 CatTunnel: клиент VPN для Android, Windows и Linux. Он подключается к серверам по протоколу TrustTunnel (TLS и HTTP/2 или HTTP/3) и к [серверу CatTunnel](https://github.com/Cattunnel/cattunnel-server) с транспортом NineLives. Серверов и подписок проект не предоставляет: нужен свой сервер или сервер от администратора.
 
-*A VPN client for Android, Windows and Linux for TrustTunnel servers and the CatTunnel server, with DPI resistance, encrypted subscriptions and built-in diagnostics.*
+[English](README.en.md)
 
 <p>
   <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/Cattunnel/cattunnel?include_prereleases&label=release" alt="Release"></a>
