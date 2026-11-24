@@ -37,7 +37,9 @@ The app is based on the open-source [TrustTunnel Flutter Client](https://github.
 
 - Servers can be added manually, by a `tt://` link, by QR code or from a subscription. A new link for the same account (same domain, login and key) updates the server, for example "port 8443 → 9443", and keeps the name and routing instead of creating a duplicate.
 - Kill switch, auto-connect, and an Android quick settings tile: it turns the VPN on without opening the app, including on Samsung, which resets the VPN permission after every stop.
+- **IP rotation** (1.5.9.5): one key works through several servers in turn and moves to the next one after a random time. A server that fails rests for a while, and the tunnel stays up. Details: [docs/rotation.md](docs/rotation.md) (in Russian).
 - Switching to another server of the same subscription if the selected one fails to connect for 2 minutes, and trying to switch back later. Can be turned off in settings.
+- Servers follow the subscription order, favorites are starred and stay on top; subscriptions and your own keys form groups that can be reordered and renamed. The ping next to a key comes from the connection itself.
 - A running VPN does not reconnect when the app is opened again; changing the server makes one connection, not two.
 - Server check and sorting by latency, MTU setting.
 - "Russian exit" keys for people abroad: only Russian sites and apps go through the server, everything else goes directly.
@@ -194,6 +196,7 @@ The release signature is taken from `android/key.properties` and `android/keysto
 | [docs/anti-dpi.md](docs/anti-dpi.md) (in Russian) | Anti-DPI modes, custom string, connection pool, TLS authorization key, failure reasons |
 | [docs/padding.md](docs/padding.md) (in Russian) | HTTP/2 size masking: parameters, budgets, link tags |
 | [docs/ninelives.md](docs/ninelives.md) (in Russian) | The NineLives transport on the client side |
+| [docs/rotation.md](docs/rotation.md) (in Russian) | IP rotation: how a key moves, server rest, settings and tags |
 | [docs/security/](docs/security/) (in Russian) | Known security limitations, the Linux helper |
 | [assets/readme/README.en.md](assets/readme/README.en.md) | User guide (also inside the app) |
 
@@ -205,12 +208,14 @@ lib/                      the app (Flutter)
   feature/vpn/domain/     diagnostics, anti-DPI "Auto", TLS fingerprint
   feature/security/       device and leak checks, panic button
   feature/subscriptions/  subscriptions, QR, import
-plugins/vpn_plugin/       bindings to TrustTunnelClient (Pigeon); linux/helper: privileged helper
+plugins/vpn_plugin/       bindings to TrustTunnelClient (Pigeon);
+                          linux/helper: privileged helper
 packages/dage/            age library with compatibility fixes
 tools/engine_native/      build of the own core and the anti-DPI patch
 tools/engine_patch/       Android engine patches
 android/ ios/ macos/ windows/ linux/   platform parts, installer and packages
-docs/                     design, subscriptions, anti-DPI, padding, NineLives, security
+docs/                     design, subscriptions, anti-DPI, padding,
+                          NineLives, IP rotation, security
 test/                     tests (flutter test)
 ```
 
