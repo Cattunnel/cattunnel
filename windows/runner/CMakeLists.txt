@@ -21,6 +21,17 @@ add_executable(${BINARY_NAME} WIN32
 apply_standard_settings(${BINARY_NAME})
 
 # Add preprocessor definitions for the build version.
+# Flutter's Windows tool parses only x.y.z[+build] and falls back to 1.0.0 for a four-part
+# version such as 1.5.9.5. The app reads its version and build from ProductVersion
+# ("version+build", see the update check), so the release script passes both here.
+if(DEFINED ENV{CATTUNNEL_VERSION} AND DEFINED ENV{CATTUNNEL_BUILD})
+  set(FLUTTER_VERSION "$ENV{CATTUNNEL_VERSION}+$ENV{CATTUNNEL_BUILD}")
+  string(REPLACE "." ";" CATTUNNEL_VERSION_PARTS "$ENV{CATTUNNEL_VERSION}")
+  list(GET CATTUNNEL_VERSION_PARTS 0 FLUTTER_VERSION_MAJOR)
+  list(GET CATTUNNEL_VERSION_PARTS 1 FLUTTER_VERSION_MINOR)
+  list(GET CATTUNNEL_VERSION_PARTS 2 FLUTTER_VERSION_PATCH)
+  set(FLUTTER_VERSION_BUILD "$ENV{CATTUNNEL_BUILD}")
+endif()
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MINOR=${FLUTTER_VERSION_MINOR}")

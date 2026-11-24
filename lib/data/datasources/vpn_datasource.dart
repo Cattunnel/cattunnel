@@ -46,6 +46,9 @@ abstract class VpnDataSource {
   /// VpnPlugin.netDiagnostics.
   Stream<NetDiagnostic> get netDiagnostics;
 
+  /// The ping of the endpoint the engine picked, see VpnPlugin.tunnelPings.
+  Stream<int> get tunnelPings;
+
   /// {@template vpn_data_source_start}
   /// Starts the VPN session using the provided configuration inputs.
   ///

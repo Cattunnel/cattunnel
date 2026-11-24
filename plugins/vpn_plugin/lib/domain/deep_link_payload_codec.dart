@@ -18,8 +18,10 @@
 
 import 'dart:convert';
 
+import 'package:vpn_plugin/domain/cattail_settings.dart';
 import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/domain/rotation_addresses.dart';
 import 'package:vpn_plugin/models/endpoint.dart';
 import 'package:vpn_plugin/models/ini_document.dart';
 import 'package:vpn_plugin/models/upstream_protocol.dart';
@@ -52,7 +54,7 @@ abstract final class _DeepLinkPayloadTag {
   /// Endpoint.antiDpiMode). Absent - the default is used.
   static const antiDpiMode = 0x41;
 
-  /// CatTunnel: ClientHello fingerprint, UTF-8 (chrome, firefox, safari,
+  /// CatTunnel: ClientHello fingerprint, UTF-8 (chrome, firefox,
   /// okhttp; see Endpoint.tlsProfile). Absent - the default is used.
   static const tlsProfile = 0x42;
 
@@ -84,6 +86,26 @@ abstract final class _DeepLinkPayloadTag {
   /// bytes), the pair of its `xhttp_secret_key` (see
   /// Endpoint.xhttpServerKey). Absent or malformed - no endpoint check.
   static const xhttpServerKey = 0x51;
+
+  /// CatTunnel: ready SNI names without the main one (see Endpoint.sniPool),
+  /// as a string sequence. Absent - the engine uses one name.
+  static const sniPool = 0x52;
+
+  /// CatTunnel 9a: the servers of the timed rotation, a string sequence,
+  /// each `host:port` or `host:port sni1 sni2` (see RotationAddresses).
+  /// Absent - no rotation.
+  static const rotationAddresses = 0x53;
+
+  /// CatTunnel 9a: the bounds of the random rotation term, varint seconds.
+  static const rotationMinSecs = 0x54;
+  static const rotationMaxSecs = 0x55;
+
+  /// CatTunnel: CatTail on (bool), its ports (`20000-40000` or a list),
+  /// its endpoint key (32 bytes) and the padding scheme (text), ~/oc/cattail.md.
+  static const cattailEnabled = 0x56;
+  static const cattailPorts = 0x57;
+  static const cattailKey = 0x58;
+  static const cattailPattern = 0x59;
 }
 
 const _payloadVersion = 0x01;
@@ -99,6 +121,14 @@ final class DeepLinkPayloadEncoder extends Converter<Endpoint, String> {
 
   @override
   String convert(Endpoint input) {
+    final rotation =
+        input.rotationEnabled
+            ? RotationAddresses.normalizeList(input.rotationAddresses, input.addresses)
+            : const <String>[];
+    final rotationMin = RotationAddresses.clampSecs(input.rotationMinSecs);
+    final rotationMax = RotationAddresses.clampSecs(input.rotationMaxSecs);
+    final cattailPorts = CattailSettings.normalizePorts(input.cattailPorts);
+    final cattailPattern = CattailSettings.normalizePattern(input.cattailPattern) ?? '';
     final chunks = <List<int>>[
       _tlv(_DeepLinkPayloadTag.version, [_payloadVersion]),
       if (input.name.isNotEmpty) _tlvString(_DeepLinkPayloadTag.name, input.name),
@@ -136,6 +166,25 @@ final class DeepLinkPayloadEncoder extends Converter<Endpoint, String> {
       _tlvString(_DeepLinkPayloadTag.xhttpPath, input.xhttpPath),
       if (ConfigurationCodecKeys.isValidXhttpServerKey(input.xhttpServerKey))
         _tlvString(_DeepLinkPayloadTag.xhttpServerKey, input.xhttpServerKey),
+      if (input.sniPool.isNotEmpty)
+        _tlv(
+          _DeepLinkPayloadTag.sniPool,
+          _encodeStringSequence(
+            input.sniPool.where((name) => name.isNotEmpty).take(ConfigurationCodecKeys.sniPoolMax).toList(),
+          ),
+        ),
+      if (rotation.isNotEmpty)
+        _tlv(
+          _DeepLinkPayloadTag.rotationAddresses,
+          _encodeStringSequence(rotation),
+        ),
+      if (rotation.isNotEmpty && rotationMin > 0) _tlv(_DeepLinkPayloadTag.rotationMinSecs, _writeVarint(rotationMin)),
+      if (rotation.isNotEmpty && rotationMax > 0) _tlv(_DeepLinkPayloadTag.rotationMaxSecs, _writeVarint(rotationMax)),
+      if (input.cattailEnabled) _tlvBool(_DeepLinkPayloadTag.cattailEnabled, true),
+      if (cattailPorts != null) _tlvString(_DeepLinkPayloadTag.cattailPorts, cattailPorts),
+      if (CattailSettings.isValidKey(input.cattailKey.trim()))
+        _tlv(_DeepLinkPayloadTag.cattailKey, base64Decode(input.cattailKey.trim())),
+      if (cattailPattern.isNotEmpty) _tlvString(_DeepLinkPayloadTag.cattailPattern, cattailPattern),
       if (input.blockQuic) _tlvBool(_DeepLinkPayloadTag.blockQuic, true),
       if (input.skipVerification) _tlvBool(_DeepLinkPayloadTag.skipVerification, true),
       if (input.certificate.isNotEmpty) _tlv(_DeepLinkPayloadTag.certificate, _pemToDer(input.certificate)),
@@ -267,6 +316,12 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
     var certificate = '';
     final addresses = <String>[];
     var dnsUpstreams = <String>[];
+    var sniPool = <String>[];
+    var rotationAddresses = <String>[];
+    bool? cattailEnabled;
+    var cattailPorts = '';
+    var cattailKey = '';
+    var cattailPattern = '';
 
     final extended = <String, Object>{};
     var offset = 0;
@@ -353,6 +408,24 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
         case _DeepLinkPayloadTag.xhttpServerKey:
           final key = _string(value);
           if (ConfigurationCodecKeys.isValidXhttpServerKey(key)) extended['xhttp_server_key'] = key;
+        case _DeepLinkPayloadTag.sniPool:
+          sniPool =
+              _stringSequence(value).where((name) => name.isNotEmpty).take(ConfigurationCodecKeys.sniPoolMax).toList();
+        case _DeepLinkPayloadTag.rotationAddresses:
+          rotationAddresses = _stringSequence(value);
+        case _DeepLinkPayloadTag.rotationMinSecs:
+          extended[ConfigurationCodecKeys.rotationMinSecs] = _boundedInt(value, RotationAddresses.maxSecs);
+        case _DeepLinkPayloadTag.rotationMaxSecs:
+          extended[ConfigurationCodecKeys.rotationMaxSecs] = _boundedInt(value, RotationAddresses.maxSecs);
+        case _DeepLinkPayloadTag.cattailEnabled:
+          cattailEnabled = _bool(value);
+        case _DeepLinkPayloadTag.cattailPorts:
+          // A wrong list from a newer generator is dropped, not fatal.
+          cattailPorts = CattailSettings.normalizePorts(_string(value)) ?? '';
+        case _DeepLinkPayloadTag.cattailKey:
+          cattailKey = CattailSettings.keyFromTag(value);
+        case _DeepLinkPayloadTag.cattailPattern:
+          cattailPattern = CattailSettings.normalizePattern(_string(value)) ?? '';
         case _DeepLinkPayloadTag.clientRandomPrefix:
           // Fixed ClientHello prefixes fingerprint the connection. Ignore tag 0x0B.
           break;
@@ -392,13 +465,29 @@ final class DeepLinkPayloadDecoder extends Converter<String, String> {
           ..setInt('h2_padding_frames', h2PaddingFrames)
           ..setBool('block_quic', blockQuic)
           ..setString('custom_sni', customSni)
+          ..setStringList('sni_pool', sniPool)
           ..setStringList('dns_upstreams', dnsUpstreams);
     for (final entry in extended.entries) {
       switch (entry.value) {
-        case final bool value: endpoint.setBool(entry.key, value);
-        case final int value: endpoint.setInt(entry.key, value);
-        case final String value: endpoint.setString(entry.key, value);
+        case final bool value:
+          endpoint.setBool(entry.key, value);
+        case final int value:
+          endpoint.setInt(entry.key, value);
+        case final String value:
+          endpoint.setString(entry.key, value);
       }
+    }
+    for (final entry in RotationAddresses.entriesOf(rotationAddresses, addresses)) {
+      final table = document.addArrayTable(ConfigurationCodecKeys.rotationSection)
+        ..setString(ConfigurationCodecKeys.rotationAddress, entry.address);
+      if (entry.sniPool.isNotEmpty) table.setStringList(ConfigurationCodecKeys.rotationSniPool, entry.sniPool);
+    }
+    if (cattailEnabled != null || cattailPorts.isNotEmpty || cattailKey.isNotEmpty || cattailPattern.isNotEmpty) {
+      final cattail = document.section(ConfigurationCodecKeys.cattailSection)
+        ..setBool(ConfigurationCodecKeys.cattailEnabled, cattailEnabled ?? false);
+      if (cattailPorts.isNotEmpty) cattail.setString(ConfigurationCodecKeys.cattailPorts, cattailPorts);
+      if (cattailKey.isNotEmpty) cattail.setString(ConfigurationCodecKeys.cattailKey, cattailKey);
+      if (cattailPattern.isNotEmpty) cattail.setString(ConfigurationCodecKeys.cattailPattern, cattailPattern);
     }
     if (name != null) {
       // ConfigurationDecoder un-escapes the name (JSON string rules).

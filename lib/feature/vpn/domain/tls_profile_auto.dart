@@ -11,7 +11,7 @@ import 'package:win32/win32.dart';
 
 /// What "auto" (ServerData.tlsProfileAuto) resolved to on this device.
 class TlsProfileChoice {
-  /// chrome / firefox / safari - an engine `tls_profile`.
+  /// chrome / firefox - an engine `tls_profile`.
   final String profile;
 
   /// The default browser it was taken from (package, ProgId or .desktop
@@ -110,7 +110,7 @@ abstract final class TlsProfileAuto {
       'sbrowser', 'samsung', 'huawei.browser', 'miui.browser', 'mi.globalbrowser', 'heytap.browser', 'ucmobile',
     ];
     if (firefox.any(id.contains)) return 'firefox';
-    if (id.contains('safari')) return 'safari';
+    if (id.contains('safari')) return 'chrome';
     if (chrome.any(id.contains)) return 'chrome';
 
     return null;

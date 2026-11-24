@@ -78,6 +78,21 @@ final class IniDocument {
   /// The top-level section is represented by `null`.
   IniSection section(String? name) => _sections.putIfAbsent(name, () => IniSection._(name));
 
+  /// TOML arrays of tables (`[[endpoint.rotation]]`), in their order.
+  final List<IniSection> _arrayTables = <IniSection>[];
+
+  /// Adds one more table to the array [name] (`[[name]]`). It is written
+  /// right after its parent section (`endpoint` for `endpoint.rotation`).
+  IniSection addArrayTable(String name) {
+    final table = IniSection._(name);
+    _arrayTables.add(table);
+    return table;
+  }
+
+  /// The tables of the array [name], in their order; empty when there are none.
+  List<IniSection> arrayTables(String name) =>
+      _arrayTables.where((table) => table.name == name).toList(growable: false);
+
   @override
   String toString() {
     final StringBuffer out = StringBuffer();
@@ -97,9 +112,36 @@ final class IniDocument {
       for (final MapEntry<String, IniValue> kv in iniSection.entries) {
         out.writeln('${kv.key} ${IniConst.equals} ${kv.value.encode()}');
       }
+
+      for (final IniSection table in _arrayTables.where(
+        (t) => sectionName != null && _parentOf(t.name!) == sectionName,
+      )) {
+        _writeArrayTable(out, table);
+      }
+    }
+
+    // Arrays whose parent section is not in the document.
+    for (final IniSection table in _arrayTables.where((t) {
+      final parent = _parentOf(t.name!);
+      return parent == null || !_sections.containsKey(parent);
+    })) {
+      _writeArrayTable(out, table);
     }
 
     return out.toString();
+  }
+
+  static String? _parentOf(String name) {
+    final dot = name.lastIndexOf('.');
+    return dot <= 0 ? null : name.substring(0, dot);
+  }
+
+  static void _writeArrayTable(StringBuffer out, IniSection table) {
+    out.writeln();
+    out.writeln('[[${table.name}]]');
+    for (final MapEntry<String, IniValue> kv in table.entries) {
+      out.writeln('${kv.key} ${IniConst.equals} ${kv.value.encode()}');
+    }
   }
 
   /// Parses an INI-like document.
@@ -120,6 +162,11 @@ final class IniDocument {
       final String line = rawLine.trimLeft();
 
       if (line.isEmpty || line.startsWith(IniConst.commentPrefix)) continue;
+
+      if (line.startsWith('[[') && line.endsWith(']]')) {
+        currentSection = document.addArrayTable(line.substring(2, line.length - 2).trim());
+        continue;
+      }
 
       if (_isSectionHeader(line)) {
         final String sectionName = _parseSectionName(line);

@@ -8,7 +8,10 @@ import 'package:trusttunnel/data/database/migrations/migrations_v13.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v14.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v15.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v17.dart';
+import 'package:trusttunnel/data/database/migrations/migrations_v18.dart';
+import 'package:trusttunnel/data/database/migrations/migrations_v19.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v2.dart';
+import 'package:trusttunnel/data/database/migrations/migrations_v20.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v3.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v4.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v5.dart';
@@ -16,7 +19,9 @@ import 'package:trusttunnel/data/database/migrations/migrations_v6.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v7.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v8.dart';
 import 'package:trusttunnel/data/database/migrations/migrations_v9.dart';
+import 'package:trusttunnel/data/database/rotation_addresses_column.dart';
 import 'package:trusttunnel/data/database/secret_column.dart';
+import 'package:trusttunnel/data/database/sni_pool_column.dart';
 
 import 'connection.dart' as impl;
 
@@ -41,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.inMemory(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -183,6 +188,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 17) {
         await _runMigrationStep('v17', () => const MigrationsV17().migrate(this, m));
+      }
+      if (from < 18) {
+        await _runMigrationStep('v18', () => const MigrationsV18().migrate(this, m));
+      }
+      if (from < 19) {
+        await _runMigrationStep('v19', () => const MigrationsV19().migrate(this, m));
+      }
+      if (from < 20) {
+        await _runMigrationStep('v20', () => const MigrationsV20().migrate(this, m));
       }
     },
   );

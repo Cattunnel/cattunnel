@@ -11,6 +11,7 @@ import 'package:vpn_plugin/models/connect_failure.dart';
 import 'package:vpn_plugin/models/logs/log_record.dart';
 import 'package:vpn_plugin/models/net_diagnostic.dart';
 import 'package:vpn_plugin/models/query_log_row.dart';
+import 'package:vpn_plugin/models/tunnel_ping.dart';
 import 'package:vpn_plugin/platform_api.g.dart';
 
 /// {@template vpn_plugin}
@@ -89,6 +90,11 @@ abstract class VpnPlugin {
   /// session to the endpoint dies of something the engine can name.
   abstract final Stream<NetDiagnostic> netDiagnostics;
 
+  /// The ping in milliseconds of the endpoint the engine picked, sent once
+  /// per connect after the choice (our engine build, Android; item 13 of
+  /// 1.5.9.5). Live only; empty where the platform has no such record.
+  abstract final Stream<int> tunnelPings;
+
   Future<List<LogRecord>> exportLogsFor(List<String> paths);
 
   Future<List<String>> fetchLogsPath();
@@ -117,7 +123,8 @@ class VpnPluginImpl implements VpnPlugin {
        _vpnChannel = channel ?? const EventChannel('vpn_plugin_event_channel'),
        _queryLogChannel = logChannel ?? const EventChannel('vpn_plugin_event_channel_query_log'),
        _failureChannel = const EventChannel('vpn_plugin_event_channel_failures'),
-       _diagnosticChannel = const EventChannel('vpn_plugin_event_channel_diagnostics');
+       _diagnosticChannel = const EventChannel('vpn_plugin_event_channel_diagnostics'),
+       _pingChannel = const EventChannel('vpn_plugin_event_channel_pings');
 
   final ConfigurationCodec _codec;
   final IVpnManager _api;
@@ -125,6 +132,7 @@ class VpnPluginImpl implements VpnPlugin {
   final EventChannel _queryLogChannel;
   final EventChannel _failureChannel;
   final EventChannel _diagnosticChannel;
+  final EventChannel _pingChannel;
   final LogsReader _logsReader;
   SharedPreferences? _storage;
 
@@ -185,6 +193,16 @@ class VpnPluginImpl implements VpnPlugin {
           .map((dynamic raw) => NetDiagnostic.parse(raw as String?))
           .where((d) => d != null)
           .cast<NetDiagnostic>();
+
+  @override
+  late final Stream<int> tunnelPings =
+      _pingChannel
+          .receiveBroadcastStream()
+          // No handler on this platform (MissingPluginException): no pings.
+          .handleError((Object _) {})
+          .map(TunnelPing.fromValue)
+          .where((ms) => ms != null)
+          .cast<int>();
 
   /// Converts raw platform-specific state values to [VpnManagerState] enum values.
   static VpnManagerState _mapNativeToState(dynamic raw) {

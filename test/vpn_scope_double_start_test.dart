@@ -22,13 +22,24 @@ import 'package:vpn_plugin/models/net_diagnostic.dart';
 class _CountingVpnRepository implements VpnRepository {
   int starts = 0;
   @override
-  Future<void> start({required Server server, required RoutingProfile routingProfile, required List<String> excludedRoutes, required VpnConfigurationLogLevel logLevel}) async {
+  Future<void> start({
+    required Server server,
+    required RoutingProfile routingProfile,
+    required List<String> excludedRoutes,
+    required VpnConfigurationLogLevel logLevel,
+  }) async {
     starts++;
   }
+
   @override
   Future<Stream<VpnState>> listenToStates() async => const Stream<VpnState>.empty();
   @override
-  Future<void> updateConfiguration({required Server server, required RoutingProfile routingProfile, required List<String> excludedRoutes, required VpnConfigurationLogLevel logLevel}) async {}
+  Future<void> updateConfiguration({
+    required Server server,
+    required RoutingProfile routingProfile,
+    required List<String> excludedRoutes,
+    required VpnConfigurationLogLevel logLevel,
+  }) async {}
   @override
   Future<void> deleteConfiguration() async {}
   @override
@@ -37,6 +48,8 @@ class _CountingVpnRepository implements VpnRepository {
   Stream<ConnectFailure> get connectFailures => const Stream<ConnectFailure>.empty();
   @override
   Stream<NetDiagnostic> get netDiagnostics => const Stream<NetDiagnostic>.empty();
+  @override
+  Stream<int> get tunnelPings => const Stream<int>.empty();
   @override
   Future<VpnState> requestState() async => VpnState.disconnected;
   @override
@@ -84,7 +97,10 @@ void main() {
     const data = ServerData.empty(name: 'srv', ipAddress: '1.2.3.4:443');
     final fromButton = Server(id: 's1', serverData: data);
     // The same server as the list holds it: other data, same id.
-    final fromList = Server(id: 's1', serverData: const ServerData.empty(name: 'srv (list)', ipAddress: '1.2.3.4:443'));
+    final fromList = Server(
+      id: 's1',
+      serverData: const ServerData.empty(name: 'srv (list)', ipAddress: '1.2.3.4:443'),
+    );
     final profile = RoutingProfile(id: '', data: const RoutingProfileData.empty());
     late VpnController controller;
 
@@ -111,9 +127,19 @@ void main() {
     );
 
     await tester.runAsync(() async {
-      final first = controller.start(server: fromButton, routingProfile: profile, excludedRoutes: const [], logLevel: VpnConfigurationLogLevel.info);
+      final first = controller.start(
+        server: fromButton,
+        routingProfile: profile,
+        excludedRoutes: const [],
+        logLevel: VpnConfigurationLogLevel.info,
+      );
       await Future<void>.delayed(const Duration(milliseconds: 10));
-      final second = controller.start(server: fromList, routingProfile: profile, excludedRoutes: const [], logLevel: VpnConfigurationLogLevel.info);
+      final second = controller.start(
+        server: fromList,
+        routingProfile: profile,
+        excludedRoutes: const [],
+        logLevel: VpnConfigurationLogLevel.info,
+      );
       await Future.wait<void>([first, second]).timeout(const Duration(seconds: 20), onTimeout: () => <void>[]);
     });
 

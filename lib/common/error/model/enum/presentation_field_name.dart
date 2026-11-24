@@ -16,4 +16,7 @@ enum PresentationFieldName {
   antiDpiDesync,
   tlsAuthKey,
   expertSettings,
+  rotationAddresses,
+  rotationTerm,
+  cattail,
 }

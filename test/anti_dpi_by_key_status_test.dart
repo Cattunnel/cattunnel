@@ -66,6 +66,8 @@ class _FakeVpnRepository implements VpnRepository {
   @override
   Stream<NetDiagnostic> get netDiagnostics => const Stream<NetDiagnostic>.empty();
   @override
+  Stream<int> get tunnelPings => const Stream<int>.empty();
+  @override
   Future<VpnState> requestState() async => VpnState.disconnected;
   @override
   Future<void> stop() async {

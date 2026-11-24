@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:trusttunnel/common/extensions/context_extensions.dart';
@@ -33,20 +35,22 @@ class ServerLatencyScope extends StatefulWidget {
 class _ServerLatencyScopeState extends State<ServerLatencyScope> {
   late final ServerLatencyController _controller;
   late final ValueListenable<VpnState> _vpnState;
+  late final StreamSubscription<int> _pings;
   String? _selectedId;
 
   @override
   void initState() {
     super.initState();
     _controller = ServerLatencyController(
-      timeoutRepository: context.repositoryFactory.serverTestTimeoutRepository,
+      store: SharedPreferencesPingStore(context.dependencyFactory.sharedPreferences),
     );
+    // The engine's own ping of the endpoint it picked: no probe from the app.
+    _pings = context.repositoryFactory.vpnRepository.tunnelPings.listen(_controller.pingReported);
     _vpnState = VpnScope.vpnControllerOf(context, listen: false).stateListenable;
-    _controller.connectionChanged(_vpnState.value, notify: false);
     _vpnState.addListener(_connectionChanged);
   }
 
-  void _connectionChanged() => _controller.connectionChanged(_vpnState.value);
+  void _connectionChanged() => _controller.connectionChanged(_vpnState.value, serverId: _selectedId);
 
   @override
   void didChangeDependencies() {
@@ -55,13 +59,14 @@ class _ServerLatencyScopeState extends State<ServerLatencyScope> {
     final selected = servers.selectedServer ?? (servers.servers.isEmpty ? null : servers.servers.first);
     if (selected?.id != _selectedId) {
       _selectedId = selected?.id;
-      _controller.invalidate(notify: false);
+      _connectionChanged();
     }
   }
 
   @override
   void dispose() {
     _vpnState.removeListener(_connectionChanged);
+    unawaited(_pings.cancel());
     _controller.dispose();
     super.dispose();
   }

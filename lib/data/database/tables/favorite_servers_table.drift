@@ -1,0 +1,7 @@
+-- Favorite servers. The key outlives the server row: a subscription server
+-- is deleted and inserted again when it leaves the subscription and returns,
+-- so it is keyed by subscription id + name ('s:<id>:<name>'), a manual one
+-- by row id ('m:<id>'). See favorite_key.dart.
+CREATE TABLE IF NOT EXISTS favorite_servers(
+  fav_key TEXT PRIMARY KEY NOT NULL
+);

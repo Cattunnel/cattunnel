@@ -37,6 +37,10 @@ abstract class VpnRepository {
   /// build; Android, Linux).
   Stream<NetDiagnostic> get netDiagnostics;
 
+  /// The ping in ms of the endpoint the engine picked, once per connect
+  /// (our engine build, Android).
+  Stream<int> get tunnelPings;
+
   Future<VpnState> requestState();
 
   Future<void> stop();
@@ -76,6 +80,9 @@ class VpnRepositoryImpl implements VpnRepository {
 
   @override
   Stream<NetDiagnostic> get netDiagnostics => _vpnDataSource.netDiagnostics;
+
+  @override
+  Stream<int> get tunnelPings => _vpnDataSource.tunnelPings;
 
   @override
   Future<VpnState> requestState() => _vpnDataSource.requestState();

@@ -110,7 +110,7 @@ final class Endpoint {
   /// connecting; 0 - the engine's default split.
   final int antiDpiMode;
 
-  /// CatTunnel: engine 1.3 `tls_profile` - chrome, firefox, safari or
+  /// CatTunnel: engine 1.3 `tls_profile` - chrome, firefox or
   /// okhttp; empty - the engine default (chrome), and in `tt://` links (tag
   /// 0x42) "the app decides". The app resolves its "auto" before connecting.
   final String tlsProfile;
@@ -180,6 +180,36 @@ final class Endpoint {
   /// signature of HELLO_ACK with it, so a man in the middle cannot pretend to
   /// be the endpoint. Not a secret. Empty - no check (behaviour before 1.5.9).
   final String xhttpServerKey;
+
+  /// CatTunnel: engine `sni_pool` (own build) - ready SNI names of the
+  /// server without its main one, so the parallel TLS sessions of a pool do
+  /// not all present the same name (subscription tag 0x52). Empty - the
+  /// engine uses one name.
+  final List<String> sniPool;
+
+  /// CatTunnel 9a: the servers of the timed rotation (subscription tag
+  /// 0x53), each `host:port` or `host:port sni1 sni2` with its own SNI
+  /// pool (see RotationAddresses). Kept when [rotationEnabled] is off.
+  final List<String> rotationAddresses;
+  final bool rotationEnabled;
+
+  /// CatTunnel 9a: the range of the random rotation term in seconds (tags
+  /// 0x54/0x55); 0 - the engine takes the session lifetime.
+  final int rotationMinSecs;
+  final int rotationMaxSecs;
+
+  /// CatTunnel: the noisy disguise CatTail instead of the browser-like TLS on
+  /// the wire (tag 0x56). CONNECT only.
+  final bool cattailEnabled;
+
+  /// CatTail ports, `20000-40000` or a list (tag 0x57): a random one for every new TCP.
+  final String cattailPorts;
+
+  /// CatTail endpoint key, base64 of 32 bytes (tag 0x58). A secret.
+  final String cattailKey;
+
+  /// CatTail padding scheme of the first records (tag 0x59); empty - the engine default.
+  final String cattailPattern;
 
   /// The engine's own default for `h2_padding_frames_min`.
   static const h2PaddingFramesMinDefault = 2;
@@ -267,6 +297,15 @@ final class Endpoint {
     this.xhttpEnabled = false,
     this.xhttpPath = '',
     this.xhttpServerKey = '',
+    this.sniPool = const [],
+    this.rotationAddresses = const [],
+    this.rotationEnabled = false,
+    this.rotationMinSecs = 0,
+    this.rotationMaxSecs = 0,
+    this.cattailEnabled = false,
+    this.cattailPorts = '',
+    this.cattailKey = '',
+    this.cattailPattern = '',
     this.blockQuic = false,
     this.ruExit = false,
     this.skipVerification = false,
@@ -280,7 +319,7 @@ final class Endpoint {
 
   @override
   String toString() =>
-      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, h2PaddingFramesMin: $h2PaddingFramesMin, h2PaddingPerStream: $h2PaddingPerStream, h2PaddingMinBytes: $h2PaddingMinBytes, h2PaddingMaxBytes: $h2PaddingMaxBytes, h2PaddingStreamBytes: $h2PaddingStreamBytes, h2PaddingSessionBytes: $h2PaddingSessionBytes, keepaliveIntervalSecs: $keepaliveIntervalSecs, keepaliveSignal: $keepaliveSignal, sessionLifetimeSecs: $sessionLifetimeSecs, xhttpEnabled: $xhttpEnabled, xhttpPath: $xhttpPath, xhttpServerKey: $xhttpServerKey, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
+      'Endpoint(name: $name, addresses: $addresses, dnsUpStreams: $dnsUpStreams, exclusions: $exclusions, hostName: $hostName, username: $username, password: $password, clientRandom: $clientRandom, certificate: $certificate, upStreamProtocol: $upStreamProtocol, upStreamFallbackProtocol: $upStreamFallbackProtocol, antiDpi: $antiDpi, antiDpiMode: $antiDpiMode, tlsProfile: $tlsProfile, clientRandomAuthKey: ${clientRandomAuthKey.isEmpty ? '' : '***'}, antiDpiDesync: $antiDpiDesync, h2PaddingFrames: $h2PaddingFrames, h2PaddingFramesMin: $h2PaddingFramesMin, h2PaddingPerStream: $h2PaddingPerStream, h2PaddingMinBytes: $h2PaddingMinBytes, h2PaddingMaxBytes: $h2PaddingMaxBytes, h2PaddingStreamBytes: $h2PaddingStreamBytes, h2PaddingSessionBytes: $h2PaddingSessionBytes, keepaliveIntervalSecs: $keepaliveIntervalSecs, keepaliveSignal: $keepaliveSignal, sessionLifetimeSecs: $sessionLifetimeSecs, xhttpEnabled: $xhttpEnabled, xhttpPath: $xhttpPath, xhttpServerKey: $xhttpServerKey, sniPool: $sniPool, rotationAddresses: $rotationAddresses, rotationEnabled: $rotationEnabled, rotationMinSecs: $rotationMinSecs, rotationMaxSecs: $rotationMaxSecs, cattailEnabled: $cattailEnabled, cattailPorts: $cattailPorts, cattailKey: ${cattailKey.isEmpty ? '' : '***'}, cattailPattern: $cattailPattern, blockQuic: $blockQuic, ruExit: $ruExit, hasIpv6: $hasIpv6, skipVerification: $skipVerification)';
 
   @override
   bool operator ==(covariant Endpoint other) {
@@ -315,6 +354,15 @@ final class Endpoint {
         other.xhttpEnabled == xhttpEnabled &&
         other.xhttpPath == xhttpPath &&
         other.xhttpServerKey == xhttpServerKey &&
+        listEquals(other.sniPool, sniPool) &&
+        listEquals(other.rotationAddresses, rotationAddresses) &&
+        other.rotationEnabled == rotationEnabled &&
+        other.rotationMinSecs == rotationMinSecs &&
+        other.rotationMaxSecs == rotationMaxSecs &&
+        other.cattailEnabled == cattailEnabled &&
+        other.cattailPorts == cattailPorts &&
+        other.cattailKey == cattailKey &&
+        other.cattailPattern == cattailPattern &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
         other.hasIpv6 == hasIpv6 &&
@@ -352,6 +400,15 @@ final class Endpoint {
     xhttpEnabled,
     xhttpPath,
     xhttpServerKey,
+    sniPool,
+    Object.hashAll(rotationAddresses),
+    rotationEnabled,
+    rotationMinSecs,
+    rotationMaxSecs,
+    cattailEnabled,
+    cattailPorts,
+    cattailKey,
+    cattailPattern,
     blockQuic,
     ruExit,
     hasIpv6,

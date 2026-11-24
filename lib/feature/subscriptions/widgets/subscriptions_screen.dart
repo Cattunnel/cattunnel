@@ -6,7 +6,6 @@ import 'package:trusttunnel/common/extensions/context_extensions.dart';
 import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/data/domain/subscription_poll_log.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
-import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/subscriptions/controller/subscriptions_controller.dart';
 import 'package:trusttunnel/feature/subscriptions/widgets/subscription_card.dart';
 import 'package:trusttunnel/feature/subscriptions/widgets/subscription_edit_dialog.dart';
@@ -152,44 +151,6 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
 
     await _controller.refresh(added);
-
-    if (context.mounted) {
-      await _offerToTestServers(context, added);
-    }
-  }
-
-  Future<void> _offerToTestServers(BuildContext context, SubscriptionData subscription) async {
-    final shouldTest = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => CustomAlertDialog(
-        title: context.ln.testServersDialogTitle,
-        content: Text(context.ln.testServersDialogDescription),
-        actionsBuilder: (spacing) => [
-          TextButton(
-            onPressed: () => dialogContext.pop(),
-            child: Text(context.ln.cancel),
-          ),
-          TextButton(
-            onPressed: () => dialogContext.pop(result: true),
-            child: Text(context.ln.testServersAction),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldTest != true || !context.mounted) {
-      return;
-    }
-
-    final servers = await context.repositoryFactory.serverRepository.getAllServers();
-    final subscriptionServers = servers.where((s) => s.serverData.subscriptionName == subscription.name).toList();
-
-    if (subscriptionServers.isEmpty || !context.mounted) {
-      return;
-    }
-
-    context.showInfoSnackBar(message: context.ln.testingServersSnackbar);
-    ServerLatencyScope.of(context, listen: false).testAll(subscriptionServers);
   }
 
   Future<void> _onEdit(BuildContext context, SubscriptionData subscription) async {

@@ -91,11 +91,10 @@
   "antiDpiModeLabel": "Способ обхода",
   "tlsProfileLabel": "Отпечаток TLS",
   "tlsProfileAuto": "Как браузер по умолчанию (рекомендуется)",
-  "tlsProfileChrome": "Как браузер Chrome 150",
-  "tlsProfileChrome156": "Как браузер Chrome 156",
-  "tlsProfileFirefox": "Как браузер Firefox",
+  "tlsProfileChrome": "Как браузер Chrome 157",
+  "tlsProfileChrome156": "Как браузер Chrome 157",
+  "tlsProfileFirefox": "Как браузер Firefox 160",
   "tlsProfileOkhttp": "Как приложение Android",
-  "tlsProfileSafari": "Как Safari (для iPhone и Mac)",
   "tlsProfileAutoBrowser": "Сейчас: {profile} - как ваш браузер",
   "@tlsProfileAutoBrowser": {
     "placeholders": {
@@ -158,6 +157,40 @@
   "serverSectionExpert": "Для экспертов",
   "serverSectionTravel": "Поездки за границу",
   "serverSectionTravelOn": "Российский выход включён",
+  "serverTabSettings": "Настройки",
+  "serverTabRotation": "Ротация IP",
+  "rotationSwitch": "Менять сервер по времени",
+  "rotationHint": "Подключение переходит на следующий адрес из списка, когда истекает срок. Заранее серверы не проверяются: если адрес не ответил, он отдыхает, а подключение остаётся на прежнем.",
+  "rotationAddressLabel": "Адрес",
+  "rotationAddressHint": "IPv4, [IPv6] или домен, можно с портом",
+  "rotationAddressError": "Проверьте адрес и порт от 1 до 65535",
+  "rotationSniLabel": "Имена SNI этого адреса",
+  "rotationSniHint": "Через пробел, например a.example.org b.example.org. Пусто: имя ключа",
+  "rotationSniError": "Проверьте имена: домены через пробел, не больше 8",
+  "rotationAddAddress": "Добавить адрес",
+  "rotationRemoveAddress": "Удалить адрес",
+  "rotationMaxAddresses": "Не больше 16 адресов",
+  "rotationEmpty": "Адресов нет. Добавьте адрес, чтобы включить ротацию.",
+  "rotationTermTitle": "Срок до смены адреса",
+  "rotationTermHint": "Каждый раз случайный, между минимумом и максимумом, в секундах (от 60 до 86400). 0: как время жизни сессии.",
+  "rotationMinLabel": "Минимум, с",
+  "rotationMaxLabel": "Максимум, с",
+  "rotationTermError": "Срок: 0 или от 60 до 86400 с, минимум не больше максимума",
+  "serverDisguiseLabel": "Маскировка",
+  "disguiseQuiet": "Тихая (как браузер)",
+  "disguiseCattail": "CatTail (шум)",
+  "disguiseCattailHint": "На проводе нет TLS: поток с первого байта похож на шум. Каждое новое соединение идёт на случайный порт из списка.",
+  "disguiseCattailNoNineLives": "CatTail работает только с CONNECT. Пока включён NineLives, подключение идёт тихо.",
+  "cattailPortsLabel": "Порты CatTail",
+  "cattailPortsHint": "Диапазон или список, например 20000-40000",
+  "cattailPortsError": "Порты от 1 до 65535, диапазон пишется как 20000-40000",
+  "cattailKeyLabel": "Ключ CatTail",
+  "cattailKeyHint": "Из подписки, base64 (44 знака)",
+  "cattailKeyError": "Нужен ключ: base64 от 32 байт",
+  "cattailPatternLabel": "Схема добивки",
+  "cattailPatternHint": "Пусто: по умолчанию ядра",
+  "cattailPatternError": "Схема не разобрана: нужны строки вида stop=3 и 0=400-1400,c,200-900",
+  "cattailWrong": "Для CatTail нужны порты и ключ",
   "serverSectionHelp": "Что это?",
   "serverSectionHasError": "Есть ошибка",
   "helpAntiDpiTitle": "Анти-DPI",
@@ -342,14 +375,17 @@
   "importConfigFileInvalidError": "Это не похоже на файл конфигурации сервера. Нужен .toml из бота (кнопка «🐧 Конфиг для Linux / ПК»).",
   "serverUnreachable": "Недоступен",
   "sortByTitle": "Сортировать по",
-  "sortByOrigin": "Дате добавления",
+  "sortByOrigin": "Как в подписке",
+  "favoriteAddTooltip": "В избранное",
+  "favoriteRemoveTooltip": "Убрать из избранного",
+  "groupManualName": "Свои ключи",
+  "groupMenuRename": "Переименовать",
+  "groupMenuMoveUp": "Выше",
+  "groupMenuMoveDown": "Ниже",
+  "groupRenameTitle": "Название группы",
+  "groupRenameHint": "Пусто: исходное название",
   "sortByName": "Имени",
   "sortByLatency": "Задержке",
-  "testServersAction": "Проверить серверы",
-  "testingServersSnackbar": "Проверка серверов…",
-  "testServersResultSnackbar": "Доступно {reachable} из {total} серверов",
-  "testServersDialogTitle": "Проверить доступность серверов?",
-  "testServersDialogDescription": "Проверить, доступны ли прямо сейчас серверы, только что добавленные этой подпиской.",
   "testTimeoutLabel": "Таймаут проверки сервера (секунды)",
   "testTimeoutHelper": "Подключается к адресу самого сервера (тому же, что использует VPN), 1-30 секунд",
   "mtuLabel": "MTU",
@@ -738,7 +774,6 @@
   "cozyPing": "Пинг {ms} мс",
   "cozyServer": "Сервер",
   "cozyChooseServer": "Выбор сервера",
-  "cozyTestAll": "Проверить все",
   "@cozySessionTime": {
     "placeholders": {
       "time": {
@@ -753,8 +788,34 @@
       }
     }
   },
+  "pingAgeNow": "только что",
+  "pingUnit": "мс",
+  "pingAgeMinutes": "{n} мин назад",
+  "@pingAgeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pingAgeHours": "{n} ч назад",
+  "@pingAgeHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pingAgeDays": "{n} дн назад",
+  "@pingAgeDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "whatsNewTitle": "Что нового в {version}",
-  "whatsNewBody": "• Обход блокировок больше не включается сам. В «Настройки → Запуск и подключение» два переключателя: для ключей из подписок он включается до конца дня, для личных ключей остаётся включённым\n• Подписка главнее ключа: при обновлении меняет все значения, даже выключенные. Свои настройки ключа включаются переключателем «Выше подписки»\n• Под подпиской видно, как прошло обновление: через какой адрес и за сколько. По нажатию открываются все попытки\n• QR-код можно взять из галереи, а одноразовую ссылку из браузера: подписка скачается сразу\n• К серверу открывается меньше соединений и с паузами, без залпа рукопожатий",
+  "whatsNewBody": "• Ротация IP: один ключ может работать через несколько серверов по очереди, сервер меняется через случайное время. Настройки сервера, вкладка «Ротация IP»\n• Серверы идут в порядке подписки, любимые можно отметить звёздочкой: они всегда сверху\n• Подписки и «Свои ключи» собраны в отдельные группы, их можно переставлять и переименовывать\n• Пинг рядом с ключом теперь берётся из самого подключения, приложение больше не стучится к серверам в обход защищённого соединения\n• Профили TLS: Chrome 157, Firefox 160 и «Как приложение Android». Safari убран, ключи с ним теперь идут как браузер по умолчанию\n• В список исключений добавлено больше российских приложений, в том числе ПСБ\n• Мелкие исправления",
   "whatsNewPickStyle": "Какой главный экран тебе больше нравится?",
   "whatsNewChangeLater": "Поменять можно в любой момент: Настройки → Оформление.",
   "whatsNewDone": "Готово",
@@ -1044,8 +1105,7 @@
   "networkCheckReachable": "доступен",
   "networkCheckUnreachable": "не отвечает или закрыт",
   "networkCheckDiagnosis": "Вывод Марсика",
-  "networksBypassFailedToday": "Обход не помог; повторять не будем до конца дня."
-,
+  "networksBypassFailedToday": "Обход не помог; повторять не будем до конца дня.",
   "subscriptionPollUpdated": "Обновлено {time} через {host} за {duration}",
   "subscriptionPollFailed": "Не удалось: {count, plural, one{{count} зеркало} few{{count} зеркала} many{{count} зеркал} other{{count} зеркала}}",
   "subscriptionPollRefreshing": "Обновляем…",

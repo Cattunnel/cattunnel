@@ -29,6 +29,9 @@ class NativeVpnImpl(
     /** What the engine saw in the last session to the endpoint, see [onConnectionInfo]. */
     val diagnosticHandler: DiagnosticStreamHandler = DiagnosticStreamHandler()
 
+    /** The ping of the endpoint the engine picked, see [PingRecord]. */
+    val pingHandler: PingStreamHandler = PingStreamHandler()
+
     /**
      * The query log is a per-connection record (domain, destination, time) -
      * effectively browsing history. Keep it session-scoped: outside backups
@@ -109,6 +112,10 @@ class NativeVpnImpl(
             diagnosticHandler.onDiagnostic(it.groupValues[1])
             return
         }
+        if (PingRecord.isPingRecord(info)) {
+            PingRecord.parse(info)?.let(pingHandler::onPing)
+            return
+        }
         queryLogHandler.onQueryLog(info)
     }
 
@@ -161,6 +168,24 @@ class DiagnosticStreamHandler : EventChannel.StreamHandler {
 
     fun onDiagnostic(diagnostic: String) {
         main.post { events?.success(diagnostic) }
+    }
+}
+
+/** Live only: the ping belongs to the connection being made now. */
+class PingStreamHandler : EventChannel.StreamHandler {
+    private var events: EventChannel.EventSink? = null
+    private val main = Handler(Looper.getMainLooper())
+
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        this.events = events
+    }
+
+    override fun onCancel(arguments: Any?) {
+        events = null
+    }
+
+    fun onPing(milliseconds: Int) {
+        main.post { events?.success(milliseconds) }
     }
 }
 

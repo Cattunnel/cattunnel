@@ -7,24 +7,35 @@ import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/feature/server/servers/widget/servers_card.dart';
 import 'package:trusttunnel/widgets/common/custom_list_tile_separated.dart';
 
-/// Collapsible section shown on the servers screen for one subscription:
-/// a header row with the subscription's name/source, its server count and
-/// last-refresh time, a refresh button, and an expand/collapse chevron,
-/// followed by the servers it added when expanded.
+/// Collapsible section shown on the servers screen for one group: a
+/// subscription (header with its server count, last-refresh time and a
+/// refresh button) or, with [subscription] null, the manual keys. The header
+/// has a menu to rename the group and move it up or down, and an
+/// expand/collapse chevron; the servers follow when expanded.
 class SubscriptionServersGroup extends StatefulWidget {
-  final SubscriptionData subscription;
+  final SubscriptionData? subscription;
+
+  /// Name in the header: the user's label or the original name.
+  final String displayName;
   final List<Server> servers;
-  final bool showLatencyBadge;
   final bool refreshing;
-  final VoidCallback onRefresh;
+  final VoidCallback? onRefresh;
+  final VoidCallback onRename;
+
+  /// Null when the group is already first / last.
+  final VoidCallback? onMoveUp;
+  final VoidCallback? onMoveDown;
 
   const SubscriptionServersGroup({
     super.key,
     required this.subscription,
+    required this.displayName,
     required this.servers,
     required this.refreshing,
-    required this.onRefresh,
-    this.showLatencyBadge = false,
+    required this.onRename,
+    this.onRefresh,
+    this.onMoveUp,
+    this.onMoveDown,
   });
 
   @override
@@ -40,14 +51,19 @@ class _SubscriptionServersGroupState extends State<SubscriptionServersGroup> {
   Widget build(BuildContext context) => Column(
     children: [
       CustomListTileSeparated(
-        title: widget.subscription.name,
-        subtitle: context.ln.subscriptionServersCountUpdated(
-          context.ln.subscriptionServersCount(widget.servers.length),
-          _lastUpdatedLabel(context),
-        ),
+        title: widget.displayName,
+        subtitle: widget.subscription == null
+            ? context.ln.subscriptionServersCount(widget.servers.length)
+            : context.ln.subscriptionServersCountUpdated(
+                context.ln.subscriptionServersCount(widget.servers.length),
+                _lastUpdatedLabel(context),
+              ),
         onTileTap: _toggleExpanded,
-        contentTrailing: widget.refreshing
-            ? const Padding(
+        contentTrailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.refreshing)
+              const Padding(
                 padding: EdgeInsets.all(12),
                 child: SizedBox(
                   width: 20,
@@ -55,10 +71,24 @@ class _SubscriptionServersGroupState extends State<SubscriptionServersGroup> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               )
-            : IconButton(
+            else if (widget.onRefresh != null)
+              IconButton(
                 icon: Icon(Icons.refresh, size: 24, color: context.colors.neutralDark),
                 onPressed: widget.onRefresh,
               ),
+            PopupMenuButton<VoidCallback>(
+              icon: Icon(Icons.more_vert, size: 24, color: context.colors.neutralDark),
+              onSelected: (action) => action(),
+              itemBuilder: (context) => [
+                PopupMenuItem(value: widget.onRename, child: Text(context.ln.groupMenuRename)),
+                if (widget.onMoveUp != null)
+                  PopupMenuItem(value: widget.onMoveUp, child: Text(context.ln.groupMenuMoveUp)),
+                if (widget.onMoveDown != null)
+                  PopupMenuItem(value: widget.onMoveDown, child: Text(context.ln.groupMenuMoveDown)),
+              ],
+            ),
+          ],
+        ),
         // A single icon-sized trailing keeps the vertical divider lined up
         // with the one-icon trailing used by ServersCard rows below.
         trailing: IconButton(
@@ -72,16 +102,13 @@ class _SubscriptionServersGroupState extends State<SubscriptionServersGroup> {
       if (_expanded)
         for (final server in widget.servers) ...[
           const Divider(height: 1),
-          ServersCard(
-            server: server,
-            showLatencyBadge: widget.showLatencyBadge,
-          ),
+          ServersCard(server: server),
         ],
     ],
   );
 
   String _lastUpdatedLabel(BuildContext context) {
-    final lastUpdatedAt = widget.subscription.lastUpdatedAt;
+    final lastUpdatedAt = widget.subscription?.lastUpdatedAt;
 
     if (lastUpdatedAt == null) {
       return context.ln.subscriptionNeverUpdated;

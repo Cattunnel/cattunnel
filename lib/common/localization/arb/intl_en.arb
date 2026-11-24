@@ -173,11 +173,10 @@
   "antiDpiModeLabel": "Technique",
   "tlsProfileLabel": "TLS fingerprint",
   "tlsProfileAuto": "Like the default browser (recommended)",
-  "tlsProfileChrome": "Like Chrome 150",
-  "tlsProfileChrome156": "Like Chrome 156",
-  "tlsProfileFirefox": "Like Firefox",
+  "tlsProfileChrome": "Like Chrome 157",
+  "tlsProfileChrome156": "Like Chrome 157",
+  "tlsProfileFirefox": "Like Firefox 160",
   "tlsProfileOkhttp": "Like an Android app",
-  "tlsProfileSafari": "Like Safari (for iPhone and Mac)",
   "tlsProfileAutoBrowser": "Now: {profile}, like your browser",
   "@tlsProfileAutoBrowser": {
     "placeholders": {
@@ -240,6 +239,40 @@
   "serverSectionExpert": "For experts",
   "serverSectionTravel": "Trips abroad",
   "serverSectionTravelOn": "Russian exit on",
+  "serverTabSettings": "Settings",
+  "serverTabRotation": "IP rotation",
+  "rotationSwitch": "Switch servers on a timer",
+  "rotationHint": "When the time runs out, the connection moves to the next address in the list. Servers are not checked in advance: an address that does not answer takes a rest and the connection stays where it was.",
+  "rotationAddressLabel": "Address",
+  "rotationAddressHint": "IPv4, [IPv6] or domain, optionally with port",
+  "rotationAddressError": "Check the address and port from 1 to 65535",
+  "rotationSniLabel": "SNI names for this address",
+  "rotationSniHint": "Separated by spaces, e.g. a.example.org b.example.org. Empty: the key's name",
+  "rotationSniError": "Check the names: domains separated by spaces, at most 8",
+  "rotationAddAddress": "Add address",
+  "rotationRemoveAddress": "Remove address",
+  "rotationMaxAddresses": "At most 16 addresses",
+  "rotationEmpty": "No addresses yet. Add one to turn rotation on.",
+  "rotationTermTitle": "Time before the next address",
+  "rotationTermHint": "Random each time, between the minimum and the maximum, in seconds (60 to 86400). 0: same as the session lifetime.",
+  "rotationMinLabel": "Minimum, s",
+  "rotationMaxLabel": "Maximum, s",
+  "rotationTermError": "Time: 0 or 60 to 86400 s, the minimum not above the maximum",
+  "serverDisguiseLabel": "Disguise",
+  "disguiseQuiet": "Quiet (like a browser)",
+  "disguiseCattail": "CatTail (noise)",
+  "disguiseCattailHint": "No TLS on the wire: the stream looks like noise from the first byte. Every new connection goes to a random port from the list.",
+  "disguiseCattailNoNineLives": "CatTail works with CONNECT only. While NineLives is on, the connection stays quiet.",
+  "cattailPortsLabel": "CatTail ports",
+  "cattailPortsHint": "A range or a list, e.g. 20000-40000",
+  "cattailPortsError": "Ports 1 to 65535, a range is written as 20000-40000",
+  "cattailKeyLabel": "CatTail key",
+  "cattailKeyHint": "From the subscription, base64 (44 characters)",
+  "cattailKeyError": "A key is needed: base64 of 32 bytes",
+  "cattailPatternLabel": "Padding scheme",
+  "cattailPatternHint": "Empty: the engine default",
+  "cattailPatternError": "Could not read the scheme: it needs lines like stop=3 and 0=400-1400,c,200-900",
+  "cattailWrong": "CatTail needs its ports and key",
   "serverSectionHelp": "What is this?",
   "serverSectionHasError": "Has an error",
   "helpAntiDpiTitle": "Anti-DPI",
@@ -459,24 +492,17 @@
   "importConfigFileInvalidError": "This doesn't look like a server config file. Use the .toml from the bot (\"🐧 Config for Linux / PC\").",
   "serverUnreachable": "Unreachable",
   "sortByTitle": "Sort by",
-  "sortByOrigin": "Date added",
+  "sortByOrigin": "As in subscription",
+  "favoriteAddTooltip": "Add to favorites",
+  "favoriteRemoveTooltip": "Remove from favorites",
+  "groupManualName": "My keys",
+  "groupMenuRename": "Rename",
+  "groupMenuMoveUp": "Move up",
+  "groupMenuMoveDown": "Move down",
+  "groupRenameTitle": "Group name",
+  "groupRenameHint": "Empty: original name",
   "sortByName": "Name",
   "sortByLatency": "Latency",
-  "testServersAction": "Test servers",
-  "testingServersSnackbar": "Testing servers…",
-  "testServersResultSnackbar": "{reachable} of {total} servers reachable",
-  "@testServersResultSnackbar": {
-    "placeholders": {
-      "reachable": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "testServersDialogTitle": "Test server availability?",
-  "testServersDialogDescription": "Check whether the servers this subscription just added are reachable right now.",
   "testTimeoutLabel": "Server test timeout (seconds)",
   "testTimeoutHelper": "Connects to the server's own address (the same one the VPN uses), 1-30 seconds",
   "mtuLabel": "MTU",
@@ -892,7 +918,6 @@
   "cozyPing": "Ping {ms} ms",
   "cozyServer": "Server",
   "cozyChooseServer": "Choose a server",
-  "cozyTestAll": "Test all",
   "@cozySessionTime": {
     "placeholders": {
       "time": {
@@ -907,8 +932,34 @@
       }
     }
   },
+  "pingAgeNow": "just now",
+  "pingUnit": "ms",
+  "pingAgeMinutes": "{n} min ago",
+  "@pingAgeMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pingAgeHours": "{n} h ago",
+  "@pingAgeHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "pingAgeDays": "{n} d ago",
+  "@pingAgeDays": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "whatsNewTitle": "What's new in {version}",
-  "whatsNewBody": "• The blocking bypass no longer turns on by itself. \"Settings → Launch and connection\" has two switches: for subscription keys it stays on until the end of the day, for personal keys it stays on\n• The subscription owns its keys: an update changes every value, even the ones that are off. Your own settings for a key are behind the \"Override subscription\" switch\n• Under a subscription you see how the update went: through which address and how long it took. Tap it for all the attempts\n• A QR code can come from the gallery, and a one-time link from the browser: the subscription is downloaded at once\n• Fewer connections to the server, opened with pauses, without a burst of handshakes",
+  "whatsNewBody": "• IP rotation: one key can use several servers in turn, switching after a random time. See the IP rotation tab in the server settings\n• Servers follow the subscription order, and you can star your favorites: they always stay on top\n• Each subscription and your own keys form a separate group, and you can reorder and rename the groups\n• The ping next to a key now comes from the connection itself, so the app no longer contacts servers outside the protected connection\n• TLS profiles: Chrome 157, Firefox 160 and \"Like an Android app\". Safari is gone: keys that used it now follow the default browser\n• More Russian apps are in the exclusion list, including PSB\n• Minor fixes",
   "whatsNewPickStyle": "Which main screen do you like?",
   "whatsNewChangeLater": "You can change it any time in Settings → Appearance.",
   "whatsNewDone": "Done",
@@ -1198,8 +1249,7 @@
   "networkCheckReachable": "reachable",
   "networkCheckUnreachable": "unresponsive or closed",
   "networkCheckDiagnosis": "Marsik’s diagnosis",
-  "networksBypassFailedToday": "Bypass did not help; no more attempts until the end of today."
-,
+  "networksBypassFailedToday": "Bypass did not help; no more attempts until the end of today.",
   "subscriptionPollUpdated": "Updated {time} via {host} in {duration}",
   "subscriptionPollFailed": "Failed: {count, plural, =1{1 mirror} other{{count} mirrors}}",
   "subscriptionPollRefreshing": "Refreshing…",

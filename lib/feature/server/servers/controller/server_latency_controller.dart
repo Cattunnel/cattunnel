@@ -1,96 +1,119 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
-import 'package:trusttunnel/data/model/server.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/data/model/vpn_state.dart';
-import 'package:trusttunnel/data/repository/server_test_timeout_repository.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_result.dart';
-import 'package:trusttunnel/feature/server/servers/domain/server_latency_tester.dart';
 
-/// Holds reachability-test results for servers, keyed by server id.
-///
-/// Deliberately in-memory only (not persisted) - this is a live "test now"
-/// signal, not a fact about the server that should survive an app restart.
-class ServerLatencyController extends ChangeNotifier {
-  final ServerLatencyTester _tester;
-  final ServerTestTimeoutRepository _timeoutRepository;
+/// Where the last value per server is kept between launches.
+abstract class PingStore {
+  Map<String, ServerLatencyResult> load();
 
-  ServerLatencyController({
-    required ServerTestTimeoutRepository timeoutRepository,
-    ServerLatencyTester tester = const ServerLatencyTester(),
-  }) : _tester = tester,
-       _timeoutRepository = timeoutRepository;
+  Future<void> save(Map<String, ServerLatencyResult> results);
+}
 
-  final Map<String, ServerLatencyResult> _results = {};
-  final Set<String> _testingIds = {};
-  int _generation = 0;
-  bool _disposed = false;
-  bool _transitioning = false;
+/// [PingStore] in the app's shared preferences: `{serverId: [ms, epochMillis]}`.
+class SharedPreferencesPingStore implements PingStore {
+  static const key = 'server_ping_v1';
 
-  void invalidate({bool notify = true}) {
-    _generation++;
-    _results.clear();
-    _testingIds.clear();
-    if (notify && !_disposed) notifyListeners();
+  final SharedPreferences _preferences;
+
+  SharedPreferencesPingStore(this._preferences);
+
+  @override
+  Map<String, ServerLatencyResult> load() {
+    try {
+      final raw = _preferences.getString(key);
+      if (raw == null) return {};
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+
+      return {
+        for (final entry in decoded.entries)
+          entry.key: ServerLatencyResult(
+            latency: Duration(milliseconds: (entry.value as List)[0] as int),
+            testedAt: DateTime.fromMillisecondsSinceEpoch((entry.value as List)[1] as int),
+          ),
+      };
+    } catch (_) {
+      return {};
+    }
   }
 
-  void connectionChanged(VpnState state, {bool notify = true}) {
-    _transitioning = state != VpnState.connected && state != VpnState.disconnected;
-    invalidate(notify: notify);
+  @override
+  Future<void> save(Map<String, ServerLatencyResult> results) => _preferences.setString(
+    key,
+    jsonEncode({
+      for (final entry in results.entries)
+        if (entry.value.latency != null)
+          entry.key: [entry.value.latency!.inMilliseconds, entry.value.testedAt.millisecondsSinceEpoch],
+    }),
+  );
+}
+
+/// The last "ping" of every server: the number the engine sends once per
+/// connect, after it has picked the endpoint (`{"cattunnel_ping_ms":N}`, see
+/// VpnPlugin.tunnelPings; item 13 of 1.5.9.5). The app makes no request of
+/// its own for it and never connects to a server's address.
+///
+/// The value belongs to the server the current connection was started for:
+/// the one selected when the state went to "connecting". Picking another
+/// server while connected does not move it there.
+class ServerLatencyController extends ChangeNotifier {
+  final PingStore? _store;
+  final DateTime Function() _now;
+
+  ServerLatencyController({
+    PingStore? store,
+    DateTime Function() now = DateTime.now,
+  }) : _store = store,
+       _now = now {
+    _results.addAll(_store?.load() ?? const {});
+  }
+
+  final Map<String, ServerLatencyResult> _results = {};
+
+  /// The server of the connection in progress; null while disconnected.
+  String? _connectionFor;
+  String? _selected;
+  bool _disposed = false;
+
+  Map<String, ServerLatencyResult> get results => Map.unmodifiable(_results);
+
+  ServerLatencyResult? resultFor(String serverId) => _results[serverId];
+
+  /// The VPN state or the selected server changed.
+  void connectionChanged(VpnState state, {String? serverId}) {
+    _selected = serverId;
+    switch (state) {
+      case VpnState.disconnected:
+        _connectionFor = null;
+      case VpnState.connecting:
+        // A new attempt is for the server selected now.
+        _connectionFor = serverId;
+      default:
+        _connectionFor ??= serverId;
+    }
+  }
+
+  /// The engine's ping of the endpoint it picked. It can come before the
+  /// "connecting" state reaches the app: then it is the selected server's.
+  void pingReported(int milliseconds) {
+    if (_disposed || milliseconds < 0) return;
+    final serverId = _connectionFor ?? _selected;
+    if (serverId == null) return;
+
+    _results[serverId] = ServerLatencyResult(
+      latency: Duration(milliseconds: milliseconds),
+      testedAt: _now(),
+    );
+    unawaited(_store?.save(_results));
+    notifyListeners();
   }
 
   @override
   void dispose() {
     _disposed = true;
-    _generation++;
     super.dispose();
-  }
-
-  Map<String, ServerLatencyResult> get results => Map.unmodifiable(_results);
-
-  Set<String> get testingIds => Set.unmodifiable(_testingIds);
-
-  ServerLatencyResult? resultFor(String serverId) => _results[serverId];
-
-  bool isTesting(String serverId) => _testingIds.contains(serverId);
-
-  Future<void> testServer(Server server) async {
-    if (_disposed || _transitioning || _testingIds.contains(server.id)) {
-      return;
-    }
-
-    _testingIds.add(server.id);
-    notifyListeners();
-
-    final generation = _generation;
-    try {
-      final timeoutSeconds = await _timeoutRepository.getValueSeconds();
-      if (_disposed || generation != _generation) return;
-      final result = await _tester.test(
-        server.serverData.ipAddress,
-        timeout: Duration(seconds: timeoutSeconds),
-      );
-      if (!_disposed && generation == _generation) _results[server.id] = result;
-    } finally {
-      if (!_disposed && generation == _generation) {
-        _testingIds.remove(server.id);
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> testAll(List<Server> servers) => Future.wait(servers.map(testServer));
-
-  /// Clears a stale *unreachable* mark for [serverId], used when a live
-  /// successful VPN connection to that server is itself proof it's
-  /// reachable. Never touches an already-reachable result - doing so would
-  /// wipe a real, useful latency reading (and, while sorted by latency,
-  /// send the very server the user just connected to jump to the bottom of
-  /// the list) for no reason.
-  void clearResult(String serverId) {
-    final existing = _results[serverId];
-
-    if (existing != null && !existing.reachable) {
-      _results.remove(serverId);
-      notifyListeners();
-    }
   }
 }

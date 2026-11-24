@@ -5,7 +5,14 @@ import 'package:flutter/material.dart';
 
 /// Time of day of the «Аэро» style; the backdrop and the theme follow the
 /// phone's clock (see AeroClock).
+
 enum AeroPhase { morning, day, evening, night }
+
+/// Height of the band the stars fill, from the top of the sky. The scene is scaled by width and hung on the
+/// horizon (h0), so on a wide desktop window the phone value (150 units above the horizon) goes up to zero or
+/// below it and every star ends up in a thin strip at the top. Keep at least 60% of the sky above the horizon.
+@visibleForTesting
+double aeroStarsHeight(double h0, double scale) => math.max(h0 - 150 * scale, h0 * 0.6);
 
 /// Colors of one time of day. Positions in the scene are given on a
 /// 390-wide frame whose horizon is at y 476 (the design mockup) and are
@@ -671,7 +678,7 @@ class AeroScenePainter extends CustomPainter {
     if (scene.starsAlpha == 0) return;
     final twinkle = 0.78 + 0.22 * _wave(5);
     final paint = Paint();
-    final height = _y(476 - 150);
+    final height = aeroStarsHeight(_h0, _s);
     for (final (i, (x, y, r)) in _stars.indexed) {
       final own = 0.75 + 0.25 * _wave(3 + r * 4, i * .13);
       paint.color = Colors.white.withValues(alpha: (scene.starsAlpha * twinkle * own * (0.5 + 0.5 * r)).clamp(0, 1));

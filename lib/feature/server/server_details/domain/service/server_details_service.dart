@@ -4,8 +4,10 @@ import 'package:trusttunnel/common/error/model/presentation_field.dart';
 import 'package:trusttunnel/common/utils/validation_utils.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:vpn_plugin/domain/cattail_settings.dart';
 import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/domain/rotation_addresses.dart';
 
 abstract class ServerDetailsService {
   List<PresentationField> validateData({
@@ -91,6 +93,31 @@ class ServerDetailsServiceImpl implements ServerDetailsService {
     final authKey = data.tlsAuthKey.trim();
     if (authKey.isNotEmpty && !ConfigurationCodecKeys.isValidAuthKey(authKey)) {
       _addIfNotNull(fields, _getFieldWrongValue(PresentationFieldName.tlsAuthKey));
+    }
+
+    final rotationPort = RotationAddresses.portOf(data.ipAddress);
+    if (data.rotationEnabled &&
+        (data.rotationAddresses.isEmpty ||
+            data.rotationAddresses.length > RotationAddresses.maxCount ||
+            data.rotationAddresses.any((entry) => RotationAddresses.parseEntry(entry, rotationPort) == null))) {
+      fields.add(_getFieldWrongValue(PresentationFieldName.rotationAddresses));
+    }
+
+    // A term bound is 0 (the session lifetime) or 60..86400 s, and the lower one is not above the upper.
+    bool termOk(int secs) => secs == 0 || (secs >= RotationAddresses.minSecs && secs <= RotationAddresses.maxSecs);
+    if (data.rotationEnabled &&
+        (!termOk(data.rotationMinSecs) ||
+            !termOk(data.rotationMaxSecs) ||
+            (data.rotationMinSecs > 0 && data.rotationMaxSecs > 0 && data.rotationMinSecs > data.rotationMaxSecs))) {
+      fields.add(_getFieldWrongValue(PresentationFieldName.rotationTerm));
+    }
+
+    // CatTail needs its ports and key to dial.
+    if (data.cattailEnabled &&
+        (CattailSettings.normalizePorts(data.cattailPorts) == null ||
+            !CattailSettings.isValidKey(data.cattailKey.trim()) ||
+            CattailSettings.normalizePattern(data.cattailPattern) == null)) {
+      fields.add(_getFieldWrongValue(PresentationFieldName.cattail));
     }
 
     _addIfNotNull(

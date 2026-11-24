@@ -6,14 +6,17 @@ import 'package:trusttunnel/common/localization/localization.dart';
 import 'package:trusttunnel/common/router/app_routes.dart';
 import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:trusttunnel/data/model/server_group_settings.dart';
 import 'package:trusttunnel/data/model/server_sort_option.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/feature/companion/widgets/cat_companion.dart';
 import 'package:trusttunnel/feature/companion/widgets/cat_petting_dialog.dart';
 import 'package:trusttunnel/feature/server/server_details/widgets/server_details_popup.dart';
 import 'package:trusttunnel/feature/server/servers/controller/server_latency_controller.dart';
+import 'package:trusttunnel/feature/server/servers/domain/server_groups.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_sorting.dart';
 import 'package:trusttunnel/feature/server/servers/widget/add_server_flow.dart';
+import 'package:trusttunnel/feature/server/servers/widget/group_rename_dialog.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
@@ -25,7 +28,6 @@ import 'package:trusttunnel/feature/vpn/widgets/vpn_badge_hint.dart';
 import 'package:trusttunnel/widgets/buttons/custom_floating_action_button.dart';
 import 'package:trusttunnel/widgets/common/scaffold_messenger_provider.dart';
 import 'package:trusttunnel/widgets/custom_app_bar.dart';
-import 'package:trusttunnel/widgets/custom_icon.dart';
 import 'package:trusttunnel/widgets/scaffold_wrapper.dart';
 
 class ServersScreenView extends StatefulWidget {
@@ -45,6 +47,7 @@ class _ServersScreenViewState extends State<ServersScreenView> {
   late final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey;
   ServerSortOption _sortOption = ServerSortOption.origin;
   List<SubscriptionData> _subscriptions = [];
+  Map<String, ServerGroupSettings> _groupSettings = {};
   Set<String> _refreshingSubscriptionIds = {};
 
   @override
@@ -79,10 +82,15 @@ class _ServersScreenViewState extends State<ServersScreenView> {
   }
 
   Future<void> _fetchSubscriptions() async {
-    final subscriptions = await context.repositoryFactory.subscriptionRepository.getAllSubscriptions();
+    final repository = context.repositoryFactory.subscriptionRepository;
+    final subscriptions = await repository.getAllSubscriptions();
+    final groupSettings = await repository.getGroupSettings();
 
     if (mounted) {
-      setState(() => _subscriptions = subscriptions);
+      setState(() {
+        _subscriptions = subscriptions;
+        _groupSettings = groupSettings;
+      });
     }
   }
 
@@ -138,7 +146,6 @@ class _ServersScreenViewState extends State<ServersScreenView> {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               _ServersActionsButton(
-                                onTest: () => _onTestServers(context),
                                 onSort: () => _onSort(context),
                               ),
                               const SizedBox(height: 12),
@@ -163,44 +170,77 @@ class _ServersScreenViewState extends State<ServersScreenView> {
   List<Server> _sortedServers(ServerLatencyController latencyController) =>
       sortServers(_servers, _sortOption, latencyController);
 
-  /// Servers with no [ServerData.subscriptionName] are shown flat at the top;
-  /// the rest are grouped into a collapsible [SubscriptionServersGroup] per
-  /// subscription, in the order [_subscriptions] were fetched.
+  /// Groups in the user's order: the manual keys and one per subscription.
+  /// Servers are matched to a subscription by its real name; a group's own
+  /// label only changes what the header shows. The manual group gets a header
+  /// only next to a subscription: alone it stays a flat list.
   List<Widget> _buildSections(List<Server> sortedServers) {
-    final showLatencyBadge = _sortOption == ServerSortOption.latency;
     final byName = groupBy(sortedServers, (server) => server.serverData.subscriptionName);
-    final ungrouped = byName[null] ?? [];
+    final manual = byName[null] ?? [];
 
-    final widgets = <Widget>[];
+    final subscriptionsByKey = {for (final s in _subscriptions) subscriptionGroupKey(s.id!): s};
+    final serversByKey = <String, List<Server>>{
+      manualGroupKey: manual,
+      for (final entry in subscriptionsByKey.entries) entry.key: byName[entry.value.name] ?? [],
+    };
+    final orderedKeys = orderGroupKeys([manualGroupKey, ...subscriptionsByKey.keys], _groupSettings);
+    final visibleKeys = orderedKeys.where((key) => serversByKey[key]!.isNotEmpty).toList();
 
-    for (var i = 0; i < ungrouped.length; i++) {
-      widgets.add(ServersCard(server: ungrouped[i], showLatencyBadge: showLatencyBadge));
-      if (i != ungrouped.length - 1) widgets.add(const Divider());
+    final hasSubscriptionGroup = visibleKeys.any((key) => key != manualGroupKey);
+    if (!hasSubscriptionGroup) {
+      return [
+        for (var i = 0; i < manual.length; i++) ...[
+          ServersCard(server: manual[i]),
+          if (i != manual.length - 1) const Divider(),
+        ],
+      ];
     }
 
-    for (final subscription in _subscriptions) {
-      final servers = byName[subscription.name];
-      if (servers == null || servers.isEmpty) {
-        continue;
-      }
-
+    final widgets = <Widget>[];
+    for (final (index, key) in visibleKeys.indexed) {
       if (widgets.isNotEmpty) {
         widgets.add(const Divider());
       }
 
+      final subscription = subscriptionsByKey[key];
+      final original = subscription?.name ?? context.ln.groupManualName;
+
       widgets.add(
         SubscriptionServersGroup(
-          key: ValueKey(subscription.name),
+          key: ValueKey(key),
           subscription: subscription,
-          servers: servers,
-          showLatencyBadge: showLatencyBadge,
-          refreshing: _refreshingSubscriptionIds.contains(subscription.name),
-          onRefresh: () => _onRefreshSubscription(subscription),
+          displayName: groupDisplayName(original, _groupSettings[key]),
+          servers: serversByKey[key]!,
+          refreshing: subscription != null && _refreshingSubscriptionIds.contains(subscription.name),
+          onRefresh: subscription == null ? null : () => _onRefreshSubscription(subscription),
+          onRename: () => _onRenameGroup(key),
+          onMoveUp: index == 0 ? null : () => _onMoveGroup(key, -1, visibleKeys, orderedKeys),
+          onMoveDown: index == visibleKeys.length - 1 ? null : () => _onMoveGroup(key, 1, visibleKeys, orderedKeys),
         ),
       );
     }
 
     return widgets;
+  }
+
+  Future<void> _onRenameGroup(String key) async {
+    final repository = context.repositoryFactory.subscriptionRepository;
+    final label = await GroupRenameDialog.show(context, initial: _groupSettings[key]?.label ?? '');
+    if (label == null || !mounted) {
+      return;
+    }
+
+    await repository.setGroupLabel(key: key, label: label);
+    await _fetchSubscriptions();
+  }
+
+  Future<void> _onMoveGroup(String key, int delta, List<String> visibleKeys, List<String> orderedKeys) async {
+    final repository = context.repositoryFactory.subscriptionRepository;
+    final moved = moveGroupKey(visibleKeys, key, delta);
+
+    // Groups with no servers on screen keep their relative order at the end.
+    await repository.setGroupOrder(keys: [...moved, ...orderedKeys.where((k) => !visibleKeys.contains(k))]);
+    await _fetchSubscriptions();
   }
 
   Future<void> _onRefreshSubscription(SubscriptionData subscription) async {
@@ -227,23 +267,6 @@ class _ServersScreenViewState extends State<ServersScreenView> {
         setState(() => _refreshingSubscriptionIds = _refreshingSubscriptionIds.where((e) => e != name).toSet());
       }
     }
-  }
-
-  Future<void> _onTestServers(BuildContext context) async {
-    final latencyController = ServerLatencyScope.of(context, listen: false);
-
-    context.showInfoSnackBar(message: context.ln.testingServersSnackbar);
-    await latencyController.testAll(_servers);
-
-    if (!context.mounted) {
-      return;
-    }
-
-    final reachableCount = _servers.where((s) => latencyController.resultFor(s.id)?.reachable ?? false).length;
-
-    context.showInfoSnackBar(
-      message: context.ln.testServersResultSnackbar(reachableCount, _servers.length),
-    );
   }
 
   Future<void> _onSort(BuildContext context) async {
@@ -284,62 +307,15 @@ class _ServersScreenViewState extends State<ServersScreenView> {
 }
 
 /// Small square FAB (matching the main "Add servers" FAB's style) that opens
-/// a menu with "Test servers" / "Sort by" - placed above the main FAB rather
-/// than in the app bar.
+/// the sort sheet - placed above the main FAB rather than in the app bar.
 class _ServersActionsButton extends StatelessWidget {
-  final VoidCallback onTest;
   final VoidCallback onSort;
 
-  const _ServersActionsButton({
-    required this.onTest,
-    required this.onSort,
-  });
+  const _ServersActionsButton({required this.onSort});
 
   @override
   Widget build(BuildContext context) => CustomFloatingActionButton.small(
-    icon: AssetIcons.moreVert,
-    onPressed: () => _showMenu(context),
+    icon: AssetIcons.sort,
+    onPressed: onSort,
   );
-
-  Future<void> _showMenu(BuildContext context) async {
-    final button = context.findRenderObject()! as RenderBox;
-    final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
-
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
-      ),
-      Offset.zero & overlay.size,
-    );
-
-    final selected = await showMenu<VoidCallback>(
-      context: context,
-      position: position,
-      items: [
-        PopupMenuItem(
-          value: onTest,
-          child: Row(
-            children: [
-              CustomIcon.medium(icon: Icons.speed, color: context.colors.accent),
-              const SizedBox(width: 12),
-              Text(context.ln.testServersAction, style: context.textTheme.bodyLarge),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: onSort,
-          child: Row(
-            children: [
-              CustomIcon.medium(icon: AssetIcons.sort, color: context.colors.accent),
-              const SizedBox(width: 12),
-              Text(context.ln.sortByTitle, style: context.textTheme.bodyLarge),
-            ],
-          ),
-        ),
-      ],
-    );
-
-    selected?.call();
-  }
 }

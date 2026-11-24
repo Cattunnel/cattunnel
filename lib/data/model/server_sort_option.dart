@@ -1,8 +1,8 @@
 /// How the servers list is ordered.
 enum ServerSortOption {
-  /// Natural insertion order (oldest first) - i.e. by when each server was
-  /// added, whether manually, via a link/QR, or by a subscription. This is
-  /// the default until the user picks something else.
+  /// Manual servers in the order they were added; a subscription's servers in
+  /// the order of the subscription itself. This is the default until the user
+  /// picks something else. Favorites come first under every option.
   origin,
 
   name,

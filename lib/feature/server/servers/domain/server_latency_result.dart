@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-/// Result of a single reachability test against a server's endpoint.
+/// The last in-tunnel measurement of a server: how long one request through
+/// the tunnel took, and when it was made.
 @immutable
 class ServerLatencyResult {
   /// Round-trip time of the successful TCP connect, or `null` if the

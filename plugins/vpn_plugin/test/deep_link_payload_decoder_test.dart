@@ -149,6 +149,7 @@ void main() {
     expect(engineConfig('okhttp'), contains('tls_profile = "okhttp"'));
     // "No mimicry" profiles look like no browser at all - never written.
     expect(engineConfig('openssl'), isNot(contains('tls_profile')));
+    expect(engineConfig('safari'), isNot(contains('tls_profile')));
     expect(engineConfig(''), isNot(contains('tls_profile')));
   });
 

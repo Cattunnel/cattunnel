@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trusttunnel/feature/vpn/domain/tls_profile_auto.dart';
 
 void main() {
@@ -15,6 +16,7 @@ void main() {
       ('FirefoxURL-308046B0AF4A39CB', 'firefox'),
       ('firefox-esr.desktop', 'firefox'),
       ('librewolf.desktop', 'firefox'),
+      ('com.apple.mobilesafari', 'chrome'),
     ]) {
       expect(TlsProfileAuto.profileForBrowser(browser), profile, reason: browser);
     }
@@ -24,5 +26,10 @@ void main() {
     expect(TlsProfileAuto.profileForBrowser(null), isNull);
     expect(TlsProfileAuto.profileForBrowser(''), isNull);
     expect(TlsProfileAuto.profileForBrowser('com.example.reader'), isNull);
+  });
+
+  test('a saved Safari server profile resolves through the default choice', () async {
+    SharedPreferences.setMockInitialValues({'tls_profile_auto': 'firefox'});
+    expect(await TlsProfileAuto.resolve('safari'), 'firefox');
   });
 }

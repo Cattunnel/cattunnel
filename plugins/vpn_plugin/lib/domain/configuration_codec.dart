@@ -13,7 +13,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:meta/meta.dart';
+import 'package:vpn_plugin/domain/cattail_settings.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/domain/rotation_addresses.dart';
 import 'package:vpn_plugin/models/configuration.dart';
 import 'package:vpn_plugin/models/configuration_log_level.dart';
 import 'package:vpn_plugin/models/endpoint.dart';
@@ -109,7 +111,7 @@ abstract final class ConfigurationCodecKeys {
 
   /// The values the app writes; the engine knows `openssl`/`default` too,
   /// but those look like no browser at all.
-  static const tlsProfiles = {'chrome', 'chrome_canary', 'firefox', 'safari', 'okhttp'};
+  static const tlsProfiles = {'chrome', 'chrome_canary', 'firefox', 'okhttp'};
 
   /// Engine 1.3 TLS authorization key (see Endpoint.clientRandomAuthKey).
   static const clientRandomAuthKey = 'client_random_auth_key';
@@ -188,6 +190,32 @@ abstract final class ConfigurationCodecKeys {
   /// Own engine build: the public key of the endpoint, see
   /// Endpoint.xhttpServerKey.
   static const xhttpServerKey = 'xhttp_server_key';
+
+  /// CatTunnel: engine `sni_pool` (own build) - ready SNI names without the
+  /// main one (see Endpoint.sniPool). Absent - the engine uses one name.
+  static const sniPool = 'sni_pool';
+
+  /// The engine's `VPN_SNI_POOL_MAX`.
+  static const sniPoolMax = 8;
+
+  /// CatTunnel 9a: one `[[endpoint.rotation]]` table per server of the
+  /// timed rotation (subscription tag 0x53), with its `address` and its own
+  /// `sni_pool`.
+  static const rotationSection = 'endpoint.rotation';
+  static const rotationAddress = 'address';
+  static const rotationSniPool = 'sni_pool';
+
+  /// CatTunnel 9a: the range of the random rotation term in `[endpoint]`
+  /// (tags 0x54/0x55). Absent - the engine takes the session lifetime.
+  static const rotationMinSecs = 'rotation_min_secs';
+  static const rotationMaxSecs = 'rotation_max_secs';
+
+  /// CatTunnel: the noisy disguise, `[endpoint.cattail]` (tags 0x56-0x59).
+  static const cattailSection = 'endpoint.cattail';
+  static const cattailEnabled = 'enabled';
+  static const cattailPorts = 'ports';
+  static const cattailKey = 'key';
+  static const cattailPattern = 'pattern';
 
   /// A usable endpoint key: base64 of 32 bytes (an Ed25519 public key).
   static bool isValidXhttpServerKey(String key) {
@@ -295,6 +323,24 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
       endpoint.setString(ConfigurationCodecKeys.clientRandomAuthKey, authKey.toLowerCase());
     }
     endpoint.setString(ConfigurationCodecKeys.customSni, config.endpoint.customSni);
+    final sniPool =
+        config.endpoint.sniPool.where((name) => name.isNotEmpty).take(ConfigurationCodecKeys.sniPoolMax).toList();
+    if (sniPool.isNotEmpty) {
+      endpoint.setStringList(ConfigurationCodecKeys.sniPool, sniPool);
+    }
+    if (config.endpoint.rotationEnabled) {
+      final rotation = RotationAddresses.entriesOf(config.endpoint.rotationAddresses, config.endpoint.addresses);
+      for (final entry in rotation) {
+        final table = document.addArrayTable(ConfigurationCodecKeys.rotationSection)
+          ..setString(ConfigurationCodecKeys.rotationAddress, entry.address);
+        if (entry.sniPool.isNotEmpty) table.setStringList(ConfigurationCodecKeys.rotationSniPool, entry.sniPool);
+      }
+      var low = RotationAddresses.clampSecs(config.endpoint.rotationMinSecs);
+      var high = RotationAddresses.clampSecs(config.endpoint.rotationMaxSecs);
+      if (low > 0 && high > 0 && low > high) (low, high) = (high, low);
+      if (rotation.isNotEmpty && low > 0) endpoint.setInt(ConfigurationCodecKeys.rotationMinSecs, low);
+      if (rotation.isNotEmpty && high > 0) endpoint.setInt(ConfigurationCodecKeys.rotationMaxSecs, high);
+    }
     endpoint.setBool(ConfigurationCodecKeys.skipVerification, config.endpoint.skipVerification);
     endpoint.setMultilinePem(ConfigurationCodecKeys.certificate, config.endpoint.certificate);
     endpoint.setString(ConfigurationCodecKeys.upstreamProtocol, config.endpoint.upStreamProtocol.value);
@@ -374,6 +420,23 @@ final class ConfigurationEncoder extends Converter<Configuration, String> {
     }
     endpoint.setStringList(ConfigurationCodecKeys.dnsUpStreams, config.endpoint.dnsUpStreams);
     endpoint.setString(ConfigurationCodecKeys.name, _escapeCharsEncoder.convert(config.endpoint.name));
+
+    // CatTail goes under CONNECT only (no NineLives over it in 1.5.9.5), and
+    // only with what the engine needs to dial: ports and the key.
+    final cattailPorts = CattailSettings.normalizePorts(config.endpoint.cattailPorts);
+    final cattailKey = config.endpoint.cattailKey.trim();
+    if (config.endpoint.cattailEnabled &&
+        !config.endpoint.xhttpEnabled &&
+        cattailPorts != null &&
+        CattailSettings.isValidKey(cattailKey)) {
+      final cattail =
+          document.section(ConfigurationCodecKeys.cattailSection)
+            ..setBool(ConfigurationCodecKeys.cattailEnabled, true)
+            ..setString(ConfigurationCodecKeys.cattailPorts, cattailPorts)
+            ..setString(ConfigurationCodecKeys.cattailKey, cattailKey);
+      final pattern = CattailSettings.normalizePattern(config.endpoint.cattailPattern);
+      if (pattern != null && pattern.isNotEmpty) cattail.setString(ConfigurationCodecKeys.cattailPattern, pattern);
+    }
 
     document.section(ConfigurationCodecKeys.listenerSection);
 
@@ -456,6 +519,22 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
     final String clientRandom = endpoint.getString(ConfigurationCodecKeys.clientRandom) ?? '';
     final bool skipVerification = endpoint.getBool(ConfigurationCodecKeys.skipVerification) ?? false;
     final String customSni = endpoint.getString(ConfigurationCodecKeys.customSni) ?? '';
+    final List<String> sniPool =
+        (endpoint.getStringList(ConfigurationCodecKeys.sniPool) ?? const <String>[])
+            .where((name) => name.isNotEmpty)
+            .take(ConfigurationCodecKeys.sniPoolMax)
+            .toList();
+    final rotationAddresses = RotationAddresses.normalizeList([
+      for (final table in document.arrayTables(ConfigurationCodecKeys.rotationSection))
+        [
+          table.getString(ConfigurationCodecKeys.rotationAddress) ?? '',
+          ...?table.getStringList(ConfigurationCodecKeys.rotationSniPool),
+        ].join(' '),
+    ], addresses);
+    final rotationMinSecs = RotationAddresses.clampSecs(endpoint.getInt(ConfigurationCodecKeys.rotationMinSecs) ?? 0);
+    final rotationMaxSecs = RotationAddresses.clampSecs(endpoint.getInt(ConfigurationCodecKeys.rotationMaxSecs) ?? 0);
+    final IniSection cattail = document.section(ConfigurationCodecKeys.cattailSection);
+    final String cattailKeyRaw = (cattail.getString(ConfigurationCodecKeys.cattailKey) ?? '').trim();
 
     final List<String> dnsUpStreams = endpoint.getStringList(ConfigurationCodecKeys.dnsUpStreams) ?? const <String>[];
     final String name = _escapeCharsDecoder.convert(endpoint.getString(ConfigurationCodecKeys.name) ?? 'Server');
@@ -594,6 +673,17 @@ final class ConfigurationDecoder extends Converter<String, Configuration> {
         xhttpEnabled: xhttpEnabled,
         xhttpPath: xhttpPath,
         xhttpServerKey: xhttpServerKey,
+        sniPool: sniPool,
+        rotationAddresses: rotationAddresses,
+        rotationEnabled: rotationAddresses.isNotEmpty,
+        rotationMinSecs: rotationMinSecs,
+        rotationMaxSecs: rotationMaxSecs,
+        cattailEnabled: cattail.getBool(ConfigurationCodecKeys.cattailEnabled) ?? false,
+        cattailPorts:
+            CattailSettings.normalizePorts(cattail.getString(ConfigurationCodecKeys.cattailPorts) ?? '') ?? '',
+        cattailKey: CattailSettings.isValidKey(cattailKeyRaw) ? cattailKeyRaw : '',
+        cattailPattern:
+            CattailSettings.normalizePattern(cattail.getString(ConfigurationCodecKeys.cattailPattern) ?? '') ?? '',
         blockQuic: blockQuic,
         ruExit: ruExit,
       ),

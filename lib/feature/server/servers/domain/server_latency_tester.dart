@@ -1,45 +1,7 @@
-import 'dart:io';
-
-import 'package:trusttunnel/common/utils/physical_net.dart';
-import 'package:trusttunnel/feature/server/servers/domain/server_latency_result.dart';
-
-/// {@template server_latency_tester}
-/// Tests whether a server's endpoint is reachable by attempting a raw TCP
-/// connect to it and timing how long the handshake takes.
-///
-/// This deliberately doesn't go through the VPN protocol itself (no auth,
-/// no TLS) - it only answers "is something listening on this address right
-/// now", the same question a user asking "is this server down" wants
-/// answered quickly and without a real connection attempt.
-/// {@endtemplate}
+/// Address helpers shared by the connection checks. The app no longer measures
+/// a server by connecting to its address: see ServerLatencyController.
 class ServerLatencyTester {
-  const ServerLatencyTester();
-
-  /// {@macro server_latency_tester}
-  Future<ServerLatencyResult> test(
-    String address, {
-    Duration timeout = const Duration(seconds: 5),
-  }) async {
-    final (host, port) = parseAddress(address);
-    final stopwatch = Stopwatch()..start();
-
-    try {
-      // Windows: over the physical adapter, not through a running tunnel.
-      final pinned = await PhysicalNet.probeTcp(host, port, timeout: timeout);
-      if (pinned != null) {
-        stopwatch.stop();
-
-        return ServerLatencyResult(latency: pinned == 'ok' ? stopwatch.elapsed : null, testedAt: DateTime.now());
-      }
-      final socket = await Socket.connect(host, port, timeout: timeout);
-      stopwatch.stop();
-      socket.destroy();
-
-      return ServerLatencyResult(latency: stopwatch.elapsed, testedAt: DateTime.now());
-    } catch (_) {
-      return ServerLatencyResult(latency: null, testedAt: DateTime.now());
-    }
-  }
+  const ServerLatencyTester._();
 
   /// Splits a stored address into host/port, defaulting to port 443 when
   /// none is specified - matching how the app already treats addresses

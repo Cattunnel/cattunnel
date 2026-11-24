@@ -69,4 +69,9 @@ abstract class ServerDataSource {
   /// DNS server list.
   /// {@endtemplate}
   Future<void> setNewServer({required String id, required ServerData request});
+
+  /// Marks or unmarks the server as a favorite. The mark is stored apart from
+  /// the server row, so a subscription server keeps it when its row is deleted
+  /// and inserted again.
+  Future<void> setFavorite({required String serverId, required bool favorite});
 }

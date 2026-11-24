@@ -78,7 +78,7 @@ class ServerData {
 
   static const tlsProfileAuto = '';
 
-  static const tlsProfiles = ['chrome', 'chrome_canary', 'firefox', 'safari', 'okhttp'];
+  static const tlsProfiles = ['chrome', 'chrome_canary', 'firefox', 'okhttp'];
 
   /// TLS authorization key (engine 1.3 `client_random_auth_key`, hex): part of
   /// the ClientHello random is derived from it and the SNI, so the server
@@ -152,6 +152,28 @@ class ServerData {
   /// engine `xhttp_server_key`). Empty - the server sent no key.
   final String xhttpServerKey;
 
+  /// Ready SNI names without the main one (subscription tag 0x52, engine
+  /// `sni_pool`), so the parallel TLS sessions of a pool present different
+  /// names. Empty - the engine uses one name.
+  final List<String> sniPool;
+
+  /// 9a: the servers of the timed rotation from tag 0x53 or a local edit,
+  /// each `host:port` or `host:port sni1 sni2` (see Endpoint). The switch
+  /// may be off while the list is kept for later.
+  final List<String> rotationAddresses;
+  final bool rotationEnabled;
+
+  /// 9a: the range of the random rotation term, seconds; 0 - the session lifetime.
+  final int rotationMinSecs;
+  final int rotationMaxSecs;
+
+  /// CatTail, the noisy disguise (tags 0x56-0x59, see Endpoint). The
+  /// subscription gives the default, a manual change needs "above the subscription".
+  final bool cattailEnabled;
+  final String cattailPorts;
+  final String cattailKey;
+  final String cattailPattern;
+
   /// NineLives: encrypt the XHTTP body inside TLS (the local switch). The key
   /// itself is kept when this is off, only the engine does not get it.
   final bool xhttpEncryptionEnabled;
@@ -218,6 +240,15 @@ class ServerData {
     this.xhttpEnabled = false,
     this.xhttpPath = '',
     this.xhttpServerKey = '',
+    this.sniPool = const [],
+    this.rotationAddresses = const [],
+    this.rotationEnabled = false,
+    this.rotationMinSecs = 0,
+    this.rotationMaxSecs = 0,
+    this.cattailEnabled = false,
+    this.cattailPorts = '',
+    this.cattailKey = '',
+    this.cattailPattern = '',
     this.xhttpEncryptionEnabled = true,
     this.blockQuic = false,
     this.ruExit = false,
@@ -258,6 +289,15 @@ class ServerData {
     this.xhttpEnabled = false,
     this.xhttpPath = '',
     this.xhttpServerKey = '',
+    this.sniPool = const [],
+    this.rotationAddresses = const [],
+    this.rotationEnabled = false,
+    this.rotationMinSecs = 0,
+    this.rotationMaxSecs = 0,
+    this.cattailEnabled = false,
+    this.cattailPorts = '',
+    this.cattailKey = '',
+    this.cattailPattern = '',
     this.xhttpEncryptionEnabled = true,
     this.blockQuic = false,
     this.ruExit = false,
@@ -301,6 +341,15 @@ class ServerData {
     xhttpEnabled,
     xhttpPath,
     xhttpServerKey,
+    sniPool,
+    Object.hashAll(rotationAddresses),
+    rotationEnabled,
+    rotationMinSecs,
+    rotationMaxSecs,
+    cattailEnabled,
+    cattailPorts,
+    cattailKey,
+    cattailPattern,
     xhttpEncryptionEnabled,
     blockQuic,
     ruExit,
@@ -342,6 +391,15 @@ class ServerData {
       'xhttpEnabled: $xhttpEnabled,'
       'xhttpPath: $xhttpPath,'
       'xhttpServerKey: ${xhttpServerKey.isEmpty ? '' : '***'},'
+      'sniPool: $sniPool,'
+      'rotationAddresses: $rotationAddresses,'
+      'rotationEnabled: $rotationEnabled,'
+      'rotationMinSecs: $rotationMinSecs,'
+      'rotationMaxSecs: $rotationMaxSecs,'
+      'cattailEnabled: $cattailEnabled,'
+      'cattailPorts: $cattailPorts,'
+      'cattailKey: ${cattailKey.isEmpty ? '' : '***'},'
+      'cattailPattern: $cattailPattern,'
       'xhttpEncryptionEnabled: $xhttpEncryptionEnabled,'
       'blockQuic: $blockQuic,'
       'ruExit: $ruExit,'
@@ -383,6 +441,15 @@ class ServerData {
         other.xhttpEnabled == xhttpEnabled &&
         other.xhttpPath == xhttpPath &&
         other.xhttpServerKey == xhttpServerKey &&
+        listEquals(other.sniPool, sniPool) &&
+        listEquals(other.rotationAddresses, rotationAddresses) &&
+        other.rotationEnabled == rotationEnabled &&
+        other.rotationMinSecs == rotationMinSecs &&
+        other.rotationMaxSecs == rotationMaxSecs &&
+        other.cattailEnabled == cattailEnabled &&
+        other.cattailPorts == cattailPorts &&
+        other.cattailKey == cattailKey &&
+        other.cattailPattern == cattailPattern &&
         other.xhttpEncryptionEnabled == xhttpEncryptionEnabled &&
         other.blockQuic == blockQuic &&
         other.ruExit == ruExit &&
@@ -427,6 +494,15 @@ class ServerData {
     bool? xhttpEnabled,
     String? xhttpPath,
     String? xhttpServerKey,
+    List<String>? sniPool,
+    List<String>? rotationAddresses,
+    bool? rotationEnabled,
+    int? rotationMinSecs,
+    int? rotationMaxSecs,
+    bool? cattailEnabled,
+    String? cattailPorts,
+    String? cattailKey,
+    String? cattailPattern,
     bool? xhttpEncryptionEnabled,
     bool? blockQuic,
     bool? ruExit,
@@ -462,6 +538,15 @@ class ServerData {
     xhttpEnabled: xhttpEnabled ?? this.xhttpEnabled,
     xhttpPath: xhttpPath ?? this.xhttpPath,
     xhttpServerKey: xhttpServerKey ?? this.xhttpServerKey,
+    sniPool: sniPool ?? this.sniPool,
+    rotationAddresses: rotationAddresses ?? this.rotationAddresses,
+    rotationEnabled: rotationEnabled ?? this.rotationEnabled,
+    rotationMinSecs: rotationMinSecs ?? this.rotationMinSecs,
+    rotationMaxSecs: rotationMaxSecs ?? this.rotationMaxSecs,
+    cattailEnabled: cattailEnabled ?? this.cattailEnabled,
+    cattailPorts: cattailPorts ?? this.cattailPorts,
+    cattailKey: cattailKey ?? this.cattailKey,
+    cattailPattern: cattailPattern ?? this.cattailPattern,
     xhttpEncryptionEnabled: xhttpEncryptionEnabled ?? this.xhttpEncryptionEnabled,
     blockQuic: blockQuic ?? this.blockQuic,
     ruExit: ruExit ?? this.ruExit,

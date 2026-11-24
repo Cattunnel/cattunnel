@@ -1,4 +1,6 @@
 import '../secret_column.dart';
+import '../sni_pool_column.dart';
+import '../rotation_addresses_column.dart';
 import 'protocols_table.drift';
 import 'routing_profiles_table.drift';
 import 'subscriptions_table.drift';
@@ -32,6 +34,15 @@ CREATE TABLE IF NOT EXISTS servers(
   xhttp_enabled BOOLEAN NOT NULL DEFAULT false,
   xhttp_path TEXT NOT NULL DEFAULT '',
   xhttp_server_key TEXT NOT NULL DEFAULT '',
+  sni_pool TEXT NOT NULL DEFAULT '' MAPPED BY `const SniPoolColumn()`,
+  rotation_addresses TEXT NOT NULL DEFAULT '' MAPPED BY `const RotationAddressesColumn()`,
+  rotation_enabled BOOLEAN NOT NULL DEFAULT false,
+  rotation_min_secs INTEGER NOT NULL DEFAULT 0,
+  rotation_max_secs INTEGER NOT NULL DEFAULT 0,
+  cattail_enabled BOOLEAN NOT NULL DEFAULT false,
+  cattail_ports TEXT NOT NULL DEFAULT '',
+  cattail_key TEXT NOT NULL DEFAULT '' MAPPED BY `const SecretColumn()`,
+  cattail_pattern TEXT NOT NULL DEFAULT '',
   xhttp_encryption_enabled BOOLEAN NOT NULL DEFAULT true,
   block_quic BOOLEAN NOT NULL DEFAULT false,
   ru_exit BOOLEAN NOT NULL DEFAULT false,
@@ -39,6 +50,7 @@ CREATE TABLE IF NOT EXISTS servers(
   custom_sni TEXT,
   subscription_id INTEGER NULL,
   subscription_override BOOLEAN NOT NULL DEFAULT false,
+  subscription_position INTEGER NULL,
   FOREIGN KEY (vpn_protocol_id) REFERENCES protocols(id),
   FOREIGN KEY (routing_profile_id) REFERENCES routing_profiles(id),
   FOREIGN KEY (subscription_id) REFERENCES subscriptions(id)

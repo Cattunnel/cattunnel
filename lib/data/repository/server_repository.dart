@@ -20,6 +20,8 @@ abstract class ServerRepository {
 
   Future<void> removeServer({required String serverId});
 
+  Future<void> setFavorite({required String serverId, required bool favorite});
+
   String getDeepLinkForServer({required ServerData server});
 }
 
@@ -55,6 +57,10 @@ class ServerRepositoryImpl implements ServerRepository {
 
   @override
   Future<void> setSelectedServerId({required String? id}) => _serverDataSource.setSelectedServerId(id: id);
+
+  @override
+  Future<void> setFavorite({required String serverId, required bool favorite}) =>
+      _serverDataSource.setFavorite(serverId: serverId, favorite: favorite);
 
   @override
   Future<void> removeServer({required String serverId}) => _serverDataSource.removeServer(serverId: serverId);

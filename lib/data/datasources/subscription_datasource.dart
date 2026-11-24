@@ -1,4 +1,5 @@
 import 'package:trusttunnel/data/model/server_data.dart';
+import 'package:trusttunnel/data/model/server_group_settings.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 
 abstract class SubscriptionDataSource {
@@ -28,4 +29,14 @@ abstract class SubscriptionDataSource {
   });
 
   Future<void> markRefreshed({required String id, required DateTime at});
+
+  /// The user's labels and order of the servers-screen groups, by group key.
+  Future<Map<String, ServerGroupSettings>> getGroupSettings();
+
+  /// Own display label of a group; empty restores the original name. Only a
+  /// label: servers stay matched to their subscription by its real name.
+  Future<void> setGroupLabel({required String key, required String label});
+
+  /// Saves the order of all groups, first to last.
+  Future<void> setGroupOrder({required List<String> keys});
 }

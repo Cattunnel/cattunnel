@@ -9,3 +9,5 @@ import 'profile_rules_table.drift';
 import 'certificate_table.drift';
 import 'app_settings_table.drift';
 import 'subscriptions_table.drift';
+import 'favorite_servers_table.drift';
+import 'server_groups_table.drift';

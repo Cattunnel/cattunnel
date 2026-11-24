@@ -60,6 +60,7 @@ class _ServersScopeState extends State<ServersScope> {
     builder: (context, state, _) => _InheritedServersScope(
       state: state,
       pickServer: _selectServer,
+      toggleFavorite: _controller.toggleFavorite,
       fetchServers: _controller.fetchServers,
       child: widget.child,
     ),
@@ -85,11 +86,15 @@ class _InheritedServersScope extends InheritedModel<ServersScopeAspect> implemen
   final void Function(String? serverId) pickServer;
 
   @override
+  final void Function(String serverId) toggleFavorite;
+
+  @override
   final void Function() fetchServers;
 
   const _InheritedServersScope({
     required ServersState state,
     required this.pickServer,
+    required this.toggleFavorite,
     required this.fetchServers,
     required super.child,
   }) : _state = state;

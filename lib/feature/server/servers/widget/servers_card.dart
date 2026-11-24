@@ -6,6 +6,8 @@ import 'package:trusttunnel/data/model/vpn_state.dart';
 import 'package:trusttunnel/feature/server/server_details/widgets/server_details_popup.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_connection_actions.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_latency_result.dart';
+import 'package:trusttunnel/feature/server/servers/widget/favorite_star_button.dart';
+import 'package:trusttunnel/feature/server/servers/widget/ping_label.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
@@ -16,14 +18,9 @@ import 'package:trusttunnel/widgets/common/custom_list_tile_separated.dart';
 class ServersCard extends StatefulWidget {
   final Server server;
 
-  /// Whether to show the last measured latency next to the connect button -
-  /// only meaningful (and only shown) while the list is sorted by latency.
-  final bool showLatencyBadge;
-
   const ServersCard({
     super.key,
     required this.server,
-    this.showLatencyBadge = false,
   });
 
   @override
@@ -42,27 +39,12 @@ class _ServersCardState extends State<ServersCard> {
       context,
       aspect: ServersScopeAspect.selectedServer,
     ).selectedServer;
-
-    final isThisServerConnected = _pickedServer?.id == widget.server.id && _vpnStatus == VpnState.connected;
-
-    if (isThisServerConnected) {
-      // A live successful connection is itself proof of reachability -
-      // clear any stale "unreachable" mark from an earlier test. Deferred to
-      // after this build so it doesn't trigger a rebuild mid-build.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ServerLatencyScope.of(context, listen: false).clearResult(widget.server.id);
-        }
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final latencyScope = ServerLatencyScope.of(context);
+    final ping = ServerLatencyScope.of(context).resultFor(widget.server.id);
     final vpnManagerState = _pickedServer?.id == widget.server.id ? _vpnStatus : VpnState.disconnected;
-    final latencyResult = latencyScope.resultFor(widget.server.id);
-    final isUnreachable = latencyResult != null && !latencyResult.reachable && vpnManagerState != VpnState.connected;
 
     final baseSubtitle = widget.server.serverData.subscriptionOverride
         ? '${widget.server.serverData.ipAddress} · ${context.ln.subscriptionDifferent}'
@@ -71,21 +53,22 @@ class _ServersCardState extends State<ServersCard> {
     return CustomListTileSeparated(
       title: widget.server.serverData.name,
       titleStyle: context.textTheme.titleSmall,
-      subtitle: isUnreachable ? '$baseSubtitle · ${context.ln.serverUnreachable}' : baseSubtitle,
-      subtitleStyle: isUnreachable ? context.textTheme.bodySmall?.copyWith(color: context.colors.orange1) : null,
+      subtitle: baseSubtitle,
       onTileTap: () => _pushServerDetailsScreen(
         context,
         server: widget.server,
       ),
-      contentTrailing: widget.showLatencyBadge
-          ? Padding(
+      contentTrailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (ping?.latency != null)
+            Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: _LatencyBadge(
-                result: latencyResult,
-                isTesting: latencyScope.isTesting(widget.server.id),
-              ),
-            )
-          : null,
+              child: _PingBadge(result: ping!),
+            ),
+          FavoriteStarButton(server: widget.server),
+        ],
+      ),
       trailing: ServersCardConnectionButton(
         vpnManagerState: vpnManagerState,
         onPressed: () {
@@ -126,39 +109,23 @@ class _ServersCardState extends State<ServersCard> {
   );
 }
 
-/// Compact latency indicator shown next to the connect button. Only relevant
-/// while the list is sorted by latency (see [ServersCard.showLatencyBadge]).
-class _LatencyBadge extends StatelessWidget {
-  final ServerLatencyResult? result;
-  final bool isTesting;
+/// The last in-tunnel ping of the server with the age of the measurement.
+class _PingBadge extends StatelessWidget {
+  final ServerLatencyResult result;
 
-  const _LatencyBadge({
-    required this.result,
-    required this.isTesting,
-  });
+  const _PingBadge({required this.result});
 
   @override
   Widget build(BuildContext context) {
-    if (isTesting) {
-      return const SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
+    final style = context.textTheme.bodySmall?.copyWith(color: context.colors.neutralDark);
 
-    final result = this.result;
-    if (result == null) {
-      return const SizedBox.shrink();
-    }
-
-    final latency = result.latency;
-
-    return Text(
-      latency != null ? '${latency.inMilliseconds}ms' : context.ln.serverUnreachable,
-      style: context.textTheme.bodySmall?.copyWith(
-        color: latency != null ? context.colors.neutralDark : context.colors.orange1,
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text('${result.latency!.inMilliseconds} ${context.ln.pingUnit}', style: style),
+        Text(pingAgeLabel(context, result.testedAt), style: style),
+      ],
     );
   }
 }

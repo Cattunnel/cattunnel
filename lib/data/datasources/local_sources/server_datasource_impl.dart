@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:trusttunnel/common/utils/certificate_encoders.dart';
 import 'package:trusttunnel/common/utils/upstream_protocol_encoder.dart';
 import 'package:trusttunnel/data/database/app_database.dart' as db;
+import 'package:trusttunnel/data/datasources/local_sources/favorite_key.dart';
 import 'package:trusttunnel/data/datasources/local_sources/server_config_import.dart';
 import 'package:trusttunnel/data/datasources/server_datasource.dart';
 import 'package:trusttunnel/data/model/certificate.dart';
@@ -65,6 +66,15 @@ class ServerDataSourceImpl implements ServerDataSource {
         xhttpEnabled: Value(request.xhttpEnabled),
         xhttpPath: Value(request.xhttpPath),
         xhttpServerKey: Value(request.xhttpServerKey),
+        sniPool: Value(request.sniPool),
+        rotationAddresses: Value(request.rotationAddresses),
+        rotationEnabled: Value(request.rotationEnabled),
+        rotationMinSecs: Value(request.rotationMinSecs),
+        rotationMaxSecs: Value(request.rotationMaxSecs),
+        cattailEnabled: Value(request.cattailEnabled),
+        cattailPorts: Value(request.cattailPorts),
+        cattailKey: Value(request.cattailKey),
+        cattailPattern: Value(request.cattailPattern),
         xhttpEncryptionEnabled: Value(request.xhttpEncryptionEnabled),
         blockQuic: Value(request.blockQuic),
         ruExit: Value(request.ruExit),
@@ -121,6 +131,15 @@ class ServerDataSourceImpl implements ServerDataSource {
         xhttpEnabled: request.xhttpEnabled,
         xhttpPath: request.xhttpPath,
         xhttpServerKey: request.xhttpServerKey,
+        sniPool: request.sniPool,
+        rotationAddresses: request.rotationAddresses,
+        rotationEnabled: request.rotationEnabled,
+        rotationMinSecs: request.rotationMinSecs,
+        rotationMaxSecs: request.rotationMaxSecs,
+        cattailEnabled: request.cattailEnabled,
+        cattailPorts: request.cattailPorts,
+        cattailKey: request.cattailKey,
+        cattailPattern: request.cattailPattern,
         xhttpEncryptionEnabled: request.xhttpEncryptionEnabled,
         blockQuic: request.blockQuic,
         ruExit: request.ruExit,
@@ -145,6 +164,7 @@ class ServerDataSourceImpl implements ServerDataSource {
     final certsMap = {for (final c in certs) c.serverId: c};
 
     final subscriptionNames = await _loadSubscriptionNames();
+    final favorites = await _loadFavoriteKeys();
 
     final serverIds = serversRows.map((s) => s.id).toList();
 
@@ -166,6 +186,8 @@ class ServerDataSourceImpl implements ServerDataSource {
 
         return Server(
           id: e.id.toString(),
+          favorite: favorites.contains(favoriteKey(rowId: e.id, name: e.name, subscriptionId: e.subscriptionId)),
+          subscriptionPosition: e.subscriptionPosition,
           serverData: ServerData(
             name: e.name,
             ipAddress: e.ipAddress,
@@ -196,6 +218,15 @@ class ServerDataSourceImpl implements ServerDataSource {
             xhttpEnabled: e.xhttpEnabled,
             xhttpPath: e.xhttpPath,
             xhttpServerKey: e.xhttpServerKey,
+            sniPool: e.sniPool,
+            rotationAddresses: e.rotationAddresses,
+            rotationEnabled: e.rotationEnabled,
+            rotationMinSecs: e.rotationMinSecs,
+            rotationMaxSecs: e.rotationMaxSecs,
+            cattailEnabled: e.cattailEnabled,
+            cattailPorts: e.cattailPorts,
+            cattailKey: e.cattailKey,
+            cattailPattern: e.cattailPattern,
             xhttpEncryptionEnabled: e.xhttpEncryptionEnabled,
             blockQuic: e.blockQuic,
             ruExit: e.ruExit,
@@ -208,6 +239,27 @@ class ServerDataSourceImpl implements ServerDataSource {
         );
       },
     ).toList();
+  }
+
+  Future<Set<String>> _loadFavoriteKeys() async {
+    final rows = await database.select(database.favoriteServers).get();
+
+    return {for (final row in rows) row.favKey};
+  }
+
+  @override
+  Future<void> setFavorite({required String serverId, required bool favorite}) async {
+    final row = await (database.select(
+      database.servers,
+    )..where((s) => s.id.equals(int.parse(serverId)))).getSingleOrNull();
+    if (row == null) return;
+
+    final key = favoriteKey(rowId: row.id, name: row.name, subscriptionId: row.subscriptionId);
+    if (favorite) {
+      await database.favoriteServers.insertOnConflictUpdate(db.FavoriteServersCompanion.insert(favKey: key));
+    } else {
+      await database.favoriteServers.deleteWhere((f) => f.favKey.equals(key));
+    }
   }
 
   Future<Map<int, String>> _loadSubscriptionNames() async {
@@ -231,11 +283,14 @@ class ServerDataSourceImpl implements ServerDataSource {
 
   /// {@macro server_data_source_remove_server}
   @override
-  Future<void> removeServer({required String serverId}) => database.servers.deleteWhere(
-    (e) => e.id.equals(
-      int.parse(serverId),
-    ),
-  );
+  Future<void> removeServer({required String serverId}) async {
+    final parsedId = int.parse(serverId);
+    await database.servers.deleteWhere((e) => e.id.equals(parsedId));
+    // A manual server never comes back; a subscription one may, with its mark.
+    await database.favoriteServers.deleteWhere(
+      (f) => f.favKey.equals(favoriteKey(rowId: parsedId, name: '', subscriptionId: null)),
+    );
+  }
 
   /// {@macro server_data_source_set_new_server}
   ///
@@ -247,6 +302,20 @@ class ServerDataSourceImpl implements ServerDataSource {
       final parsedId = int.parse(id);
 
       final update = database.servers.update()..where((e) => e.id.equals(parsedId));
+
+      // A renamed subscription server keeps its favorite mark (keyed by name).
+      final before = await (database.select(database.servers)..where((e) => e.id.equals(parsedId))).getSingleOrNull();
+      if (before != null && before.subscriptionId != null && before.name != request.name) {
+        final oldKey = favoriteKey(rowId: parsedId, name: before.name, subscriptionId: before.subscriptionId);
+        final newKey = favoriteKey(rowId: parsedId, name: request.name, subscriptionId: before.subscriptionId);
+        final wasFavorite = await (database.select(
+          database.favoriteServers,
+        )..where((f) => f.favKey.equals(oldKey))).getSingleOrNull();
+        if (wasFavorite != null) {
+          await database.favoriteServers.deleteWhere((f) => f.favKey.equals(oldKey));
+          await database.favoriteServers.insertOnConflictUpdate(db.FavoriteServersCompanion.insert(favKey: newKey));
+        }
+      }
 
       await database.dnsServers.deleteWhere((e) => e.serverId.equals(parsedId));
       await database.dnsServers.insertAll(
@@ -289,6 +358,15 @@ class ServerDataSourceImpl implements ServerDataSource {
           xhttpEnabled: Value(request.xhttpEnabled),
           xhttpPath: Value(request.xhttpPath),
           xhttpServerKey: Value(request.xhttpServerKey),
+          sniPool: Value(request.sniPool),
+          rotationAddresses: Value(request.rotationAddresses),
+          rotationEnabled: Value(request.rotationEnabled),
+          rotationMinSecs: Value(request.rotationMinSecs),
+          rotationMaxSecs: Value(request.rotationMaxSecs),
+          cattailEnabled: Value(request.cattailEnabled),
+          cattailPorts: Value(request.cattailPorts),
+          cattailKey: Value(request.cattailKey),
+          cattailPattern: Value(request.cattailPattern),
           xhttpEncryptionEnabled: Value(request.xhttpEncryptionEnabled),
           blockQuic: Value(request.blockQuic),
           ruExit: Value(request.ruExit),
@@ -338,8 +416,14 @@ class ServerDataSourceImpl implements ServerDataSource {
       subscriptionName = subscription?.name;
     }
 
+    final favorites = await _loadFavoriteKeys();
+
     return Server(
       id: server.id.toString(),
+      favorite: favorites.contains(
+        favoriteKey(rowId: server.id, name: server.name, subscriptionId: server.subscriptionId),
+      ),
+      subscriptionPosition: server.subscriptionPosition,
       serverData: ServerData(
         name: server.name,
         ipAddress: server.ipAddress,
@@ -369,6 +453,15 @@ class ServerDataSourceImpl implements ServerDataSource {
         xhttpEnabled: server.xhttpEnabled,
         xhttpPath: server.xhttpPath,
         xhttpServerKey: server.xhttpServerKey,
+        sniPool: server.sniPool,
+        rotationAddresses: server.rotationAddresses,
+        rotationEnabled: server.rotationEnabled,
+        rotationMinSecs: server.rotationMinSecs,
+        rotationMaxSecs: server.rotationMaxSecs,
+        cattailEnabled: server.cattailEnabled,
+        cattailPorts: server.cattailPorts,
+        cattailKey: server.cattailKey,
+        cattailPattern: server.cattailPattern,
         xhttpEncryptionEnabled: server.xhttpEncryptionEnabled,
         blockQuic: server.blockQuic,
         ruExit: server.ruExit,
@@ -418,6 +511,15 @@ class ServerDataSourceImpl implements ServerDataSource {
       // ignore: avoid_redundant_argument_values
       clientRandom: '',
       customSni: server.customSni ?? '',
+      sniPool: server.sniPool,
+      rotationAddresses: server.rotationAddresses,
+      rotationEnabled: server.rotationEnabled,
+      rotationMinSecs: server.rotationMinSecs,
+      rotationMaxSecs: server.rotationMaxSecs,
+      cattailEnabled: server.cattailEnabled,
+      cattailPorts: server.cattailPorts,
+      cattailKey: server.cattailKey,
+      cattailPattern: server.cattailPattern,
       username: server.username,
       password: server.password,
       addresses: [

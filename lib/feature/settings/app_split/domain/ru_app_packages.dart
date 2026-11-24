@@ -94,6 +94,27 @@ const ruAppPackages = <String>{
   'ru.mts.mymts',
   'ru.megafon.mlk',
   'ru.beeline.services',
+  // 21.11.2026: the rest of the ntc.party 24031 list (RuStore apps of Russian developers) that neither the
+  // prefixes nor the community list cover.
+  // Banks (ntc.party 24031, RuStore list 21.11: not ru.*, not in the community list)
+  'logo.com.mbanking', 'psb.market.app',
+  // Antivirus and security
+  'com.kaspersky.kes', 'com.kaspersky.passwordmanager', 'com.kaspersky.petka', 'com.kaspersky.safekids',
+  'com.kaspersky.secure.connection', 'com.kaspersky.who_calls', 'com.kms.free', 'com.drweb',
+  'com.drweb.familysecure',
+  // TV, home internet and operators
+  'tv.okko.androidtv', 'com.gsgroup.secondscreen', 'com.gsgroup.smarthome', 'com.gsgroup.tricoloronline',
+  'tv.tricolor.video', 'com.ertelecom.agent', 'com.ertelecom.domrutv', 'com.ertelecom.domrutvstb',
+  'com.ertelecom.smarthome', 'com.ertelecom.vats', 'com.b2bdomru.domrubusiness', 'com.dartit.RTcabinet',
+  'tele2.vats',
+  // Shops, delivery and services
+  'com.x5.courierapp', 'com.x5.pickerapp.ff', 'com.dnsriteil.delivery', 'com.dnsriteil.dns_authenticator',
+  'com.mvideo.mvseller', 'com.flowwow', 'com.chaevieprosto.app', 'sodruzhestvo.android.app', 'apps.yclients1',
+  'app.subscab.android', 'com.reserveonline.tablet.sr.suffix', 'com.routeq.app',
+  'com.info.smartphone.a1cmobilecomponent', 'com.ncloudtech.cloudoffice.b2b', 'org.ts.mapp',
+  // Home, school and kids
+  'home.pragma.com', 'home.tuvio.com', 'jamhome.ru.lktsj', 'com.journal_tj', 'com.uchebnik_tj',
+  'com.zebrainy.skazbuka', 'com.zebrains.trkid', 'com.dexp01.reoka01.com', 'com.BOGG.ART.VKT',
 };
 
 /// Not Russian, but no reason to go through the VPN either: Uzbekistan's

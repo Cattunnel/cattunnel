@@ -9,6 +9,8 @@ import 'package:trusttunnel/data/model/server.dart';
 import 'package:trusttunnel/data/model/server_sort_option.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 import 'package:trusttunnel/feature/server/servers/domain/server_sorting.dart';
+import 'package:trusttunnel/feature/server/servers/widget/favorite_star_button.dart';
+import 'package:trusttunnel/feature/server/servers/widget/ping_label.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/server_latency_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope.dart';
 import 'package:trusttunnel/feature/server/servers/widget/scope/servers_scope_aspect.dart';
@@ -160,11 +162,6 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                 icon: CustomIcon.medium(icon: AssetIcons.sort, color: colors.accent),
                 onPressed: _onSort,
               ),
-              IconButton(
-                tooltip: context.ln.cozyTestAll,
-                icon: Icon(Icons.speed_rounded, size: 24, color: colors.accent),
-                onPressed: () => ServerLatencyScope.of(context, listen: false).testAll(allServers),
-              ),
               if (panel)
                 IconButton(
                   tooltip: context.ln.addServers,
@@ -239,6 +236,7 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   _Latency(server: server),
+                                  FavoriteStarButton(server: server),
                                   IconButton(
                                     tooltip: server.serverData.name,
                                     icon: Icon(Icons.more_horiz_rounded, color: colors.neutralDark),
@@ -246,7 +244,13 @@ class _CozyServerPickerState extends State<CozyServerPicker> {
                                   ),
                                 ],
                               )
-                            : _Latency(server: server),
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _Latency(server: server),
+                                  FavoriteStarButton(server: server),
+                                ],
+                              ),
                       ),
                     ),
                   ),
@@ -293,19 +297,19 @@ class _Latency extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scope = ServerLatencyScope.of(context);
-    if (scope.isTesting(server.id)) {
-      return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
-    }
-    final result = scope.resultFor(server.id);
-    if (result == null) return const SizedBox.shrink();
-    final ms = result.latency?.inMilliseconds;
+    final result = ServerLatencyScope.of(context).resultFor(server.id);
+    final ms = result?.latency?.inMilliseconds;
+    if (result == null || ms == null) return const SizedBox.shrink();
+    final color = context.isY2k ? Y2kColors.glow : context.colors.neutralDark;
+    final style = context.textTheme.bodySmall?.copyWith(color: color);
 
-    return Text(
-      ms != null ? context.ln.cozyPing(ms) : context.ln.serverUnreachable,
-      style: context.textTheme.bodySmall?.copyWith(
-        color: ms != null ? (context.isY2k ? Y2kColors.glow : context.colors.neutralDark) : context.colors.orange1,
-      ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(context.ln.cozyPing(ms), style: style),
+        Text(pingAgeLabel(context, result.testedAt), style: style),
+      ],
     );
   }
 }

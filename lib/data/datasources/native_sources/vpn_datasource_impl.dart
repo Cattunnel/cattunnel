@@ -124,6 +124,9 @@ class VpnDataSourceImpl implements VpnDataSource {
   @override
   Stream<NetDiagnostic> get netDiagnostics => _platformApi.netDiagnostics;
 
+  @override
+  Stream<int> get tunnelPings => _platformApi.tunnelPings;
+
   /// {@macro vpn_data_source_start}
   ///
   /// This implementation:
@@ -167,6 +170,15 @@ class VpnDataSourceImpl implements VpnDataSource {
       xhttpEnabled: server.xhttpEnabled,
       xhttpPath: server.xhttpPath,
       xhttpServerKey: server.engineXhttpServerKey,
+      sniPool: server.sniPool,
+      rotationAddresses: server.rotationAddresses,
+      rotationEnabled: server.rotationEnabled,
+      rotationMinSecs: server.rotationMinSecs,
+      rotationMaxSecs: server.rotationMaxSecs,
+      cattailEnabled: server.cattailEnabled,
+      cattailPorts: server.cattailPorts,
+      cattailKey: server.cattailKey,
+      cattailPattern: server.cattailPattern,
       blockQuic: server.blockQuic,
       certificate: certificate,
       // Ignore legacy fixed prefixes stored before 1.5.9.
@@ -273,6 +285,15 @@ class VpnDataSourceImpl implements VpnDataSource {
       xhttpEnabled: server.xhttpEnabled,
       xhttpPath: server.xhttpPath,
       xhttpServerKey: server.engineXhttpServerKey,
+      sniPool: server.sniPool,
+      rotationAddresses: server.rotationAddresses,
+      rotationEnabled: server.rotationEnabled,
+      rotationMinSecs: server.rotationMinSecs,
+      rotationMaxSecs: server.rotationMaxSecs,
+      cattailEnabled: server.cattailEnabled,
+      cattailPorts: server.cattailPorts,
+      cattailKey: server.cattailKey,
+      cattailPattern: server.cattailPattern,
       blockQuic: server.blockQuic,
       username: server.username,
       password: server.password,

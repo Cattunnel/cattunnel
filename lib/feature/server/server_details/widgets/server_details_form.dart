@@ -27,8 +27,10 @@ import 'package:trusttunnel/widgets/buttons/custom_icon_button.dart';
 import 'package:trusttunnel/widgets/inputs/custom_text_field.dart';
 import 'package:trusttunnel/widgets/menu/custom_dropdown_menu.dart';
 import 'package:trusttunnel/widgets/y2k/marsik_image.dart';
+import 'package:vpn_plugin/domain/cattail_settings.dart';
 import 'package:vpn_plugin/domain/configuration_codec.dart';
 import 'package:vpn_plugin/domain/desync_string.dart';
+import 'package:vpn_plugin/domain/rotation_addresses.dart';
 import 'package:vpn_plugin/models/endpoint.dart';
 
 /// The groups of the server form. [bypass] is what people change; the rest
@@ -36,6 +38,8 @@ import 'package:vpn_plugin/models/endpoint.dart';
 /// [travel] holds the Russian-exit switch - rarely needed, and its text only
 /// makes sense for a server in Russia, so it stays out of [bypass].
 enum _Section { bypass, routing, key, expert, travel }
+
+enum _ServerTab { settings, rotation }
 
 class ServerDetailsForm extends StatefulWidget {
   const ServerDetailsForm({super.key});
@@ -51,6 +55,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
   late RoutingProfile _pickedRoutingProfile;
   late final ValueNotifier<bool> _isPasswordVisibleNotifier;
   late final Set<_Section> _expanded;
+  _ServerTab _tab = _ServerTab.settings;
 
   /// What "auto" fingerprint means on this device, shown under the menu.
   TlsProfileChoice? _autoTls;
@@ -82,6 +87,7 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     PresentationFieldName.clientRandomMask: _Section.expert,
     PresentationFieldName.clientRandomValue: _Section.expert,
     PresentationFieldName.tlsAuthKey: _Section.expert,
+    PresentationFieldName.cattail: _Section.expert,
   };
 
   @override
@@ -119,6 +125,13 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
       _fieldErrors = fieldErrors;
       // A failed save opens the groups it complains about.
       _expanded.addAll(_sectionsWithErrors());
+      if (fieldErrors.any(
+        (error) =>
+            error.fieldName == PresentationFieldName.rotationAddresses ||
+            error.fieldName == PresentationFieldName.rotationTerm,
+      )) {
+        _tab = _ServerTab.rotation;
+      }
     }
 
     _formData = dataSpecific.data;
@@ -166,64 +179,75 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
                 Expanded(child: Text(context.ln.subscriptionDifferent)),
               ],
             ),
-          const SizedBox(height: 4),
-          _section(
-            _Section.bypass,
-            title: context.ln.serverSectionBypass,
-            hasError: errorSections.contains(_Section.bypass),
-            help: [
-              (title: context.ln.helpAntiDpiTitle, body: context.ln.helpAntiDpiBody),
-              (title: context.ln.helpAntiDpiModesTitle, body: context.ln.helpAntiDpiModesBody),
-              (title: context.ln.helpAntiDpiCustomTitle, body: context.ln.helpAntiDpiCustomBody),
-              (title: context.ln.helpTlsProfileTitle, body: context.ln.helpTlsProfileBody),
+          SegmentedButton<_ServerTab>(
+            segments: [
+              ButtonSegment(value: _ServerTab.settings, label: Text(context.ln.serverTabSettings)),
+              ButtonSegment(value: _ServerTab.rotation, label: Text(context.ln.serverTabRotation)),
             ],
-            children: _bypassFields(context),
+            selected: {_tab},
+            onSelectionChanged: (selected) => setState(() => _tab = selected.single),
           ),
-          _section(
-            _Section.routing,
-            title: context.ln.serverSectionRouting,
-            summary: _pickedRoutingProfile.data.name,
-            hasError: errorSections.contains(_Section.routing),
-            help: [
-              (title: context.ln.helpRoutingTitle, body: context.ln.helpRoutingBody),
-              (title: context.ln.helpDnsTitle, body: context.ln.helpDnsBody),
-            ],
-            children: _routingFields(context),
-          ),
-          _section(
-            _Section.key,
-            title: context.ln.serverSectionKey,
-            summary: _formData.username.isEmpty ? null : _formData.username,
-            hasError: errorSections.contains(_Section.key),
-            help: [(title: context.ln.helpKeyTitle, body: context.ln.helpKeyBody)],
-            children: _keyFields(context),
-          ),
-          _section(
-            _Section.expert,
-            title: context.ln.serverSectionExpert,
-            summary: _formData.vpnProtocol.localized(context),
-            hasError: errorSections.contains(_Section.expert),
-            help: [(title: context.ln.helpExpertTitle, body: context.ln.helpExpertBody)],
-            children: _expertFields(context),
-          ),
-          _section(
-            _Section.travel,
-            title: context.ln.serverSectionTravel,
-            summary: _formData.ruExit ? context.ln.serverSectionTravelOn : null,
-            help: [(title: context.ln.helpRuExitTitle, body: context.ln.ruExitDescription)],
-            children: [
-              SwitchListTile(
-                value: _formData.ruExit,
-                title: Text(context.ln.ruExitLabel),
-                subtitle: Text(context.ln.ruExitDescription),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-                onChanged: (value) => _onDataChanged(
-                  context,
-                  ruExit: value,
+          if (_tab == _ServerTab.settings) ...[
+            const SizedBox(height: 4),
+            _section(
+              _Section.bypass,
+              title: context.ln.serverSectionBypass,
+              hasError: errorSections.contains(_Section.bypass),
+              help: [
+                (title: context.ln.helpAntiDpiTitle, body: context.ln.helpAntiDpiBody),
+                (title: context.ln.helpAntiDpiModesTitle, body: context.ln.helpAntiDpiModesBody),
+                (title: context.ln.helpAntiDpiCustomTitle, body: context.ln.helpAntiDpiCustomBody),
+                (title: context.ln.helpTlsProfileTitle, body: context.ln.helpTlsProfileBody),
+              ],
+              children: _bypassFields(context),
+            ),
+            _section(
+              _Section.routing,
+              title: context.ln.serverSectionRouting,
+              summary: _pickedRoutingProfile.data.name,
+              hasError: errorSections.contains(_Section.routing),
+              help: [
+                (title: context.ln.helpRoutingTitle, body: context.ln.helpRoutingBody),
+                (title: context.ln.helpDnsTitle, body: context.ln.helpDnsBody),
+              ],
+              children: _routingFields(context),
+            ),
+            _section(
+              _Section.key,
+              title: context.ln.serverSectionKey,
+              summary: _formData.username.isEmpty ? null : _formData.username,
+              hasError: errorSections.contains(_Section.key),
+              help: [(title: context.ln.helpKeyTitle, body: context.ln.helpKeyBody)],
+              children: _keyFields(context),
+            ),
+            _section(
+              _Section.expert,
+              title: context.ln.serverSectionExpert,
+              summary: _formData.vpnProtocol.localized(context),
+              hasError: errorSections.contains(_Section.expert),
+              help: [(title: context.ln.helpExpertTitle, body: context.ln.helpExpertBody)],
+              children: _expertFields(context),
+            ),
+            _section(
+              _Section.travel,
+              title: context.ln.serverSectionTravel,
+              summary: _formData.ruExit ? context.ln.serverSectionTravelOn : null,
+              help: [(title: context.ln.helpRuExitTitle, body: context.ln.ruExitDescription)],
+              children: [
+                SwitchListTile(
+                  value: _formData.ruExit,
+                  title: Text(context.ln.ruExitLabel),
+                  subtitle: Text(context.ln.ruExitDescription),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  onChanged: (value) => _onDataChanged(
+                    context,
+                    ruExit: value,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ] else
+            ..._rotationFields(context),
         ],
       ),
     );
@@ -238,6 +262,175 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
 
     return parts.isEmpty ? null : parts.join(' · ');
   }
+
+  Future<bool?> _rotationOverride(BuildContext context) async {
+    if (!SubscriptionChallenge.needsChallenge(_formData)) return false;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (_) => const SubscriptionOverrideDialog(),
+    );
+    if (accepted != true || !context.mounted) return null;
+    return true;
+  }
+
+  List<Widget> _rotationFields(BuildContext context) {
+    final entries = _formData.rotationAddresses;
+    final port = RotationAddresses.portOf(_formData.ipAddress);
+
+    Future<void> change({List<String>? addresses, bool? enabled, int? min, int? max}) async {
+      final override = await _rotationOverride(context);
+      if (override == null || !context.mounted) return;
+      _onDataChanged(
+        context,
+        rotationAddresses: addresses,
+        rotationEnabled: enabled,
+        rotationMinSecs: min,
+        rotationMaxSecs: max,
+        subscriptionOverride: override ? true : null,
+      );
+    }
+
+    // An entry is "host:port sni1 sni2": the address and its own names.
+    String addressOf(String entry) => entry.trim().split(RegExp(r'\s+')).first;
+    String namesOf(String entry) => entry.trim().split(RegExp(r'\s+')).skip(1).join(' ');
+    List<String> replaced(int index, String address, String names) =>
+        [...entries]..[index] = [address.trim(), names.trim()].where((part) => part.isNotEmpty).join(' ');
+
+    return [
+      SwitchListTile(
+        value: _formData.rotationEnabled,
+        title: Text(context.ln.rotationSwitch),
+        subtitle: Text(context.ln.rotationHint),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+        onChanged: (enabled) => change(enabled: enabled),
+      ),
+      if (entries.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(context.ln.rotationEmpty),
+        ),
+      for (var index = 0; index < entries.length; index++)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  CustomTextField(
+                    key: ValueKey('rotation-address-$index'),
+                    value: addressOf(entries[index]),
+                    label: '${context.ln.rotationAddressLabel} ${index + 1}',
+                    hint: context.ln.rotationAddressHint,
+                    error:
+                        _formData.rotationEnabled &&
+                            RotationAddresses.normalize(addressOf(entries[index]), port) == null
+                        ? context.ln.rotationAddressError
+                        : null,
+                    onChanged: (value) => change(addresses: replaced(index, value, namesOf(entries[index]))),
+                  ),
+                  CustomTextField(
+                    key: ValueKey('rotation-sni-$index'),
+                    value: namesOf(entries[index]),
+                    label: context.ln.rotationSniLabel,
+                    hint: context.ln.rotationSniHint,
+                    error:
+                        _formData.rotationEnabled &&
+                            RotationAddresses.parseEntry(entries[index], port) == null &&
+                            RotationAddresses.normalize(addressOf(entries[index]), port) != null
+                        ? context.ln.rotationSniError
+                        : null,
+                    onChanged: (value) => change(addresses: replaced(index, addressOf(entries[index]), value)),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: context.ln.rotationRemoveAddress,
+              onPressed: () => change(addresses: [...entries]..removeAt(index)),
+              icon: const Icon(Icons.remove_circle_outline),
+            ),
+          ],
+        ),
+      if (_error(PresentationFieldName.rotationAddresses) case final error?)
+        Text(error, style: context.textTheme.bodySmall?.copyWith(color: context.colors.error)),
+      TextButton.icon(
+        onPressed: entries.length >= RotationAddresses.maxCount ? null : () => change(addresses: [...entries, '']),
+        icon: const Icon(Icons.add),
+        label: Text(context.ln.rotationAddAddress),
+      ),
+      if (entries.length >= RotationAddresses.maxCount)
+        Text(context.ln.rotationMaxAddresses, style: context.textTheme.bodySmall),
+      const SizedBox(height: 8),
+      Text(context.ln.rotationTermTitle, style: context.textTheme.titleSmall),
+      Text(context.ln.rotationTermHint, style: context.textTheme.bodySmall),
+      _numberField(
+        context,
+        key: 'rotationMin',
+        label: context.ln.rotationMinLabel,
+        value: _formData.rotationMinSecs,
+        min: 0,
+        max: RotationAddresses.maxSecs,
+        onChanged: (value) => change(min: value),
+      ),
+      _numberField(
+        context,
+        key: 'rotationMax',
+        label: context.ln.rotationMaxLabel,
+        value: _formData.rotationMaxSecs,
+        min: 0,
+        max: RotationAddresses.maxSecs,
+        onChanged: (value) => change(max: value),
+      ),
+      if (_error(PresentationFieldName.rotationTerm) case final error?)
+        Text(error, style: context.textTheme.bodySmall?.copyWith(color: context.colors.error)),
+    ];
+  }
+
+  /// CatTail, right under NineLives and switched the same way: the
+  /// subscription gives the default, a change by hand stays with "above the
+  /// subscription" like every other expert field.
+  Widget _disguiseMenu(BuildContext context) => CustomDropdownMenu<bool>.expanded(
+    value: _formData.cattailEnabled,
+    values: const [false, true],
+    toText: (cattail) => cattail ? context.ln.disguiseCattail : context.ln.disguiseQuiet,
+    labelText: context.ln.serverDisguiseLabel,
+    errorText: _error(PresentationFieldName.cattail),
+    onChanged: (cattail) => _onDataChanged(context, cattailEnabled: cattail ?? false),
+  );
+
+  List<Widget> _cattailFields(BuildContext context) => [
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        _formData.xhttpEnabled ? context.ln.disguiseCattailNoNineLives : context.ln.disguiseCattailHint,
+        style: context.textTheme.bodySmall,
+      ),
+    ),
+    CustomTextField(
+      value: _formData.cattailPorts,
+      label: context.ln.cattailPortsLabel,
+      hint: context.ln.cattailPortsHint,
+      error: CattailSettings.normalizePorts(_formData.cattailPorts) == null ? context.ln.cattailPortsError : null,
+      onChanged: (value) => _onDataChanged(context, cattailPorts: value.trim()),
+    ),
+    CustomTextField(
+      value: _formData.cattailKey,
+      label: context.ln.cattailKeyLabel,
+      hint: context.ln.cattailKeyHint,
+      error: CattailSettings.isValidKey(_formData.cattailKey.trim()) ? null : context.ln.cattailKeyError,
+      onChanged: (value) => _onDataChanged(context, cattailKey: value.trim()),
+    ),
+    CustomTextField(
+      value: _formData.cattailPattern,
+      label: context.ln.cattailPatternLabel,
+      hint: context.ln.cattailPatternHint,
+      maxLines: 4,
+      minLines: 1,
+      error: CattailSettings.normalizePattern(_formData.cattailPattern) == null ? context.ln.cattailPatternError : null,
+      onChanged: (value) => _onDataChanged(context, cattailPattern: value),
+    ),
+  ];
 
   Widget _section(
     _Section section, {
@@ -372,7 +565,12 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CustomDropdownMenu<String>.expanded(
-            value: _tlsProfiles.contains(_formData.tlsProfile) ? _formData.tlsProfile : ServerData.tlsProfileAuto,
+            // 1.5.9.1: chrome_canary sends the same ClientHello as chrome (engine), so it is shown and saved as chrome.
+            value: _formData.tlsProfile == 'chrome_canary'
+                ? 'chrome'
+                : _tlsProfiles.contains(_formData.tlsProfile)
+                ? _formData.tlsProfile
+                : ServerData.tlsProfileAuto,
             values: _tlsProfiles,
             toText: (profile) => _tlsProfileText(context, profile),
             labelText: context.ln.tlsProfileLabel,
@@ -656,6 +854,8 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
       ..._xhttpFields(context),
       _nineLivesEncryptionSwitch(context),
     ],
+    _disguiseMenu(context),
+    if (_formData.cattailEnabled) ..._cattailFields(context),
     SwitchListTile(
       value: _formData.blockQuic,
       title: Text(context.ln.blockQuicLabel),
@@ -906,26 +1106,22 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
   static final _tlsProfiles = [
     ServerData.tlsProfileAuto,
     'chrome',
-    'chrome_canary',
     'firefox',
     if (Platform.isAndroid) 'okhttp',
-    'safari',
   ];
 
   String _profileName(String profile) => switch (profile) {
-    'chrome' => 'Chrome 150',
-    'chrome_canary' => 'Chrome 156',
-    'firefox' => 'Firefox',
-    'safari' => 'Safari',
+    'chrome' => 'Chrome 157',
+    'chrome_canary' => 'Chrome 157',
+    'firefox' => 'Firefox 160',
     'okhttp' => 'Android',
     _ => profile,
   };
 
   String _tlsProfileText(BuildContext context, String profile) => switch (profile) {
     'chrome' => context.ln.tlsProfileChrome,
-    'chrome_canary' => context.ln.tlsProfileChrome156,
+    'chrome_canary' => context.ln.tlsProfileChrome,
     'firefox' => context.ln.tlsProfileFirefox,
-    'safari' => context.ln.tlsProfileSafari,
     'okhttp' => context.ln.tlsProfileOkhttp,
     _ => context.ln.tlsProfileAuto,
   };
@@ -965,6 +1161,14 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
     int? keepaliveIntervalSecs,
     String? keepaliveSignal,
     int? sessionLifetimeSecs,
+    List<String>? rotationAddresses,
+    bool? rotationEnabled,
+    int? rotationMinSecs,
+    int? rotationMaxSecs,
+    bool? cattailEnabled,
+    String? cattailPorts,
+    String? cattailKey,
+    String? cattailPattern,
     bool? xhttpEnabled,
     String? xhttpPath,
     bool? xhttpEncryptionEnabled,
@@ -1003,6 +1207,14 @@ class _ServerDetailsFormState extends State<ServerDetailsForm> {
         keepaliveIntervalSecs: keepaliveIntervalSecs,
         keepaliveSignal: keepaliveSignal,
         sessionLifetimeSecs: sessionLifetimeSecs,
+        rotationAddresses: rotationAddresses,
+        rotationEnabled: rotationEnabled,
+        rotationMinSecs: rotationMinSecs,
+        rotationMaxSecs: rotationMaxSecs,
+        cattailEnabled: cattailEnabled,
+        cattailPorts: cattailPorts,
+        cattailKey: cattailKey,
+        cattailPattern: cattailPattern,
         xhttpEnabled: xhttpEnabled,
         xhttpPath: xhttpPath,
         xhttpEncryptionEnabled: xhttpEncryptionEnabled,

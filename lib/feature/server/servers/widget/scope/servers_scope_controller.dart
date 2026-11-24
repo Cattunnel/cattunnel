@@ -9,4 +9,5 @@ abstract class ServersScopeController {
 
   abstract final void Function() fetchServers;
   abstract final void Function(String? serverId) pickServer;
+  abstract final void Function(String serverId) toggleFavorite;
 }

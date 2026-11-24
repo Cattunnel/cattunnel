@@ -16,6 +16,13 @@ void main() {
     );
   });
 
+  test('PSB and other non-ru.* Russian apps from ntc.party 24031 are known without the community list', () {
+    expect(
+      suggestRuApps(['logo.com.mbanking', 'psb.market.app', 'com.kaspersky.kes', 'tv.okko.androidtv', 'com.foreign']),
+      {'logo.com.mbanking', 'psb.market.app', 'com.kaspersky.kes', 'tv.okko.androidtv'},
+    );
+  });
+
   test('prefixes and downloaded lists', () {
     expect(
       suggestRuApps(['su.game', 'com.yandex.disk', 'com.vk.im', 'com.x.bank', 'com.foreign'], downloaded: {'com.x.bank'}),

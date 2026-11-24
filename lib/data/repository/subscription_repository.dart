@@ -1,5 +1,6 @@
 import 'package:trusttunnel/data/datasources/subscription_datasource.dart';
 import 'package:trusttunnel/data/domain/subscription_sync_service.dart';
+import 'package:trusttunnel/data/model/server_group_settings.dart';
 import 'package:trusttunnel/data/model/subscription_data.dart';
 
 abstract class SubscriptionRepository {
@@ -15,6 +16,12 @@ abstract class SubscriptionRepository {
   /// database. Throws on a network/parse failure - the caller decides how to
   /// surface that.
   Future<void> refresh({required SubscriptionData subscription});
+
+  Future<Map<String, ServerGroupSettings>> getGroupSettings();
+
+  Future<void> setGroupLabel({required String key, required String label});
+
+  Future<void> setGroupOrder({required List<String> keys});
 }
 
 class SubscriptionRepositoryImpl implements SubscriptionRepository {
@@ -43,4 +50,14 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
 
   @override
   Future<void> refresh({required SubscriptionData subscription}) => _syncService.refresh(subscription);
+
+  @override
+  Future<Map<String, ServerGroupSettings>> getGroupSettings() => _dataSource.getGroupSettings();
+
+  @override
+  Future<void> setGroupLabel({required String key, required String label}) =>
+      _dataSource.setGroupLabel(key: key, label: label);
+
+  @override
+  Future<void> setGroupOrder({required List<String> keys}) => _dataSource.setGroupOrder(keys: keys);
 }

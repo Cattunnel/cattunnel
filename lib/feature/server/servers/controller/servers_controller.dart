@@ -71,6 +71,28 @@ final class ServersController extends BaseStateController<ServersState> with Seq
     );
   }
 
+  /// Flips the favorite mark of [serverId] and updates the list in place.
+  void toggleFavorite(String serverId) {
+    handle(
+      () async {
+        final operatingServers = state.servers;
+        final current = operatingServers.where((e) => e.id == serverId).firstOrNull;
+        if (current == null) return;
+
+        final favorite = !current.favorite;
+        await _repository.setFavorite(serverId: serverId, favorite: favorite);
+
+        setState(
+          ServersState.idle(
+            servers: operatingServers.map((e) => e.id == serverId ? e.copyWith(favorite: favorite) : e).toList(),
+          ),
+        );
+      },
+      errorHandler: _onError,
+      completionHandler: _onCompleted,
+    );
+  }
+
   PresentationException _parseException(
     Object? exception,
   ) => ExceptionUtils.toPresentationException(

@@ -20,11 +20,21 @@ import 'package:vpn_plugin/models/net_diagnostic.dart';
 
 class _FakeVpnRepository implements VpnRepository {
   @override
-  Future<void> start({required Server server, required RoutingProfile routingProfile, required List<String> excludedRoutes, required VpnConfigurationLogLevel logLevel}) async {}
+  Future<void> start({
+    required Server server,
+    required RoutingProfile routingProfile,
+    required List<String> excludedRoutes,
+    required VpnConfigurationLogLevel logLevel,
+  }) async {}
   @override
   Future<Stream<VpnState>> listenToStates() async => const Stream<VpnState>.empty();
   @override
-  Future<void> updateConfiguration({required Server server, required RoutingProfile routingProfile, required List<String> excludedRoutes, required VpnConfigurationLogLevel logLevel}) async {}
+  Future<void> updateConfiguration({
+    required Server server,
+    required RoutingProfile routingProfile,
+    required List<String> excludedRoutes,
+    required VpnConfigurationLogLevel logLevel,
+  }) async {}
   @override
   Future<void> deleteConfiguration() async {}
   @override
@@ -33,6 +43,8 @@ class _FakeVpnRepository implements VpnRepository {
   Stream<ConnectFailure> get connectFailures => const Stream<ConnectFailure>.empty();
   @override
   Stream<NetDiagnostic> get netDiagnostics => const Stream<NetDiagnostic>.empty();
+  @override
+  Stream<int> get tunnelPings => const Stream<int>.empty();
   @override
   Future<VpnState> requestState() async => VpnState.disconnected;
   @override

@@ -322,7 +322,6 @@ class _CozyServersViewState extends State<CozyServersView> with WidgetsBindingOb
                 ? context.ln.subscriptionDifferent
                 : current.serverData.ipAddress,
             pingMs: latency?.latency?.inMilliseconds,
-            unreachable: latency != null && !latency.reachable,
             session: since == null ? null : DateTime.now().difference(since),
             onPlay: () {
               if (state == VpnState.disconnected) {
@@ -532,7 +531,6 @@ class _StatusBlock extends StatelessWidget {
       if (state == VpnState.connected && connectedSince != null)
         context.ln.cozySessionTime(_formatDuration(DateTime.now().difference(connectedSince!))),
       if (latency?.latency != null) context.ln.cozyPing(latency!.latency!.inMilliseconds),
-      if (latency != null && !latency.reachable && state != VpnState.connected) context.ln.serverUnreachable,
     ];
 
     final titleColor = state == VpnState.connected ? colors.accent : colors.neutralBlack;

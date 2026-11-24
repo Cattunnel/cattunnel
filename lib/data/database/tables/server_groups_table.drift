@@ -1,0 +1,8 @@
+-- Local look of a servers-screen group: the user's own display label and
+-- the place among groups. Key 'm' is the manual keys group, 's:<id>' a
+-- subscription. Matching of servers to subscriptions never reads this table.
+CREATE TABLE IF NOT EXISTS server_groups(
+  group_key TEXT PRIMARY KEY NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  position INTEGER NULL
+);

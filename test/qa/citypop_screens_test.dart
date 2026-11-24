@@ -196,7 +196,7 @@ Widget _serverSheet() => Builder(
                 Row(
                   children: [
                     Expanded(child: Text(ln.cozyChooseServer, style: Theme.of(context).textTheme.titleLarge)),
-                    TextButton(onPressed: () {}, child: Text(ln.cozyTestAll)),
+                    TextButton(onPressed: () {}, child: Text(ln.sortByTitle)),
                   ],
                 ),
                 for (final (n, ip, ms) in [
