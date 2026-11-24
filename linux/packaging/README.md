@@ -1,41 +1,39 @@
-# CatTunnel для Linux (Arch) - установка и что внутри
+# CatTunnel для Linux: пакеты Arch и Debian
 
-Для второго администратора. Коротко: приложение работает от обычного пользователя; от root работают только
-небольшой помощник `cattunnel-helper` (собирается из исходников прямо в PKGBUILD) и `trusttunnel_client` - официальное ядро TrustTunnelClient с нашим патчем анти-DPI (`tools/engine_native/0001-anti-dpi-desync.patch`,
-сборка `tools/engine_native/build_linux.sh`; хеш закреплён в PKGBUILD).
+English: [README.en.md](README.en.md)
+
+Документ для администратора, который ставит, проверяет или собирает пакет. Приложение работает от обычного пользователя. От root работают только небольшой помощник `cattunnel-helper` (его протокол описан в [HELPER.md](../../plugins/vpn_plugin/linux/HELPER.md)) и консольный клиент `trusttunnel_client`: ядро [TrustTunnelClient](https://github.com/TrustTunnel/TrustTunnelClient) версии из файла `ENGINE_VERSION` (сейчас 1.3.0-rc.1) с патчами CatTunnel, см. [tools/engine_native/README.md](../../tools/engine_native/README.md). Исходный код приложения: [Cattunnel/cattunnel](https://github.com/Cattunnel/cattunnel).
 
 ## 1. Проверить подпись
 
-В релизе: готовый пакет `cattunnel-linux.pkg.tar.zst` и то, из чего он собран - `PKGBUILD`,
-`cattunnel.install`, `cattunnel-app-<ver>-x86_64.tar.gz`, `cattunnel-helper-src-<ver>.tar.gz`;
-плюс `SHA256SUMS` и `SHA256SUMS.sig` на всё это.
+`build_release.sh` собирает в `build/arch/`: `PKGBUILD`, `cattunnel.install`, `cattunnel-app-<версия>-x86_64.tar.gz` (готовая сборка приложения), `cattunnel-helper-src-<версия>.tar.gz` (исходники помощника и файлы упаковки), `trusttunnel_client-v<ядро>-cattunnel-linux-x86_64.tar.gz` (наше ядро), а также `SHA256SUMS` и `SHA256SUMS.sig` на всё это. В готовые пакеты (`.pkg.tar.zst`, `.deb`) тот же ключ подписывает `SHA256SUMS`, когда они лежат в этой папке (`makepkg_in_docker.sh` добавляет в список пакет Arch и все `cattunnel_*_amd64.deb`).
 
 ```
-# публичный ключ (Ed25519) - тот же, что проверяет обновления Android/Windows:
-cat > cattunnel-release.pub.pem <<'EOF'
------BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAQdZxc2PNJDDKVsm06RVS26UU1dhUFLc9wjRw5zQvtFA=
------END PUBLIC KEY-----
-EOF
+# публичный ключ Ed25519 (файл linux/packaging/cattunnel-release.pub.pem), он же проверяет обновления Android и Windows:
 openssl pkeyutl -verify -pubin -inkey cattunnel-release.pub.pem -rawin -in SHA256SUMS \
     -sigfile <(base64 -d SHA256SUMS.sig)          # "Signature Verified Successfully"
 sha256sum -c SHA256SUMS                            # все OK
 ```
 
-Отпечаток ключа (sha256 от DER): `cec7226bb8218de67f02cf5992e3da7f54c3251d0ceade7e55c42cc7853a2f49`.
-Сверь его с владельцем по другому каналу, не по тому, по которому пришёл архив.
+Отпечаток ключа (sha256 от DER): `d1c58a11338b4840ce26ff3a27796cfd600f768e4bd5092b92b948c32b38adbf`. Получить его из файла: `openssl pkey -pubin -in cattunnel-release.pub.pem -outform DER | sha256sum`. Сверьте отпечаток с автором релиза по другому каналу, не по тому, которым пришёл архив.
 
-`trusttunnel_client` makepkg проверит сам: его sha256 в `PKGBUILD` (тот же, что в `ENGINE_SHA256` репозитория).
+Хеш ядра записан в `PKGBUILD` (строка `sha256sums`): это хеш нашего архива `trusttunnel_client-v<ядро>-cattunnel-linux-x86_64.tar.gz`, а не официального архива TrustTunnel. Хеши официальных архивов лежат в файле `ENGINE_SHA256` в корне репозитория, пакет Linux по ним не собирается. `makepkg` проверяет хеш сам.
 
 ## 2. Установить
 
-Либо готовый пакет (собран тем же PKGBUILD в чистом контейнере Arch):
+Файлы релиза называются так (список в [корневом README](../../README.md)): `cattunnel-linux.pkg.tar.zst` для Arch и `cattunnel-linux.deb` для Debian и Ubuntu.
+
+Arch, готовый пакет:
 ```
 sudo pacman -U cattunnel-linux.pkg.tar.zst
 ```
-либо собрать самому из того же, что можно прочитать:
+Arch, сборка из тех же исходников (собирает помощник через cmake, ninja и gcc, ставит пакет):
 ```
-makepkg -si                                # собирает помощник (cmake/ninja/gcc), ставит пакет
+makepkg -si
+```
+Debian 13 и Ubuntu 24.04 и новее, amd64:
+```
+sudo apt install ./cattunnel-linux.deb
 ```
 Дальше, в обоих случаях:
 ```
@@ -43,54 +41,65 @@ sudo usermod -aG cattunnel "$USER"          # доступ к сокету по�
 sudo systemctl enable --now cattunnel-helper
 ```
 
-Сервис и группу пакет сам не включает - это решение администратора.
+Сервис и группу пакет сам не включает: это решение администратора. При обновлении пакета помощник перезапускается сразу, если VPN не поднят; если поднят, пакет напоминает перезапустить его после отключения (`sudo systemctl restart cattunnel-helper`).
 
-## 3. Что от root и что он может
+Зависимости Arch: `gtk3`, `gstreamer`, `gst-plugins-base-libs`, `gst-plugins-good`, `zenity`, `xdg-utils`, `iproute2`, `systemd`; для сборки ещё `cmake`, `ninja`, `gcc`. Необязательные: `networkmanager` (DNS при выключенном systemd-resolved) и `systemd-resolved`. Зависимости Debian перечислены в `build_deb.sh` (поле `Depends`), рекомендуется `network-manager`.
+
+## 3. Что работает от root и что оно может
 
 | | |
 |---|---|
-| `/usr/lib/cattunnel/cattunnel-helper` | ~1000 строк C++17 + nlohmann/json, исходники в `cattunnel-helper-src-*.tar.gz` (`src/plugins/vpn_plugin/linux/helper/`, протокол - `HELPER.md`) |
-| `/usr/lib/cattunnel/trusttunnel_client` | CLI TrustTunnelClient (Apache-2.0) + патч анти-DPI `tools/engine_native/0001-anti-dpi-desync.patch` (он же в `cattunnel-helper-src-*.tar.gz`), собран `tools/engine_native/build_linux.sh` |
-| `cattunnel-helper.service` | `NoNewPrivileges`, `ProtectSystem=true`, `ProtectHome`, `PrivateTmp`, `DevicePolicy=closed` + только `/dev/net/tun`, урезанный `CapabilityBoundingSet`, `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK`; `systemd-analyze security`: 4.6 OK |
+| `/usr/lib/cattunnel/cattunnel-helper` | около 1150 строк C++17 в `.cpp`-файлах помощника; сторонние заголовки nlohmann/json и toml++. Исходники в `cattunnel-helper-src-*.tar.gz` (`src/plugins/vpn_plugin/linux/helper/`) |
+| `/usr/lib/cattunnel/trusttunnel_client` | консольный клиент TrustTunnel (Apache-2.0) с патчами CatTunnel; сборка описана в [tools/engine_native/README.md](../../tools/engine_native/README.md) |
+| `cattunnel-helper.service` | `NoNewPrivileges`, `ProtectSystem=true`, `ProtectHome`, `PrivateTmp`, `DevicePolicy=closed` и только `/dev/net/tun`, `CapabilityBoundingSet` из шести прав (`CAP_NET_ADMIN CAP_NET_RAW CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_KILL`), `RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK`, `MemoryDenyWriteExecute`, `TasksMax=64` |
 
-Помощник слушает `/run/cattunnel/helper.sock` (0660, группа `cattunnel`) и проверяет каждого клиента
-через `SO_PEERCRED` (член группы или root). Что клиент может попросить:
+Помощник слушает `/run/cattunnel/helper.sock` (0660, группа `cattunnel`) и проверяет каждого клиента через `SO_PEERCRED`: допускаются root и члены группы. Что клиент может попросить:
 
-- **start** - конфиг CLI в TOML. Помощник его разбирает и отказывает, если: ключ не из белого списка того,
-  что пишет приложение; в значении есть путь к файлу; SOCKS-слушатель не на loopback; размеры больше лимитов.
-  Принятый конфиг пишется в `/run/cattunnel/client.toml` (root, 0600), CLI запускается по абсолютному пути
-  с чистым окружением. Одновременно - один CLI.
-- **stop**, **state**, **logs** (последние записи CLI, без паролей на уровне info).
-- **probe** / **relay** - TCP-соединение с числовым адресом, привязанное к физическому интерфейсу
-  (`SO_BINDTODEVICE`): диагностика и замер задержки мимо туннеля.
+- **start**: конфиг клиента в TOML. Помощник отказывает, если ключ не из белого списка того, что пишет приложение, если в значении путь к файлу, если SOCKS-слушатель не на loopback или если размеры больше лимитов. Принятый конфиг пишется в `/run/cattunnel/client.toml` (root, 0600), клиент запускается по абсолютному пути с чистым окружением. Одновременно работает один клиент.
+- **stop**, **state**, **logs** (последние записи клиента, без паролей на уровне info).
+- **probe** и **relay**: TCP-соединение с числовым адресом, привязанное к физическому интерфейсу (`SO_BINDTODEVICE`). Нужно для диагностики и замера задержки мимо туннеля.
 
-Произвольных команд, путей и аргументов CLI помощник не принимает.
+Произвольных команд, путей и аргументов клиента помощник не принимает.
 
-## 4. DNS (у тебя NetworkManager без systemd-resolved)
+## 4. DNS
 
-CLI сам умеет DNS только через `resolvectl`; без resolved он молча пропускает этот шаг, и запросы шли бы
-мимо туннеля. Поэтому на время сеанса помощник:
+Клиент настраивает DNS только через `resolvectl`. Без systemd-resolved он пропускает этот шаг, и запросы шли бы мимо туннеля, поэтому на время сеанса помощник сам подменяет `/etc/resolv.conf` (при активном NetworkManager сначала ставит ему временный файл `dns=none`) и возвращает оригинал при отключении. Оригинал хранится в `/var/lib/cattunnel/resolv.conf.backup`; если помощник упал, при следующем старте он восстанавливает DNS и убирает правила маршрутизации, оставшиеся от клиента. Подробности и схема: [HELPER.md](../../plugins/vpn_plugin/linux/HELPER.md).
 
-1. сохраняет оригинальный `/etc/resolv.conf` в `/var/lib/cattunnel/resolv.conf.backup` (root, 0600, на диске - чтобы пережить падение и перезагрузку; существующий бэкап не перезаписывается);
-2. кладёт `/run/NetworkManager/conf.d/90-cattunnel-dns.conf` с `dns=none` и делает `nmcli general reload conf` - NM перестаёт переписывать `resolv.conf`;
-3. пишет `resolv.conf` с DNS туннеля (`46.243.231.30/31` - их перехватывает движок).
+## 5. Как собирается пакет
 
-При отключении - всё в обратном порядке, NM снова ведёт DNS (`reload conf,dns-rc`). Профили NM не
-меняются. Если помощник упал, при старте он возвращает DNS и убирает правила маршрутизации, оставшиеся
-от CLI. Проверено на Debian 13 с тем же набором (NM без resolved): `resolv.conf` возвращается
-байт в байт, в том числе после `kill -9` помощника.
+```text
+ Flutter-сборка (flutter build linux)         ядро trusttunnel_client (ENGINE_BIN, свой билд)
+        |                                        |  проверка: в бинарнике есть строка "Anti-DPI mode"
+        v                                        v
+ cattunnel-app-<версия>-x86_64.tar.gz     trusttunnel_client-v<ядро>-cattunnel-linux-x86_64.tar.gz
+        \                                       /
+         \    git archive HEAD (исходники помощника, файлы упаковки)
+          \            |          cattunnel-helper-src-<версия>.tar.gz
+           v           v
+        PKGBUILD из PKGBUILD.in (хеши вставлены), cattunnel.install
+                       |
+                       v
+        SHA256SUMS  --подпись Ed25519-->  SHA256SUMS.sig
+                       |
+        makepkg_in_docker.sh -> cattunnel-<версия>-1-x86_64.pkg.tar.zst
+        build_deb.sh         -> cattunnel_<версия>_amd64.deb
+```
 
-**namcap** (проверено в контейнере Arch): ругается на ELF в `/opt` - так ставятся готовые сборки
-приложений. Предупреждает, что у файлов Flutter-сборки и у `trusttunnel_client` нет полного
-RELRO, а у `trusttunnel_client` ещё и PIE - так их собирают Flutter и сборка ядра TrustTunnel. У `cattunnel-helper`
-(единственный наш бинарник от root) - PIE, full RELRO, stack protector, `_FORTIFY_SOURCE` из флагов Arch.
+Рисунок 1. Что делают скрипты в `linux/packaging/` и какие файлы получаются.
 
-## 5. Удаление
+- `build_release.sh <версия> <номер-сборки> [--skip-flutter-build]`: версия только из цифр и точек (она же `pkgver`). Скрипт отказывается работать, если упакованные пути не закоммичены: `git archive` берёт `HEAD`, и `PKGBUILD` называет коммит, из которого собран помощник. Путь к готовому ядру задаёт переменная `ENGINE_BIN`. Ключ подписи берётся из `UPDATE_SIGNING_KEY` (по умолчанию `android/keystore/update-signing.pem`); без него `SHA256SUMS` остаётся без подписи, скрипт печатает предупреждение.
+- `build_deb.sh` запускается после `build_release.sh`: берёт из `build/arch/` сборку приложения и архив ядра, помощника собирает заново из закоммиченных исходников и пакует `.deb` (`dpkg-deb`, нужен `fakeroot`).
+- `makepkg_in_docker.sh <ssh-хост>` собирает пакет Arch в контейнере `archlinux:latest` на хосте с Docker, сверяет, что сборка приложения в пакете побайтно совпадает с архивом, проверяет `pacman -U` и заново подписывает `SHA256SUMS`.
 
-`sudo pacman -R cattunnel` - сервис отключается перед удалением. Остаются группа `cattunnel` и
-`/var/log/cattunnel/` (лог CLI, root 0640).
+В пакет кладутся ещё `com.cattunnel.app.desktop` (обработчик ссылок `tt://`), правило `cattunnel.sysusers` для группы `cattunnel`, лицензии (`LICENSE`, `NOTICE`, лицензия клиента) и `HELPER.md` с этим файлом в `/usr/share/doc/cattunnel/`.
 
-## 6. Пока нет
+## 6. Удаление
 
-Kill switch, сплит по приложениям (нужна своя сборка ядра TrustTunnel), обновления внутри приложения.
-Трея на Linux нет. Импорт «Из файла (.toml)» берёт из файла только сервер ([endpoint]), остальное - из настроек приложения.
+`sudo pacman -R cattunnel` или удаление пакета Debian: перед удалением служба отключается (`pre_remove` в `cattunnel.install`, `prerm` в `.deb`). Скрипты не удаляют группу `cattunnel` и каталог `/var/log/cattunnel/` с журналом клиента.
+
+## 7. Чего на Linux нет
+
+- Обновления внутри приложения: приложение обновляет себя только на Android и Windows (проверка в `lib/feature/updates/domain/update_service.dart`). На Linux обновляется пакет.
+- Импорт «Из файла (.toml)» берёт из файла только сервер (`[endpoint]`), остальное идёт из настроек приложения.
+
+Раздельный туннель по программам и значок в трее на Linux есть, их описывает [корневой README](../../README.md).

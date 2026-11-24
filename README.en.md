@@ -16,7 +16,7 @@ CatTunnel is a VPN client for Android, Windows and Linux. It connects to servers
 <p>
   <a href="../../releases/latest"><b>Download</b></a> ·
   <a href="assets/readme/README.en.md">User guide</a> ·
-  <a href="docs/how-it-works.md">How it works</a> (in Russian)
+  <a href="docs/how-it-works.en.md">How it works</a>
 </p>
 
 ## CatTunnel repositories
@@ -37,7 +37,7 @@ The app is based on the open-source [TrustTunnel Flutter Client](https://github.
 
 - Servers can be added manually, by a `tt://` link, by QR code or from a subscription. A new link for the same account (same domain, login and key) updates the server, for example "port 8443 → 9443", and keeps the name and routing instead of creating a duplicate.
 - Kill switch, auto-connect, and an Android quick settings tile: it turns the VPN on without opening the app, including on Samsung, which resets the VPN permission after every stop.
-- **IP rotation** (1.5.9.5): one key works through several servers in turn and moves to the next one after a random time. A server that fails rests for a while, and the tunnel stays up. Details: [docs/rotation.md](docs/rotation.md) (in Russian).
+- **IP rotation** (1.5.9.5): one key works through several servers in turn and moves to the next one after a random time. A server that fails rests for a while, and the tunnel stays up. Details: [docs/rotation.en.md](docs/rotation.en.md).
 - Switching to another server of the same subscription if the selected one fails to connect for 2 minutes, and trying to switch back later. Can be turned off in settings.
 - Servers follow the subscription order, favorites are starred and stay on top; subscriptions and your own keys form groups that can be reordered and renamed. The ping next to a key comes from the connection itself.
 - A running VPN does not reconnect when the app is opened again; changing the server makes one connection, not two.
@@ -53,17 +53,17 @@ The app is based on the open-source [TrustTunnel Flutter Client](https://github.
 - Under a subscription you can see how the last poll went: through which address and how long it took, or how many addresses did not answer and why. The subscription token is not recorded.
 - Subscription exchange by QR code, import with a scanner or from an image ("From gallery"), one-time codes from the browser.
 
-Format, request headers and update rules: [docs/subscriptions.md](docs/subscriptions.md) (in Russian).
+Format, request headers and update rules: [docs/subscriptions.en.md](docs/subscriptions.en.md).
 
 ### DPI resistance
 
-- **Anti-DPI.** The own build of the TrustTunnelClient core sends the ClientHello using techniques from [ByeDPI](https://github.com/hufrea/byedpi): an "urgent" byte, a piece with TTL 1, a split inside the server name. Methods 1-3, a custom string in ByeDPI syntax and an "Auto" mode: first a normal connection, then the methods in turn; the method that worked for a server and network is remembered until the end of the day. Automatic bypass is off by default: for keys from subscriptions it is turned on until the end of the day, for personal keys it stays on; if the subscription sets bypass for its keys, the subscription decides. Details: [docs/anti-dpi.md](docs/anti-dpi.md) (in Russian).
+- **Anti-DPI.** The own build of the TrustTunnelClient core sends the ClientHello using techniques from [ByeDPI](https://github.com/hufrea/byedpi): an "urgent" byte, a piece with TTL 1, a split inside the server name. Methods 1-3, a custom string in ByeDPI syntax and an "Auto" mode: first a normal connection, then the methods in turn; the method that worked for a server and network is remembered until the end of the day. Automatic bypass is off by default: for keys from subscriptions it is turned on until the end of the day, for personal keys it stays on; if the subscription sets bypass for its keys, the subscription decides. Details: [docs/anti-dpi.en.md](docs/anti-dpi.en.md).
 - **"Networks" list** ("Settings → Networks"): networks where a normal connection is cut today and the app turns bypass on. A network is marked only if a bypass method worked afterwards. The same screen has "Check network": a check of your own subscription servers on button press.
 - **TLS fingerprint** for each server: by default the same as the device's browser, with a choice of Chrome 150, Chrome 156, Firefox, Safari and the Android app.
-- **Size masking (HTTP/2 padding).** The first frames of each stream get random bytes within a per-stream and per-session budget; the server needs no configuration. Details: [docs/padding.md](docs/padding.md) (in Russian).
+- **Size masking (HTTP/2 padding).** The first frames of each stream get random bytes within a per-stream and per-session budget; the server needs no configuration. Details: [docs/padding.en.md](docs/padding.en.md).
 - **Connection pool.** App connections go through 2-4 TLS connections to the server, and new ones are opened with a 2-6 s pause rather than all at once.
 - **Server name and profile from the subscription.** A subscription can give a key its own server name (SNI) and TLS profile and change them; the app takes the values from the last update.
-- **NineLives** ("For experts", needs the [CatTunnel server](https://github.com/Cattunnel/cattunnel-server) or another one that supports it): a pair of GET and POST requests instead of CONNECT, its own body encryption inside TLS using the server key, session resumption after a break for up to 60 seconds. Not compatible with XHTTP from Xray. Details: [docs/ninelives.md](docs/ninelives.md) (in Russian).
+- **NineLives** ("For experts", needs the [CatTunnel server](https://github.com/Cattunnel/cattunnel-server) or another one that supports it): a pair of GET and POST requests instead of CONNECT, its own body encryption inside TLS using the server key, session resumption after a break for up to 60 seconds. Not compatible with XHTTP from Xray. Details: [docs/ninelives.en.md](docs/ninelives.en.md).
 - **QUIC blocking** inside the tunnel: browsers fall back to TCP.
 - Clear failure reasons and gentle retries if a filter has temporarily "frozen" the server address.
 
@@ -118,7 +118,7 @@ Files are in the [releases](../../releases/latest).
 
 **Windows:** the installer is not signed with a developer certificate, so SmartScreen may show "Windows protected your PC": "More info" → "Run anyway". For the same reason some antivirus products with heuristics occasionally flag the installer (VirusTotal results are in the description of each release). The file's authenticity is checked with `SHA256SUMS` (see below). Updates then arrive from within the app.
 
-**Linux:** the app runs as an ordinary user; root rights are needed only by a small helper `cattunnel-helper` (systemd, access through the `cattunnel` group), see [plugins/vpn_plugin/linux/HELPER.md](plugins/vpn_plugin/linux/HELPER.md) and [linux/packaging/README.md](linux/packaging/README.md).
+**Linux:** the app runs as an ordinary user; root rights are needed only by a small helper `cattunnel-helper` (systemd, access through the `cattunnel` group), see [plugins/vpn_plugin/linux/HELPER.en.md](plugins/vpn_plugin/linux/HELPER.en.md) and [linux/packaging/README.en.md](linux/packaging/README.en.md).
 
 **Routers** (OpenWrt, Keenetic, ASUS Merlin): a separate repository, [cattunnel-router](https://github.com/Cattunnel/cattunnel-router).
 
@@ -140,7 +140,7 @@ Android app signing certificate: `CN=CatTunnel`, SHA-256 `42:6C:CE:9A:C6:62:B2:D
 2. Or add a subscription: "Add server" → "Subscription", an `https://` address or a one-time code from the administrator. The subscription creates the servers by itself and keeps them updated.
 3. Press "Connect". If it does not connect within 10 seconds, Marsik shows the reason.
 
-Anti-DPI and the TLS fingerprint are in the server settings, section "Bypass blocking"; size masking, QUIC blocking, keepalive and NineLives are in the "For experts" section. Keys from a subscription are overwritten by the subscription on every update unless the "Above subscription" switch is on. Detailed guide: [assets/readme/README.en.md](assets/readme/README.en.md); how the connection works: [assets/readme/CONNECTION.ru.md](assets/readme/CONNECTION.ru.md) (in Russian).
+Anti-DPI and the TLS fingerprint are in the server settings, section "Bypass blocking"; size masking, QUIC blocking, keepalive and NineLives are in the "For experts" section. Keys from a subscription are overwritten by the subscription on every update unless the "Above subscription" switch is on. Detailed guide: [assets/readme/README.en.md](assets/readme/README.en.md); how the connection works: [assets/readme/CONNECTION.en.md](assets/readme/CONNECTION.en.md).
 
 ## Building from source
 
@@ -172,9 +172,9 @@ ORG_GRADLE_PROJECT_appId=org.example.myvpn flutter build apk ...
 
 The release signature is taken from `android/key.properties` and `android/keystore/` (both paths are in `.gitignore`). Without them the build is signed with a debug key, and such an APK will not install over the official one.
 
-**Windows and Linux:** the installer is in [`windows/installer/`](windows/installer/), the Arch and Debian packages in [`linux/packaging/`](linux/packaging/README.md).
+**Windows and Linux:** the installer is in [`windows/installer/`](windows/installer/), the Arch and Debian packages in [`linux/packaging/`](linux/packaging/README.en.md).
 
-**Network core:** an own build of TrustTunnelClient with CatTunnel patches, scripts and patches in [`tools/engine_native/`](tools/engine_native/README.md), Android engine patches in [`tools/engine_patch/`](tools/engine_patch/). The patches in these folders describe core 1.3.0-rc.1 with anti-DPI, failure reasons, the first version of size masking, QUIC blocking and per-program split. In 1.5.9 the app on all platforms and the router are built from one core revision (`82963908`); its changes on top of these patches (connection pool, NineLives, padding shaper, browser-like `CONNECT` headers) have not been published to this folder yet.
+**Network core:** an own build of TrustTunnelClient with CatTunnel patches, scripts and patches in [`tools/engine_native/`](tools/engine_native/README.en.md), Android engine patches in [`tools/engine_patch/`](tools/engine_patch/). The patches in these folders describe core 1.3.0-rc.1 with anti-DPI, failure reasons, the first version of size masking, QUIC blocking and per-program split. In 1.5.9 the app on all platforms and the router are built from one core revision (`82963908`); its changes on top of these patches (connection pool, NineLives, padding shaper, browser-like `CONNECT` headers) have not been published to this folder yet.
 
 <details>
 <summary>Build notes</summary>
@@ -191,14 +191,16 @@ The release signature is taken from `android/key.properties` and `android/keysto
 
 | File | What it covers |
 |---|---|
-| [docs/how-it-works.md](docs/how-it-works.md) (in Russian) | Diagnostics, certificate check, subscriptions, routes, the own core |
-| [docs/subscriptions.md](docs/subscriptions.md) (in Russian) | Subscription format, age encryption, device key, mirrors, polling, one-time codes |
-| [docs/anti-dpi.md](docs/anti-dpi.md) (in Russian) | Anti-DPI modes, custom string, connection pool, TLS authorization key, failure reasons |
-| [docs/padding.md](docs/padding.md) (in Russian) | HTTP/2 size masking: parameters, budgets, link tags |
-| [docs/ninelives.md](docs/ninelives.md) (in Russian) | The NineLives transport on the client side |
-| [docs/rotation.md](docs/rotation.md) (in Russian) | IP rotation: how a key moves, server rest, settings and tags |
-| [docs/protocols.md](docs/protocols.md) (in Russian) | Protocol specification: CONNECT, the key in ClientHello, rotation, tt:// links, subscriptions, NineLives, CatTail, padding and anti-DPI |
-| [docs/security/](docs/security/) (in Russian) | Known security limitations, the Linux helper |
+| [docs/how-it-works.en.md](docs/how-it-works.en.md) | Diagnostics, certificate check, subscriptions, routes, the own core |
+| [docs/subscriptions.en.md](docs/subscriptions.en.md) | Subscription format, age encryption, device key, mirrors, polling, one-time codes |
+| [docs/anti-dpi.en.md](docs/anti-dpi.en.md) | Anti-DPI modes, custom string, connection pool, TLS authorization key, failure reasons |
+| [docs/padding.en.md](docs/padding.en.md) | HTTP/2 size masking: parameters, budgets, link tags |
+| [docs/ninelives.en.md](docs/ninelives.en.md) | The NineLives transport on the client side |
+| [docs/rotation.en.md](docs/rotation.en.md) | IP rotation: how a key moves, server rest, settings and tags |
+| [docs/protocols.md](docs/protocols.md) (Russian) | Protocol specification: CONNECT, rotation, links, subscriptions, NineLives, CatTail, padding and anti-DPI |
+| [docs/security/KNOWN-ISSUES.en.md](docs/security/KNOWN-ISSUES.en.md) | Known security limitations |
+| [docs/security/linux.en.md](docs/security/linux.en.md) | Linux helper security review |
+| [docs/security/shared.en.md](docs/security/shared.en.md) | Shared security review |
 | [assets/readme/README.en.md](assets/readme/README.en.md) | User guide (also inside the app) |
 
 ## Structure

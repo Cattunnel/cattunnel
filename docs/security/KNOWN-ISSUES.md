@@ -1,43 +1,64 @@
-# CatTunnel Linux 1.4.5 (build 2013) - known issues (security audit in progress, 2026-09-29)
+English: [KNOWN-ISSUES.en.md](KNOWN-ISSUES.en.md)
 
-Pre-release for testing. The internal desktop security audit is not finished: the items
-below are candidates; independent verification is still pending. All will be fixed in the next build.
-"Group" = members of `cattunnel` (on a single-user machine: only you and root).
+# Архив: замечания к CatTunnel для Linux 1.4.5 (29.09.2026)
 
+Это история проверки старой сборки. Перечисленные ниже замечания не являются списком проблем текущей версии. Сведения об исправлениях находятся в [linux.md](linux.md) и [shared.md](shared.md).
 
-> **2026-09-30:** items 1-7, DNS fail-open, helper restart on upgrade, log export dir and doc drift are fixed - see `linux.md` and `shared.md` (Russian). Later the same day: session ownership and relay/probe around another user's tunnel fixed too.
-## Root helper (`cattunnel-helper`, socket /run/cattunnel/helper.sock)
-1. **Crash on a wrong-typed JSON field** - reproduced in a sandbox (4/4). `{"cmd":1}` (or `port`/`max` as a
-   string) -> uncaught nlohmann `type_error` -> SIGABRT; systemd restarts it. Who: a group member. Impact: DoS of
-   the helper, crash skips clean teardown (the helper cleans DNS/rules on restart). Fix: type checks + try/catch.
-2. **One idle peer stalls the helper** - reproduced. `ReadLine` blocks on the single poll loop while a peer
-   withholds the newline; no replies/state events until it sends one. Who: a group member. Fix: non-blocking
-   per-fd reads or SO_RCVTIMEO.
-3. **Config allowlist bypass** - reproduced against `CheckConfig`. `[[listener.socks]]`/`[[listener]]`
-   (array-of-tables), `address` as an array or missing, nested tables are accepted, so unreviewed keys and a
-   non-loopback SOCKS address can reach the root CLI. Whether trusttunnel_client 1.1.7 honours those forms is
-   unverified. Who: a group member. Fix: require exact node types, reject everything else.
-4. **Unbounded on-disk log** - reproduced: /var/log/cattunnel/client.log grows without rotation (memory copy is
-   bounded to 2 MiB). Fix: cap + one rotated file.
-5. **Unbounded relay/probe threads** (needs validation) - one detached thread per connection, no cap; the unit
-   sets no LimitNOFILE/TasksMax.
-Checked clean: SO_PEERCRED + group auth, O_NOFOLLOW root files, fixed CLI path/clean env, DNS
-(resolv.conf/NM drop-in) paths and restore, unit hardening, PKGBUILD pins.
+Пре-релиз для тестирования. Внутренний аудит десктопных клиентов не закончен:
+ниже - кандидаты, независимая перепроверка ещё впереди. Всё будет исправлено в следующей сборке.
+«Группа» - участники группы `cattunnel` (на личном компьютере это только ты и root).
 
-## Shared code (all platforms, already in shipped versions)
-6. **RU-list plausibility gaps** - reproduced with the production functions. The third-party lists (GitHub /
-   jsDelivr, unsigned) are capped at 3% for IPv4 only: a poisoned IPv6 list can compile to `2000::/3` (all IPv6
-   bypasses the tunnel); the domain list is filtered by a denylist, so arbitrary foreign domains
-   (e.g. torproject.org, protonmail.com) can become "Russian" bypass rules. Needs a compromise of a list
-   repository. Workaround: turn off "Russian services bypass". Fix: IPv6/aggregate caps, RU-TLD allowlist.
-7. **Config encoder does not escape strings** (under review) - quotes/newlines in server fields are written raw
-   into the engine TOML; on Linux the helper's allowlist limits the effect (see 3).
+> **30.09.2026:** пункты 1-7, fail-open DNS, перезапуск при обновлении, экспорт логов и расхождения документации исправлены - см. `linux.md` и `shared.md`. Позже в тот же день закрыты и «владелец» сеанса, и relay/probe мимо чужого туннеля.
 
-## Release process
-8. **Package built in a Docker container on a LAN host** (`archlinux:latest`, then signed) - the signature
-   vouches for what that host built. This build was made on our own trusted machine; if in doubt, rebuild from
-   the same files with `makepkg -si` (PKGBUILD + sources, all sha256-pinned) - the root helper is compiled from
-   `cattunnel-helper-src-1.4.5.tar.gz`, and you can read it.
+## Root-помощник (`cattunnel-helper`, сокет /run/cattunnel/helper.sock)
+1. **Падение от поля JSON неверного типа** - воспроизведено в песочнице (4 из 4). `{"cmd":1}` (или `port`/`max`
+   строкой) → неперехваченный `type_error` nlohmann → SIGABRT; systemd перезапускает помощник. Кто: участник
+   группы. Последствия: отказ в обслуживании; при падении нет штатной уборки (DNS и правила убирает уже
+   перезапущенный помощник). Исправление: проверка типов + try/catch.
+2. **Один «молчащий» клиент подвешивает помощник** - воспроизведено. `ReadLine` блокирует единственный цикл
+   poll, пока клиент не пришлёт перевод строки; до этого - ни ответов, ни событий состояния. Кто: участник группы.
+   Исправление: неблокирующее чтение по сокетам или SO_RCVTIMEO.
+3. **Обход белого списка конфига** - воспроизведено на `CheckConfig`. Принимаются `[[listener.socks]]` /
+   `[[listener]]` (массивы таблиц), `address` массивом или без него, вложенные таблицы - значит, к root-CLI могут
+   дойти непроверенные ключи и SOCKS не на loopback. Понимает ли такие формы trusttunnel_client 1.1.7 - не
+   проверено. Кто: участник группы. Исправление: требовать точные типы узлов, остальное отклонять.
+4. **Лог на диске без ограничения** - воспроизведено: /var/log/cattunnel/client.log растёт без ротации
+   (копия в памяти ограничена 2 МиБ). Исправление: лимит + один файл ротации.
+5. **Неограниченное число потоков relay/probe** (требует проверки) - по потоку на соединение без лимита;
+   в юните нет LimitNOFILE/TasksMax.
 
-Verify: `openssl pkeyutl -verify -pubin -inkey cattunnel-release.pub.pem -rawin -in SHA256SUMS -sigfile <(base64 -d SHA256SUMS.sig)`;
-key fingerprint (sha256 of DER) `cec7226bb8218de67f02cf5992e3da7f54c3251d0ceade7e55c42cc7853a2f49` - confirm it with the owner by another channel.
+Проверено и чисто: аутентификация по SO_PEERCRED + группе, root-файлы с O_NOFOLLOW, фиксированный путь CLI
+и чистое окружение, пути и откат DNS (resolv.conf / drop-in NetworkManager), защита юнита, хеши в PKGBUILD.
+
+## Общий код (все платформы, уже есть в выпущенных версиях)
+6. **Недостаточные проверки российских списков** - воспроизведено на рабочих функциях. Сторонние списки
+   (GitHub / jsDelivr, без подписи) ограничены 3% только для IPv4: отравленный список IPv6 может свернуться в
+   `2000::/3` (весь IPv6 мимо туннеля); список доменов фильтруется запрещающим списком, поэтому любые иностранные
+   домены (например torproject.org, protonmail.com) могут стать «российскими» и пойти мимо туннеля. Нужна
+   компрометация репозитория со списками. Обход: выключить «Российские сервисы мимо VPN». Исправление: лимиты
+   для IPv6 и суммарные, домены только из российских зон + проверенный список.
+7. **Кодировщик конфига не экранирует строки** (разбирается) - кавычки и переводы строки из полей сервера
+   пишутся в TOML движка как есть; на Linux эффект ограничен белым списком помощника (см. п. 3).
+
+## Замечания (не уязвимости, но стоит знать)
+- **Нет «владельца» сеанса** в режиме systemd: после закрытия приложения туннель продолжает работать, и любой
+  участник группы может подключиться к помощнику, остановить туннель или прочитать его лог.
+- **Ошибка настройки DNS не останавливает подключение**: если помощник не смог подменить resolv.conf, `start`
+  всё равно отвечает ok - DNS может пойти мимо туннеля. В логе будет строка `=== CatTunnel: DNS NOT SET ... ===`.
+- **Обновление пакета не перезапускает помощник** (`post_upgrade`): новый root-код начинает работать только после
+  `sudo systemctl restart cattunnel-helper` (при выключенном VPN).
+- **relay/probe ходят на любой ip:port** через физический интерфейс мимо туннеля (для диагностики Марсика);
+  ограничения по адресам назначения пока нет - это доступно только участникам группы.
+- **Экспорт логов** кладёт файл в `/tmp/cattunnel_linux_logs_<время>` через `g_mkdir_with_parents`; заменим на
+  `mkdtemp`.
+- **Документация расходится с кодом**: в HELPER.md лимит строки 256 КиБ (в коде 1200 КиБ) и права лога 0640
+  (в коде 0600 - строже).
+
+## Процесс выпуска
+8. **Пакет собран в Docker-контейнере на машине в локальной сети** (`archlinux:latest`, затем подписан) -
+   подпись ручается за то, что собрала эта машина. Эту сборку делали на нашей же доверенной машине; если есть
+   сомнения - пересобери сам из тех же файлов: `makepkg -si` (PKGBUILD + исходники, всё закреплено sha256),
+   root-помощник компилируется из `cattunnel-helper-src-1.4.5.tar.gz`, его можно прочитать.
+
+Проверка: `openssl pkeyutl -verify -pubin -inkey cattunnel-release.pub.pem -rawin -in SHA256SUMS -sigfile <(base64 -d SHA256SUMS.sig)`;
+отпечаток ключа (sha256 от DER) `cec7226bb8218de67f02cf5992e3da7f54c3251d0ceade7e55c42cc7853a2f49` - сверь с владельцем по другому каналу.
