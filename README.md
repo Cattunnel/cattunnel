@@ -198,6 +198,7 @@ ORG_GRADLE_PROJECT_appId=org.example.myvpn flutter build apk ...
 | [docs/padding.md](docs/padding.md) | Маскировка размеров HTTP/2: параметры, бюджеты, теги ссылок |
 | [docs/ninelives.md](docs/ninelives.md) | Транспорт NineLives на стороне клиента |
 | [docs/rotation.md](docs/rotation.md) | Ротация IP: как переходит ключ, отдых серверов, настройки и теги |
+| [docs/protocols.md](docs/protocols.md) | Спецификация протоколов: CONNECT, ключ в ClientHello, ротация, ссылка tt://, подписка, NineLives, CatTail, padding и анти-DPI |
 | [docs/security/](docs/security/) | Известные ограничения безопасности, Linux-помощник |
 | [assets/readme/README.ru.md](assets/readme/README.ru.md) | Руководство пользователя (оно же в приложении) |
 

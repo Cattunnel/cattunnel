@@ -197,6 +197,7 @@ The release signature is taken from `android/key.properties` and `android/keysto
 | [docs/padding.md](docs/padding.md) (in Russian) | HTTP/2 size masking: parameters, budgets, link tags |
 | [docs/ninelives.md](docs/ninelives.md) (in Russian) | The NineLives transport on the client side |
 | [docs/rotation.md](docs/rotation.md) (in Russian) | IP rotation: how a key moves, server rest, settings and tags |
+| [docs/protocols.md](docs/protocols.md) (in Russian) | Protocol specification: CONNECT, the key in ClientHello, rotation, tt:// links, subscriptions, NineLives, CatTail, padding and anti-DPI |
 | [docs/security/](docs/security/) (in Russian) | Known security limitations, the Linux helper |
 | [assets/readme/README.en.md](assets/readme/README.en.md) | User guide (also inside the app) |
 
